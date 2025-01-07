@@ -68,25 +68,38 @@ const UserProfile = ({ isOpen, onClose }) => {
       const file = event.target.files?.[0]
       if (!file) return
 
+      // Validate file type and size
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif']
+      const maxSize = 10 * 1024 * 1024 // 10MB
+
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Please upload an image file (JPEG, PNG, or GIF)')
+      }
+
+      if (file.size > maxSize) {
+        throw new Error('File size must be less than 10MB')
+      }
+
       // Delete old avatar if exists
       if (avatarUrl) {
         const oldFilePath = avatarUrl.split('/').pop()
         if (oldFilePath) {
           await supabase.storage
             .from('avatars')
-            .remove([oldFilePath])
+            .remove([`${user.dbUser.id}/${oldFilePath}`])
         }
       }
 
-      // Upload new avatar in user's folder
+      // Upload new avatar
       const fileExt = file.name.split('.').pop()
-      const fileName = `${user.dbUser.id}/${Date.now()}.${fileExt}`
+      const fileName = `${Date.now()}.${fileExt}`
+      const filePath = `${user.dbUser.id}/${fileName}`
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, {
+        .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: true
+          upsert: false
         })
 
       if (uploadError) throw uploadError
@@ -94,7 +107,7 @@ const UserProfile = ({ isOpen, onClose }) => {
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
-        .getPublicUrl(fileName)
+        .getPublicUrl(filePath)
 
       // Update user profile with new avatar URL
       const { error: updateError } = await supabase
@@ -108,10 +121,10 @@ const UserProfile = ({ isOpen, onClose }) => {
       if (updateError) throw updateError
       
       setAvatarUrl(publicUrl)
-
+      
     } catch (error) {
       console.error('Error uploading avatar:', error)
-      alert('Failed to upload avatar. Please try again.')
+      alert(error.message || 'Failed to upload avatar. Please try again.')
     } finally {
       setIsLoading(false)
     }

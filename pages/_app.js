@@ -6,46 +6,35 @@ import { supabase } from 'lib/Store'
 import { jwtDecode } from 'jwt-decode'
 
 const ensureUserRecord = async (user) => {
-  if (!user) return null
-  
   try {
-    // Check if user record exists
+    // First check if user exists
     const { data: existingUser } = await supabase
       .from('users')
       .select('*')
       .eq('id', user.id)
       .single()
 
-    if (!existingUser) {
-      // Create user record if it doesn't exist
-      const { error: insertError } = await supabase
-        .from('users')
-        .insert([
-          { 
-            id: user.id,
-            username: user.email.split('@')[0],
-            status: 'ONLINE'
-          }
-        ])
-      
-      if (insertError) {
-        console.error('Error creating user record:', insertError)
-        return null
-      }
-      
-      // Fetch the created user
-      const { data: newUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-        
-      return newUser
+    if (existingUser) {
+      return existingUser
     }
+
+    // Create new user record if doesn't exist
+    const { data: newUser, error: insertError } = await supabase
+      .from('users')
+      .insert([
+        { 
+          id: user.id,
+          username: user.email.split('@')[0],
+          status: 'ONLINE'
+        }
+      ])
+      .select()
+      .single()
     
-    return existingUser
+    if (insertError) throw insertError
+    return newUser
   } catch (error) {
-    console.error('Error ensuring user record:', error)
+    console.error('Error in ensureUserRecord:', error)
     return null
   }
 }
@@ -62,18 +51,29 @@ export default function SupabaseSlackClone({ Component, pageProps }) {
       const currentUser = session?.user
       
       if (session) {
-        const jwt = jwtDecode(session.access_token)
-        currentUser.appRole = jwt.user_role
-        
-        // Ensure user record exists in the database
-        const dbUser = await ensureUserRecord(currentUser)
-        if (dbUser) {
-          currentUser.dbUser = dbUser
-          setUser(currentUser)
-          setUserLoaded(true)
-          router.push('/channels/[id]', '/channels/1')
-        } else {
-          console.error('Failed to ensure user record exists')
+        try {
+          const jwt = jwtDecode(session.access_token)
+          currentUser.appRole = jwt.user_role
+          
+          // Just fetch the user record, don't create
+          const { data: dbUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single()
+            
+          if (dbUser) {
+            currentUser.dbUser = dbUser
+            setUser(currentUser)
+            setUserLoaded(true)
+            router.push('/channels/1')
+          } else {
+            console.error('User record not found')
+            setUser(null)
+            setUserLoaded(false)
+          }
+        } catch (error) {
+          console.error('Error in saveSession:', error)
           setUser(null)
           setUserLoaded(false)
         }

@@ -10,7 +10,9 @@ create type public.user_status as enum ('ONLINE', 'OFFLINE');
 create table public.users (
   id          uuid references auth.users not null primary key,
   username    text,
-  status      user_status default 'OFFLINE'::public.user_status
+  status      user_status default 'OFFLINE'::public.user_status,
+  avatar_url  text,
+  updated_at  timestamptz default timezone('utc'::text, now())
 );
 
 create table public.channels (
@@ -66,3 +68,25 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user(); 
+
+-- Add avatar_url column if it doesn't exist
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        AND column_name = 'avatar_url'
+    ) THEN
+        ALTER TABLE public.users ADD COLUMN avatar_url text;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        AND column_name = 'updated_at'
+    ) THEN
+        ALTER TABLE public.users ADD COLUMN updated_at timestamptz DEFAULT timezone('utc'::text, now());
+    END IF;
+END $$; 

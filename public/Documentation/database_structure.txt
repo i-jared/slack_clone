@@ -1,0 +1,91 @@
+**Supabase Project: Reece**
+
+**User:** reeceharding@gmail.com  
+**Plan:** Free
+
+---
+
+### **Schema: public**
+
+#### **Tables:**
+
+1. **channels**
+2. **message_reactions**
+   - **Fields:** 
+     - `id` (int8)
+     - `message_id` (int8)
+     - `user_id` (uuid)
+     - `emoji` (text)
+     - `created_at` (timestamptz)
+   - **Sample Records:**
+     - ID 1: ❤️ by user `6edc9c5a-b9d2-4e6b-9904-2dd141878213` on 2025-01-07
+     - ID 2: 👍 by user `6edc9c5a-b9d2-4e6b-9904-2dd141878213` on 2025-01-07
+     - ...
+3. **messages**
+   - **Fields:** 
+     - `id` (int8)
+     - `inserted_at` (timestamptz)
+     - `message` (text)
+     - `user_id` (uuid)
+     - `channel_id` (int8)
+     - `attachments` (jsonb)
+   - **Sample Records:**
+     - ID 1: "Hello World 👋" by user `8d0fd2b3-9ca7-4d9e-a95f-9e13dded323e` on 2025-01-07
+     - ID 2: "Perfection is attained..." by user `8d0fd2b3-9ca7-4d9e-a95f-9e13dded323e` on 2025-01-07
+     - ...
+4. **role_permissions**
+   - **Fields:** 
+     - `id` (int8)
+     - `role` (app_role)
+     - `permission` (app_permission)
+   - **Sample Records:**
+     - ID 1: `admin` - `channels.delete`
+     - ID 2: `admin` - `messages.delete`
+     - ID 3: `moderator` - `messages.delete`
+5. **user_roles**
+   - **Fields:** 
+     - `id` (int8)
+     - `user_id` (uuid)
+     - `role` (app_role)
+   - **Sample Records:**
+     - User `41bc6dad-db73-46d4-a98a-4b259a18711c`: `OFFLINE`
+     - ...
+6. **users**
+   - **Fields:** 
+     - `id` (uuid)
+     - `username` (text)
+     - `status` (user_status)
+   - **Sample Records:**
+     - `41bc6dad-db73-46d4-a98a-4b259a18711c`: `11@gmail.com` - `OFFLINE`
+     - `5967063f-3ff0-4db0-8277-8100dd805273`: `newuser@example.com` - `OFFLINE`
+     - ...
+
+---
+
+### **Storage Buckets:**
+
+1. **avatars** (Public)
+2. **message_attachments** (Public)
+   - **Files:**
+     - `1736231122621.jpg`  
+       - **Type:** image/jpeg  
+       - **Size:** 2.12 MB  
+       - **Added on:** 1/6/2025  
+       - **Last Modified:** 1/6/2025
+
+---
+
+### **Features Enabled:**
+
+- **Realtime:**
+  - **On:** `message_reactions`, `messages`
+  - **Off:** `user_roles`, `users`
+- **RLS Policies:** Defined for roles in `role_permissions`
+
+---
+
+### **API & Integrations:**
+
+- **API Docs:** Available
+- **Integrations:** Configured
+- **Edge Functions, Authentication, Storage, etc.:** Enabled as per project settings
