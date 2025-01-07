@@ -4,252 +4,151 @@ import { supabase } from '~/lib/Store'
 
 const UserProfile = ({ isOpen, onClose }) => {
   const { user } = useContext(UserContext)
-  const [isEditing, setIsEditing] = useState(false)
-  const [username, setUsername] = useState(user?.dbUser?.username || '')
-  const [status, setStatus] = useState(user?.dbUser?.status || 'ONLINE')
-  const [isLoading, setIsLoading] = useState(false)
-  const [avatarUrl, setAvatarUrl] = useState(user?.dbUser?.avatar_url || null)
+  const [username, setUsername] = useState(user?.username || '')
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '')
+  const [status, setStatus] = useState('ONLINE')
+  const [isUploading, setIsUploading] = useState(false)
+  const [message, setMessage] = useState('')
 
-  const handleUpdateProfile = async () => {
-    if (!user?.dbUser?.id) return
-    setIsLoading(true)
+  const updateProfile = async (e) => {
+    e.preventDefault()
     
     try {
+      setMessage('')
+      
       const { error } = await supabase
         .from('users')
-        .update({
+        .update({ 
           username,
-          status,
           avatar_url: avatarUrl,
-          updated_at: new Date().toISOString()
+          status
         })
-        .eq('id', user.dbUser.id)
+        .eq('id', user.id)
 
       if (error) throw error
-      setIsEditing(false)
+      setMessage('Profile updated successfully!')
     } catch (error) {
       console.error('Error updating profile:', error)
-      alert('Failed to update profile. Please try again.')
-    } finally {
-      setIsLoading(false)
+      setMessage('Error updating profile. Please try again.')
     }
   }
 
-  const ensureAvatarBucket = async () => {
+  const handleFileUpload = async (e) => {
     try {
-      // Check if bucket exists
-      const { data: buckets } = await supabase
-        .storage
-        .listBuckets()
-
-      const avatarBucket = buckets?.find(b => b.name === 'avatars')
+      setIsUploading(true)
+      setMessage('')
       
-      if (!avatarBucket) {
-        // Create bucket if it doesn't exist
-        const { error: createError } = await supabase
-          .storage
-          .createBucket('avatars', {
-            public: true,
-            allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif'],
-            fileSizeLimit: 1024 * 1024 * 2 // 2MB
-          })
-
-        if (createError) throw createError
-      }
-    } catch (error) {
-      console.error('Error ensuring avatar bucket exists:', error)
-      throw error
-    }
-  }
-
-  const handleAvatarUpload = async (event) => {
-    try {
-      setIsLoading(true)
-      const file = event.target.files?.[0]
-      if (!file) return
-
-      // Validate file type and size
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif']
-      const maxSize = 10 * 1024 * 1024 // 10MB
-
-      if (!allowedTypes.includes(file.type)) {
-        throw new Error('Please upload an image file (JPEG, PNG, or GIF)')
-      }
-
-      if (file.size > maxSize) {
-        throw new Error('File size must be less than 10MB')
-      }
-
-      // Delete old avatar if exists
-      if (avatarUrl) {
-        const oldFilePath = avatarUrl.split('/').pop()
-        if (oldFilePath) {
-          await supabase.storage
-            .from('avatars')
-            .remove([`${user.dbUser.id}/${oldFilePath}`])
-        }
-      }
-
-      // Upload new avatar
+      const file = e.target.files[0]
       const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}.${fileExt}`
-      const filePath = `${user.dbUser.id}/${fileName}`
+      const filePath = `${user.id}-${Math.random()}.${fileExt}`
 
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
+        .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath)
 
-      // Update user profile with new avatar URL
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ 
-          avatar_url: publicUrl,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.dbUser.id)
-
-      if (updateError) throw updateError
-      
       setAvatarUrl(publicUrl)
-      
+      setMessage('Avatar uploaded successfully!')
     } catch (error) {
       console.error('Error uploading avatar:', error)
-      alert(error.message || 'Failed to upload avatar. Please try again.')
+      setMessage('Error uploading avatar. Please try again.')
     } finally {
-      setIsLoading(false)
+      setIsUploading(false)
     }
   }
 
   if (!isOpen) return null
 
   return (
-    <div className="w-80 border-l border-gray-700 bg-gray-900 h-full overflow-y-auto">
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Profile</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="space-y-6">
-          {/* Avatar Section */}
-          <div className="text-center">
-            <div className="relative inline-block">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-indigo-600 flex items-center justify-center text-white text-2xl font-medium">
-                  {username.slice(0, 2).toUpperCase()}
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
+        
+        <div className="relative w-full max-w-md rounded-lg bg-gray-800/95 border-2 border-yellow-400/50 shadow-xl">
+          <div className="p-6">
+            <h2 className="text-2xl font-orbitron text-yellow-400 mb-6">Profile Settings</h2>
+            
+            <form onSubmit={updateProfile} className="space-y-4">
+              {/* Avatar */}
+              <div className="space-y-2">
+                <label className="block font-orbitron text-sm text-gray-300">Avatar</label>
+                <div className="flex items-center space-x-4">
+                  <div className="sw-profile-icon w-16 h-16 rounded-full overflow-hidden">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-700 flex items-center justify-center text-xl text-yellow-400">
+                        {username?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <label className="sw-button cursor-pointer">
+                    <span>{isUploading ? 'Uploading...' : 'Upload'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      disabled={isUploading}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
-              )}
-              {isEditing && (
-                <label className="absolute bottom-0 right-0 bg-gray-800 rounded-full p-2 cursor-pointer hover:bg-gray-700">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleAvatarUpload}
-                    disabled={isLoading}
-                  />
-                  📷
-                </label>
-              )}
-            </div>
-          </div>
+              </div>
 
-          {/* User Details */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Username
-              </label>
-              {isEditing ? (
+              {/* Username */}
+              <div className="space-y-2">
+                <label className="block font-orbitron text-sm text-gray-300">Username</label>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-gray-800 text-white px-3 py-2 rounded border border-gray-700 focus:outline-none focus:border-indigo-500"
-                  disabled={isLoading}
+                  className="sw-input w-full"
+                  placeholder="Enter username"
                 />
-              ) : (
-                <p className="text-white">{username}</p>
-              )}
-            </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Status
-              </label>
-              {isEditing ? (
+              {/* Status */}
+              <div className="space-y-2">
+                <label className="block font-orbitron text-sm text-gray-300">Status</label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full bg-gray-800 text-white px-3 py-2 rounded border border-gray-700 focus:outline-none focus:border-indigo-500"
-                  disabled={isLoading}
+                  className="sw-input w-full"
                 >
                   <option value="ONLINE">Online</option>
-                  <option value="AWAY">Away</option>
-                  <option value="BUSY">Busy</option>
                   <option value="OFFLINE">Offline</option>
                 </select>
-              ) : (
-                <p className="text-white capitalize">{status.toLowerCase()}</p>
+              </div>
+
+              {/* Message */}
+              {message && (
+                <p className={`text-sm ${message.includes('Error') ? 'text-red-400' : 'text-green-400'}`}>
+                  {message}
+                </p>
               )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Email
-              </label>
-              <p className="text-white">{user?.email}</p>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-3">
-            {isEditing ? (
-              <>
+              {/* Buttons */}
+              <div className="flex justify-end space-x-3 pt-4">
                 <button
-                  onClick={() => setIsEditing(false)}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-white"
-                  disabled={isLoading}
+                  type="button"
+                  onClick={onClose}
+                  className="sw-button-secondary"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleUpdateProfile}
-                  className="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                  disabled={isLoading}
+                  type="submit"
+                  className="sw-button"
                 >
-                  {isLoading ? 'Saving...' : 'Save Changes'}
+                  Save Changes
                 </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="px-4 py-2 text-sm bg-gray-800 text-white rounded hover:bg-gray-700"
-              >
-                Edit Profile
-              </button>
-            )}
+              </div>
+            </form>
           </div>
         </div>
       </div>

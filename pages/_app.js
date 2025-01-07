@@ -1,4 +1,4 @@
-import '~/styles/style.css'
+import '~/styles/globals.css'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import UserContext from 'lib/UserContext'

@@ -8,6 +8,7 @@ import FlyingShips from './FlyingShips'
 import BackgroundMusic from './BackgroundMusic'
 import RandomCharacters from './RandomCharacters'
 import UserProfile from './UserProfile'
+import { CHANNELS } from '~/lib/constants'
 
 // Error Boundary Component
 class ErrorBoundary extends Component {
@@ -124,24 +125,32 @@ const Layout = ({ children }) => {
             <div className="p-4">
               <h2 className="font-orbitron text-yellow-400 mb-2">Channels</h2>
               <ul className="space-y-1">
-                {channels?.map((channel) => (
-                  <li key={channel.id}>
-                    <button
-                      onClick={() => handleChannelSwitch(channel.id)}
-                      disabled={isNavigating}
-                      className={`
-                        sw-channel w-full px-2 py-1 rounded text-left transition-colors
-                        ${router.query.id === channel.id.toString() 
-                          ? 'bg-yellow-500/20 text-yellow-400' 
-                          : 'text-gray-400 hover:bg-gray-700 hover:text-yellow-400'
-                        }
-                        ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}
-                      `}
-                    >
-                      # {channel.slug}
-                    </button>
-                  </li>
-                ))}
+                {channels?.map((channel) => {
+                  const channelConfig = Object.values(CHANNELS).find(c => c.slug === channel.slug) || {
+                    displayName: channel.slug,
+                    description: 'Channel description'
+                  }
+                  return (
+                    <li key={channel.id}>
+                      <button
+                        onClick={() => handleChannelSwitch(channel.id)}
+                        disabled={isNavigating}
+                        className={`
+                          sw-channel w-full px-2 py-1 rounded text-left transition-colors group
+                          ${router.query.id === channel.id.toString() 
+                            ? 'bg-yellow-500/20 text-yellow-400' 
+                            : 'text-gray-400 hover:bg-gray-700 hover:text-yellow-400'
+                          }
+                          ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}
+                        `}
+                        title={channelConfig.description}
+                      >
+                        <span className="inline-block w-4 opacity-50 group-hover:opacity-100">#</span>
+                        <span>{channelConfig.displayName}</span>
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           </div>

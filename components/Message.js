@@ -216,7 +216,7 @@ const Message = ({ message }) => {
           />
         ) : (
           <div 
-            className="w-9 h-9 rounded bg-gray-600 flex items-center justify-center text-sm font-medium text-white flex-shrink-0"
+            className="w-9 h-9 rounded bg-gray-600 flex items-center justify-center text-sm font-medium text-white flex-shrink-0 sw-profile-icon"
             title={username}
           >
             {initials}
@@ -224,7 +224,7 @@ const Message = ({ message }) => {
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
-            <span className="font-medium text-yellow-400">{username}</span>
+            <span className="font-orbitron text-yellow-400">{username}</span>
             <span className="text-xs text-gray-400">{formatTime(message.inserted_at)}</span>
           </div>
           <div className="mt-1 text-gray-100">
@@ -237,28 +237,29 @@ const Message = ({ message }) => {
           </div>
           {/* Reactions */}
           {Object.keys(reactionGroups).length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="flex flex-wrap gap-1 mt-1">
               {Object.entries(reactionGroups).map(([emoji, reactions]) => (
                 <button
                   key={emoji}
                   onClick={() => handleEmojiSelect(emoji)}
                   className={`
-                    flex items-center space-x-1 text-sm px-2 py-0.5 rounded 
+                    inline-flex items-center space-x-0.5 text-sm px-1.5 py-0.5 rounded-full
                     ${reactions.some(r => r.user_id === user?.id)
-                      ? 'bg-yellow-500/20 text-yellow-400'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
+                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
                     }
+                    transition-colors duration-150
                   `}
                   title={reactions.map(r => r.user?.username).join(', ')}
                 >
-                  <span>{emoji}</span>
-                  <span>{reactions.length}</span>
+                  <span className="leading-none">{emoji}</span>
+                  <span className="leading-none">{reactions.length}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1">
           <div className="relative">
             <ReactionButton onClick={() => setShowEmojiPicker(!showEmojiPicker)} />
             {showEmojiPicker && (
