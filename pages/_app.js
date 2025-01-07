@@ -1,9 +1,10 @@
-import '~/styles/style.scss'
+import '~/styles/style.css'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import UserContext from 'lib/UserContext'
 import { supabase } from 'lib/Store'
 import { jwtDecode } from 'jwt-decode'
+import LoadingScreen from '~/components/LoadingScreen'
 
 const ensureUserRecord = async (user) => {
   try {
@@ -39,77 +40,92 @@ const ensureUserRecord = async (user) => {
   }
 }
 
-export default function SupabaseSlackClone({ Component, pageProps }) {
-  const [userLoaded, setUserLoaded] = useState(false)
-  const [user, setUser] = useState(null)
-  const [session, setSession] = useState(null)
+export default function App({ Component, pageProps }) {
   const router = useRouter()
+  const [user, setUser] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    async function saveSession(session) {
-      setSession(session)
-      const currentUser = session?.user
-      
-      if (session) {
-        try {
-          const jwt = jwtDecode(session.access_token)
-          currentUser.appRole = jwt.user_role
+    let mounted = true
+
+    // Handle route change loading states
+    const handleStart = () => setIsLoading(true)
+    const handleComplete = () => setIsLoading(false)
+
+    router.events.on('routeChangeStart', handleStart)
+    router.events.on('routeChangeComplete', handleComplete)
+    router.events.on('routeChangeError', handleComplete)
+
+    // Initial auth check
+    const getInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session?.user && mounted) {
+          const dbUser = await ensureUserRecord(session.user)
+          setUser({ ...session.user, dbUser })
           
-          // Just fetch the user record, don't create
-          const { data: dbUser } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', currentUser.id)
-            .single()
-            
-          if (dbUser) {
-            currentUser.dbUser = dbUser
-            setUser(currentUser)
-            setUserLoaded(true)
-            router.push('/channels/1')
-          } else {
-            console.error('User record not found')
-            setUser(null)
-            setUserLoaded(false)
+          // Only redirect if we're on the home page
+          if (router.pathname === '/') {
+            await router.push('/channels/1')
           }
-        } catch (error) {
-          console.error('Error in saveSession:', error)
-          setUser(null)
-          setUserLoaded(false)
         }
-      } else {
-        setUser(null)
-        setUserLoaded(false)
+      } catch (error) {
+        console.error('Error checking session:', error)
+      } finally {
+        if (mounted) {
+          setIsLoading(false)
+        }
       }
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => saveSession(session))
+    getInitialSession()
 
-    const authListener = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session)
-      await saveSession(session)
+      
+      if (mounted) {
+        if (session?.user) {
+          const dbUser = await ensureUserRecord(session.user)
+          setUser({ ...session.user, dbUser })
+          
+          // Redirect to chat on login/signup
+          if (event === 'SIGNED_IN' || event === 'SIGNED_UP') {
+            await router.push('/channels/1')
+          }
+        } else {
+          setUser(null)
+          // Redirect to home on signout
+          if (event === 'SIGNED_OUT') {
+            await router.push('/')
+          }
+        }
+      }
     })
 
     return () => {
-      authListener.data.subscription.unsubscribe()
+      mounted = false
+      router.events.off('routeChangeStart', handleStart)
+      router.events.off('routeChangeComplete', handleComplete)
+      router.events.off('routeChangeError', handleComplete)
+      subscription?.unsubscribe()
     }
-  }, [])
+  }, [router])
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (!error) {
-      router.push('/')
+    try {
+      await supabase.auth.signOut()
+      setUser(null)
+      await router.push('/')
+    } catch (error) {
+      console.error('Error signing out:', error)
     }
   }
 
   return (
-    <UserContext.Provider
-      value={{
-        userLoaded,
-        user,
-        signOut,
-      }}
-    >
+    <UserContext.Provider value={{ user, signOut }}>
+      {isLoading && <LoadingScreen />}
       <Component {...pageProps} />
     </UserContext.Provider>
   )

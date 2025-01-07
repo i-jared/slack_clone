@@ -32,5 +32,5 @@ body,
   display: flex;
   flex-direction: column-reverse;
   background-color: theme('colors.sw-gray.dark');
-  background-opacity: 0.9;
+  @apply bg-opacity-90;
 }

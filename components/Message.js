@@ -2,6 +2,7 @@ import { useContext, useState, useEffect } from 'react'
 import UserContext from '~/lib/UserContext'
 import { deleteMessage, addReaction, removeReaction } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
+import { replaceEmojis } from './StarWarsEmoji'
 
 const formatTime = (timestamp) => {
   const date = new Date(timestamp)
@@ -226,6 +227,17 @@ const Message = ({ message }) => {
     )
   }
 
+  const renderMessageContent = (content) => {
+    const starWarsContent = replaceEmojis(content)
+    return (
+      <div className="message-content">
+        {starWarsContent.split('\n').map((line, i) => (
+          <p key={i}>{line}</p>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="py-1 group hover:bg-gray-700/50 px-4">
       <div className="flex items-start space-x-3">
@@ -273,7 +285,7 @@ const Message = ({ message }) => {
           
           {localMessage.message && (
             <p className="text-gray-100 whitespace-pre-wrap break-words">
-              {localMessage.message}
+              {renderMessageContent(localMessage.message)}
             </p>
           )}
           
