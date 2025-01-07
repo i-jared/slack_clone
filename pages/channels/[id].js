@@ -86,11 +86,83 @@ const ChannelPageContent = () => {
 const ChannelPage = () => {
   const router = useRouter()
   const { id } = router.query
+  const { user } = useContext(UserContext)
+  const [channel, setChannel] = useState(null)
+  const { channels, messages } = useStore({ channelId: id ? Number(id) : null })
+  const messagesEndRef = useRef(null)
 
-  // Use key prop to force remount of entire component tree
+  // Find channel when channels are loaded
+  useEffect(() => {
+    if (channels?.length > 0 && id && router.isReady) {
+      console.log('🔍 Finding channel:', id, 'from', channels.length, 'channels')
+      const foundChannel = channels.find(c => c.id.toString() === id.toString())
+      if (foundChannel) {
+        console.log('✅ Channel found:', foundChannel.slug)
+        setChannel(foundChannel)
+      } else {
+        console.log('❌ Channel not found')
+        setChannel(null)
+      }
+    }
+  }, [channels, id, router.isReady])
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (messages?.length > 0) {
+      console.log('📜 Messages updated:', messages?.length)
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages])
+
+  // Render null if user is not authenticated
+  if (!user) {
+    console.log('⚠️ No user, rendering null')
+    return null
+  }
+
+  if (!router.isReady) {
+    return <LoadingScreen message="Loading..." />
+  }
+
+  if (!channel) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-red-400 bg-red-400/10 px-4 py-2 rounded-lg">
+            Channel not found
+          </div>
+        </div>
+      </Layout>
+    )
+  }
+
+  const channelConfig = Object.values(CHANNELS).find(c => c.slug === channel.slug) || {
+    displayName: channel.slug,
+    description: 'Channel description'
+  }
+
   return (
-    <Layout key={id}>
-      <ChannelPageContent />
+    <Layout>
+      <div className="relative h-screen flex flex-col">
+        <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
+          <h2 className="text-2xl font-orbitron text-yellow-400">
+            {channelConfig.displayName}
+          </h2>
+          <p className="text-sm text-gray-400 font-orbitron">{channelConfig.description}</p>
+        </div>
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+          <div className="py-4 space-y-2">
+            {messages?.map((message) => (
+              <Message 
+                key={`${message.id}-${message.inserted_at}`} 
+                message={message} 
+              />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+        <MessageInput channel_id={Number(id)} />
+      </div>
     </Layout>
   )
 }

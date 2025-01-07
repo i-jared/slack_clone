@@ -1,129 +1,64 @@
-import { useState, useRef, useContext } from 'react'
-import { supabase } from '~/lib/Store'
+import { useState, useContext } from 'react'
+import { supabase, sendMessage } from '~/lib/Store'
 import UserContext from '~/lib/UserContext'
 
-const MessageInput = ({ channel_id }) => {
+export default function MessageInput({ channel_id, recipient_id, isDirect = false }) {
+  const [content, setContent] = useState('')
+  const [isSending, setIsSending] = useState(false)
   const { user } = useContext(UserContext)
-  const [message, setMessage] = useState('')
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const fileInputRef = useRef(null)
 
-  const sendMessage = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    if (!message.trim() && !fileInputRef.current?.files?.length) return
+    if (!content.trim()) return
 
     try {
-      let attachments = []
-
-      // Handle file uploads if any
-      if (fileInputRef.current?.files?.length) {
-        setIsUploading(true)
-        setUploadProgress(0)
-
-        for (const file of fileInputRef.current.files) {
-          const fileExt = file.name.split('.').pop()
-          const filePath = `${channel_id}/${Date.now()}-${Math.random()}.${fileExt}`
-
-          const { error: uploadError } = await supabase.storage
-            .from('attachments')
-            .upload(filePath, file, {
-              onUploadProgress: (progress) => {
-                setUploadProgress(Math.round((progress.loaded / progress.total) * 100))
-              }
-            })
-
-          if (uploadError) throw uploadError
-
-          const { data: { publicUrl } } = supabase.storage
-            .from('attachments')
-            .getPublicUrl(filePath)
-
-          attachments.push({
-            url: publicUrl,
-            type: file.type,
-            name: file.name
-          })
-        }
+      setIsSending(true)
+      
+      if (isDirect) {
+        // Handle direct message
+        const { error } = await supabase.from('direct_messages').insert([{
+          message: content.trim(),
+          sender_id: user.id,
+          recipient_id: recipient_id
+        }])
+        if (error) throw error
+      } else {
+        // Handle channel message using the sendMessage function
+        await sendMessage(content.trim(), channel_id)
       }
 
-      // Send message
-      const { error } = await supabase
-        .from('messages')
-        .insert([
-          { 
-            message: message.trim(),
-            channel_id,
-            user_id: user.id,
-            attachments: attachments.length ? attachments : null
-          }
-        ])
-
-      if (error) throw error
-
-      // Clear input
-      setMessage('')
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
+      setContent('')
     } catch (error) {
       console.error('Error sending message:', error)
+      alert('Failed to send message. Please try again.')
     } finally {
-      setIsUploading(false)
-      setUploadProgress(0)
+      setIsSending(false)
     }
   }
 
   return (
-    <form onSubmit={sendMessage} className="sw-message-input">
-      <div className="relative">
-        {isUploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50 rounded">
-            <div className="text-center">
-              <div className="text-yellow-400 font-orbitron">Uploading... {uploadProgress}%</div>
-              <div className="w-48 h-1 bg-gray-700 rounded-full mt-2">
-                <div 
-                  className="h-full bg-yellow-400 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <textarea
-            className="sw-input flex-1"
-            value={message}
-            placeholder="Type a message..."
-            rows={1}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                sendMessage(e)
-              }
-            }}
-          />
-          <div className="flex items-center gap-2">
-            <label className="sw-button-secondary cursor-pointer">
-              <span>Attach</span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                className="hidden"
-                onChange={() => {}} // Required to make the input controlled
-              />
-            </label>
-            <button type="submit" className="sw-button">
-              Send
-            </button>
-          </div>
-        </div>
+    <form onSubmit={handleSubmit} className="p-4 bg-gray-800/90">
+      <div className="flex space-x-2">
+        <input
+          type="text"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Type your message..."
+          className="flex-1 bg-gray-700 text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          disabled={isSending}
+        />
+        <button
+          type="submit"
+          disabled={!content.trim() || isSending}
+          className={`px-4 py-2 rounded font-orbitron ${
+            !content.trim() || isSending
+              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              : 'bg-yellow-500 hover:bg-yellow-600 text-black'
+          }`}
+        >
+          Send
+        </button>
       </div>
     </form>
   )
 }
-
-export default MessageInput
