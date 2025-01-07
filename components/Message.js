@@ -229,12 +229,21 @@ const Message = ({ message }) => {
   return (
     <div className="py-1 group hover:bg-gray-700/50 px-4">
       <div className="flex items-start space-x-3">
-        <div 
-          className="w-9 h-9 rounded bg-indigo-600 flex items-center justify-center flex-shrink-0 text-white font-medium"
-          title={username}
-        >
-          {initials}
-        </div>
+        {message.author?.dbUser?.avatar_url ? (
+          <img 
+            src={message.author.dbUser.avatar_url}
+            alt={username}
+            className="w-9 h-9 rounded object-cover flex-shrink-0"
+            title={username}
+          />
+        ) : (
+          <div 
+            className="w-9 h-9 rounded bg-indigo-600 flex items-center justify-center flex-shrink-0 text-white font-medium"
+            title={username}
+          >
+            {initials}
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center">
             <span className="font-bold text-white mr-2">{username}</span>

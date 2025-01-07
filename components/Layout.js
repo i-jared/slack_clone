@@ -50,9 +50,17 @@ export default function Layout(props) {
             onClick={() => setIsProfileOpen(true)}
             className="w-full flex items-center space-x-2 hover:bg-gray-800 p-2 rounded transition-colors"
           >
-            <div className="w-8 h-8 rounded bg-indigo-600 flex items-center justify-center text-white font-medium">
-              {userInitials}
-            </div>
+            {user?.dbUser?.avatar_url ? (
+              <img 
+                src={user.dbUser.avatar_url}
+                alt={user.email}
+                className="w-8 h-8 rounded object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded bg-indigo-600 flex items-center justify-center text-white font-medium">
+                {userInitials}
+              </div>
+            )}
             <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-medium truncate">{user?.email}</p>
               <p className="text-xs text-gray-400">Online</p>
