@@ -1,24 +1,36 @@
 import Link from 'next/link'
-import { useContext, useState } from 'react'
+import { useContext, useState, useEffect } from 'react'
 import UserContext from '~/lib/UserContext'
 import { addChannel, deleteChannel } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
 import UserProfile from './UserProfile'
 import { useStore, useMessageCount } from '~/lib/Store'
+import Starfield from './Starfield'
 
 export default function Layout(props) {
   const { signOut, user } = useContext(UserContext)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [showLightspeed, setShowLightspeed] = useState(false)
+
+  useEffect(() => {
+    const handleRouteChange = () => {
+      setShowLightspeed(true)
+      setTimeout(() => setShowLightspeed(false), 500)
+    }
+
+    window.addEventListener('routeChangeStart', handleRouteChange)
+    return () => window.removeEventListener('routeChangeStart', handleRouteChange)
+  }, [])
 
   const slugify = (text) => {
     return text
       .toString()
       .toLowerCase()
-      .replace(/\s+/g, '-') // Replace spaces with -
-      .replace(/[^\w-]+/g, '') // Remove all non-word chars
-      .replace(/--+/g, '-') // Replace multiple - with single -
-      .replace(/^-+/, '') // Trim - from start of text
-      .replace(/-+$/, '') // Trim - from end of text
+      .replace(/\s+/g, '-')
+      .replace(/[^\w-]+/g, '')
+      .replace(/--+/g, '-')
+      .replace(/^-+/, '')
+      .replace(/-+$/, '')
   }
 
   const newChannel = async () => {
@@ -33,15 +45,18 @@ export default function Layout(props) {
 
   return (
     <main className="main flex h-screen w-screen overflow-hidden bg-gray-800">
+      <Starfield />
+      {showLightspeed && <div className="lightspeed-transition active" />}
+      
       {/* Sidebar */}
       <nav
-        className="w-64 bg-gray-900 text-gray-100 overflow-y-auto"
+        className="w-64 bg-opacity-90 bg-gray-900 text-gray-100 overflow-y-auto"
         style={{ maxWidth: '20%', minWidth: 200 }}
       >
         {/* Workspace Header */}
         <div className="px-4 py-2 border-b border-gray-800">
-          <h1 className="text-xl font-bold">GauntletAI Chat</h1>
-          <p className="text-sm text-gray-400">Team Workspace</p>
+          <h1 className="text-xl font-bold talk2d2-logo">Talk2D2</h1>
+          <p className="text-sm text-gray-400">Your Galactic Chat Hub</p>
         </div>
 
         {/* User Profile Section */}
@@ -54,23 +69,23 @@ export default function Layout(props) {
               <img 
                 src={user.dbUser.avatar_url}
                 alt={user.email}
-                className="w-8 h-8 rounded object-cover flex-shrink-0"
+                className="w-8 h-8 rounded object-cover flex-shrink-0 sw-profile-icon"
               />
             ) : (
-              <div className="w-8 h-8 rounded bg-indigo-600 flex items-center justify-center text-white font-medium">
+              <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 sw-profile-icon">
                 {userInitials}
               </div>
             )}
             <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-medium truncate">{user?.email}</p>
-              <p className="text-xs text-gray-400">Online</p>
+              <p className="text-xs text-yellow-400">Online</p>
             </div>
             <div
               onClick={(e) => {
                 e.stopPropagation()
                 signOut()
               }}
-              className="text-gray-400 hover:text-white cursor-pointer"
+              className="text-gray-400 hover:text-yellow-400 cursor-pointer"
             >
               Sign out
             </div>
@@ -80,10 +95,10 @@ export default function Layout(props) {
         {/* Channels Section */}
         <div className="px-4 py-2">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400">Channels</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-yellow-400">Channels</h2>
             <button
               onClick={() => newChannel()}
-              className="text-gray-400 hover:text-white text-xl"
+              className="text-gray-400 hover:text-yellow-400 text-xl"
               title="Add Channel"
             >
               +
@@ -103,7 +118,7 @@ export default function Layout(props) {
       </nav>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col bg-gray-800">
+      <div className="flex-1 flex flex-col bg-opacity-90 bg-gray-800">
         {props.children}
       </div>
 
@@ -118,12 +133,12 @@ const SidebarItem = ({ channel, isActiveChannel, user }) => {
   
   return (
     <li>
-      <div className={`flex items-center justify-between group px-2 py-1 rounded ${
-        isActiveChannel ? 'bg-indigo-600' : 'hover:bg-gray-800'
+      <div className={`flex items-center justify-between group px-2 py-1 rounded sw-channel ${
+        isActiveChannel ? 'active' : ''
       }`}>
         <Link
           href={`/channels/${channel.id}`}
-          className={`flex-1 truncate ${isActiveChannel ? 'font-bold' : ''}`}
+          className={`flex-1 truncate ${isActiveChannel ? 'font-bold text-yellow-400' : ''}`}
         >
           <div className="flex items-center justify-between">
             <span># {channel.slug}</span>
@@ -134,7 +149,7 @@ const SidebarItem = ({ channel, isActiveChannel, user }) => {
           <button 
             onClick={() => deleteChannel(channel.id)}
             className={`opacity-0 group-hover:opacity-100 transition-opacity ${
-              isActiveChannel ? 'text-white' : 'text-gray-400 hover:text-white'
+              isActiveChannel ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'
             }`}
           >
             <TrashIcon />

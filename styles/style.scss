@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import './starwars.css';
+
 html,
 body,
 #__next,
@@ -11,7 +13,10 @@ body,
   margin: 0;
   padding: 0;
   overflow: hidden;
+  background-color: theme('colors.sw-black');
+  color: theme('colors.gray.100');
 }
+
 .channel-list {
   li a:before {
     content: '# ';
@@ -21,8 +26,11 @@ body,
     opacity: 0.9;
   }
 }
+
 .Messages {
   overflow: auto;
   display: flex;
   flex-direction: column-reverse;
+  background-color: theme('colors.sw-gray.dark');
+  background-opacity: 0.9;
 }

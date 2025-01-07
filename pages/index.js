@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { supabase } from 'lib/Store'
 import { useRouter } from 'next/router'
+import { supabase } from '~/lib/Store'
+import Starfield from '~/components/Starfield'
 
 const LoadingSpinner = () => (
-  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
   </svg>
@@ -58,111 +59,42 @@ const Home = () => {
   }
 
   const handleLogin = async (type, username, password) => {
-    if (!username || !password) {
-      alert('Please enter both email and password')
-      return
-    }
-
     try {
       setIsLoading(true)
-      console.log(`Attempting ${type} with email: ${username}`)
-      let authResponse
+      const { data: { user }, error } = type === 'LOGIN' 
+        ? await supabase.auth.signInWithPassword({ email: username, password })
+        : await supabase.auth.signUp({ email: username, password })
+      
+      if (error) throw error
 
-      if (type === 'LOGIN') {
-        // First attempt login
-        console.log('Attempting login with Supabase auth...')
-        authResponse = await supabase.auth.signInWithPassword({ 
-          email: username, 
-          password 
-        })
-        
-        console.log('Auth response:', JSON.stringify(authResponse, null, 2))
-        
-        if (authResponse.error) throw authResponse.error
-        if (!authResponse.data?.user) throw new Error('No user returned from login')
-
-        try {
-          console.log('Creating/verifying user record...')
-          // Then create/verify user record
-          const isExistingUser = await createUserRecord(authResponse.data.user)
-          console.log('User record status:', isExistingUser ? 'existing' : 'new')
-          
-          // Finally attempt redirect
-          console.log('Attempting redirect to /channels/1...')
-          const result = await router.push('/channels/1')
-          console.log('Redirect result:', result)
-          
-          if (!result) {
-            throw new Error('Failed to redirect to channels')
-          }
-        } catch (error) {
-          console.error('Post-login error:', error)
-          // Sign out if profile setup fails
-          await supabase.auth.signOut()
-          throw new Error(`Login successful but profile setup failed: ${error.message}`)
+      if (user) {
+        if (type === 'SIGNUP') {
+          await createUserRecord(user)
         }
-      } else {
-        // Sign up flow
-        console.log('Attempting signup with Supabase auth...')
-        authResponse = await supabase.auth.signUp({
-          email: username,
-          password,
-          options: {
-            data: {
-              username: username.split('@')[0]
-            }
-          }
-        })
-
-        console.log('Signup response:', JSON.stringify(authResponse, null, 2))
-
-        if (authResponse.error) {
-          if (authResponse.error.message === 'User already registered') {
-            alert('This email is already registered. Please try logging in instead.')
-            return
-          }
-          throw authResponse.error
-        }
-
-        if (!authResponse.data?.user) {
-          alert('Signup successful! Please check your email for confirmation.')
-          return
-        }
-
-        try {
-          console.log('Creating user record for new signup...')
-          await createUserRecord(authResponse.data.user)
-          console.log('Attempting redirect after signup...')
-          const result = await router.push('/channels/1')
-          console.log('Redirect result:', result)
-          
-          if (!result) {
-            throw new Error('Failed to redirect to channels')
-          }
-        } catch (error) {
-          console.error('Error creating user record:', error)
-          // Sign out if profile setup fails
-          await supabase.auth.signOut()
-          throw new Error(`Account created but profile setup failed: ${error.message}`)
-        }
+        router.push('/channels/1')
       }
     } catch (error) {
-      console.error('Auth error:', error)
-      alert(error.message || 'An error occurred. Please try again.')
+      console.log('Error during authentication:', error)
+      alert(error.error_description || error.message)
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="w-full h-full flex justify-center items-center p-4 bg-gray-300">
+    <div className="w-full h-full flex justify-center items-center p-4 bg-gray-800">
+      <Starfield />
       <div className="w-full sm:w-1/2 xl:w-1/3">
-        <div className="border-teal p-8 border-t-12 bg-white mb-6 rounded-lg shadow-lg bg-white">
+        <div className="text-center mb-8">
+          <h1 className="talk2d2-logo text-4xl mb-4">Talk2D2</h1>
+          <p className="text-yellow-400">Your Galactic Chat Hub</p>
+        </div>
+        <div className="sw-modal p-8 rounded-lg shadow-lg">
           <div className="mb-4">
-            <label className="font-bold text-grey-darker block mb-2">Email</label>
+            <label className="font-bold text-yellow-400 block mb-2">Email</label>
             <input
               type="email"
-              className="block appearance-none w-full bg-white border border-grey-light hover:border-grey px-2 py-2 rounded shadow"
+              className="block appearance-none w-full bg-gray-900 border border-gray-700 hover:border-yellow-400 px-2 py-2 rounded shadow sw-input text-white"
               placeholder="your.email@example.com"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -170,10 +102,10 @@ const Home = () => {
             />
           </div>
           <div className="mb-4">
-            <label className="font-bold text-grey-darker block mb-2">Password</label>
+            <label className="font-bold text-yellow-400 block mb-2">Password</label>
             <input
               type="password"
-              className="block appearance-none w-full bg-white border border-grey-light hover:border-grey px-2 py-2 rounded shadow"
+              className="block appearance-none w-full bg-gray-900 border border-gray-700 hover:border-yellow-400 px-2 py-2 rounded shadow sw-input text-white"
               placeholder="Your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -185,9 +117,9 @@ const Home = () => {
             <button
               onClick={() => handleLogin('SIGNUP', username, password)}
               disabled={isLoading}
-              className={`${
-                isLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-700 hover:bg-indigo-600'
-              } text-white py-2 px-4 rounded text-center transition duration-150 flex items-center justify-center`}
+              className={`sw-button ${
+                isLoading ? 'opacity-50 cursor-not-allowed' : ''
+              } py-2 px-4 rounded text-center transition duration-150 flex items-center justify-center`}
             >
               {isLoading ? (
                 <>
@@ -201,9 +133,9 @@ const Home = () => {
             <button
               onClick={() => handleLogin('LOGIN', username, password)}
               disabled={isLoading}
-              className={`${
-                isLoading ? 'border-indigo-400 text-indigo-400 cursor-not-allowed' : 'border-indigo-700 text-indigo-700 hover:bg-indigo-700 hover:text-white'
-              } border py-2 px-4 rounded w-full text-center transition duration-150 flex items-center justify-center`}
+              className={`sw-button ${
+                isLoading ? 'opacity-50 cursor-not-allowed' : ''
+              } py-2 px-4 rounded w-full text-center transition duration-150 flex items-center justify-center`}
             >
               {isLoading ? (
                 <>

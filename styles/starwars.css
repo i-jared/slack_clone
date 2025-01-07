@@ -1,0 +1,151 @@
+/* Star Wars Font */
+@font-face {
+  font-family: 'Star Wars';
+  src: url('/fonts/Starjedi.ttf') format('truetype');
+}
+
+/* Star Wars Colors */
+:root {
+  --sw-space-black: #000000;
+  --sw-yellow: #FFE81F;
+  --sw-gray-dark: #1A1A1A;
+  --sw-gray-light: #333333;
+  --sw-accent: #2F3640;
+}
+
+/* Starfield Background */
+.starfield {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(circle at center, var(--sw-space-black) 0%, var(--sw-gray-dark) 100%);
+}
+
+.star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  animation: twinkle 1s infinite alternate;
+}
+
+@keyframes twinkle {
+  from { opacity: 0.2; }
+  to { opacity: 1; }
+}
+
+/* Talk2D2 Logo Animation */
+.talk2d2-logo {
+  font-family: 'Star Wars', sans-serif;
+  color: var(--sw-yellow);
+  text-shadow: 0 0 10px var(--sw-yellow);
+  animation: logoReveal 3s ease-out forwards;
+}
+
+@keyframes logoReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Lightspeed Transition */
+.lightspeed-transition {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  background: radial-gradient(circle at center, white, transparent);
+  transition: opacity 0.3s ease-out;
+}
+
+.lightspeed-transition.active {
+  opacity: 1;
+  animation: lightspeed 0.5s ease-out forwards;
+}
+
+@keyframes lightspeed {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Glowing Input Fields */
+.sw-input {
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.sw-input:focus {
+  border-color: var(--sw-yellow);
+  box-shadow: 0 0 10px var(--sw-yellow);
+}
+
+/* Star Wars Button Styles */
+.sw-button {
+  background: var(--sw-gray-dark);
+  color: var(--sw-yellow);
+  border: 2px solid var(--sw-yellow);
+  transition: all 0.3s ease;
+}
+
+.sw-button:hover {
+  background: var(--sw-yellow);
+  color: var(--sw-space-black);
+  box-shadow: 0 0 15px var(--sw-yellow);
+}
+
+/* Modal Styles */
+.sw-modal {
+  background: var(--sw-gray-dark);
+  border: 2px solid var(--sw-yellow);
+  box-shadow: 0 0 20px rgba(255, 232, 31, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .talk2d2-logo {
+    font-size: 2rem;
+  }
+}
+
+/* Profile Icons */
+.sw-profile-icon {
+  background: var(--sw-gray-dark);
+  border: 2px solid var(--sw-yellow);
+  color: var(--sw-yellow);
+}
+
+/* Channel List Styles */
+.sw-channel {
+  border-left: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.sw-channel:hover,
+.sw-channel.active {
+  border-left-color: var(--sw-yellow);
+  background: var(--sw-gray-light);
+} 

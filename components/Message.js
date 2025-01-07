@@ -16,7 +16,7 @@ const formatTime = (timestamp) => {
 const ReactionButton = ({ onClick }) => (
   <button 
     onClick={onClick}
-    className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white"
+    className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-yellow-400"
     title="Add reaction"
   >
     <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
@@ -33,7 +33,7 @@ const EmojiPicker = ({ onSelect, onClose }) => {
   const commonEmojis = ['👍', '❤️', '😂', '🎉', '🚀', '👀', '👋']
   
   return (
-    <div className="absolute bottom-full mb-2 bg-gray-700 rounded shadow-lg p-2 z-10">
+    <div className="absolute bottom-full mb-2 bg-gray-700 rounded shadow-lg p-2 z-10 sw-modal">
       <div className="flex space-x-2">
         {commonEmojis.map(emoji => (
           <button
@@ -233,12 +233,12 @@ const Message = ({ message }) => {
           <img 
             src={message.author.dbUser.avatar_url}
             alt={username}
-            className="w-9 h-9 rounded object-cover flex-shrink-0"
+            className="w-9 h-9 rounded object-cover flex-shrink-0 sw-profile-icon"
             title={username}
           />
         ) : (
           <div 
-            className="w-9 h-9 rounded bg-indigo-600 flex items-center justify-center flex-shrink-0 text-white font-medium"
+            className="w-9 h-9 rounded flex items-center justify-center flex-shrink-0 sw-profile-icon"
             title={username}
           >
             {initials}
@@ -246,7 +246,7 @@ const Message = ({ message }) => {
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center">
-            <span className="font-bold text-white mr-2">{username}</span>
+            <span className="font-bold text-yellow-400 mr-2">{username}</span>
             <span className="text-xs text-gray-400">{timestamp}</span>
             
             <div className="ml-2 flex items-center space-x-2">
@@ -263,7 +263,7 @@ const Message = ({ message }) => {
               {canDelete && (
                 <button 
                   onClick={() => deleteMessage(localMessage.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-yellow-400"
                 >
                   <TrashIcon />
                 </button>
