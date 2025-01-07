@@ -6,6 +6,7 @@ import TrashIcon from '~/components/TrashIcon'
 import UserProfile from './UserProfile'
 import { useStore, useMessageCount } from '~/lib/Store'
 import Starfield from './Starfield'
+import React from 'react'
 
 // Lazy load non-critical components
 const FlyingShips = lazy(() => import('./FlyingShips'))
@@ -24,24 +25,13 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Error in component:', error, errorInfo)
+    console.error('Error caught by boundary:', error, errorInfo)
   }
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="text-yellow-400 p-4">
-          <h2>Something went wrong.</h2>
-          <button 
-            onClick={() => this.setState({ hasError: false })}
-            className="sw-button mt-2"
-          >
-            Try again
-          </button>
-        </div>
-      )
+      return <div>Something went wrong.</div>
     }
-
     return this.props.children
   }
 }

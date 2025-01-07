@@ -1,20 +1,55 @@
-import { useState } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { supabase } from '~/lib/Store'
 import Head from 'next/head'
+import { useRouter } from 'next/router'
+import UserContext from '~/lib/UserContext'
 
 export default function Home() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+  const { user } = useContext(UserContext)
+
+  // If user is already logged in, redirect to channels
+  useEffect(() => {
+    console.log('Index page useEffect - User state:', user)
+    if (user) {
+      console.log('User found, redirecting to channels...')
+      router.push('/channels/1')
+    }
+  }, [user, router])
 
   const handleLogin = async (type, username, password) => {
     try {
       setIsLoading(true)
-      const { error } = type === 'LOGIN' 
-        ? await supabase.auth.signInWithPassword({ email: username, password })
-        : await supabase.auth.signUp({ email: username, password })
+      console.log('Attempting', type)
       
-      if (error) throw error
+      if (type === 'LOGIN') {
+        const { data, error } = await supabase.auth.signInWithPassword({ 
+          email: username, 
+          password 
+        })
+        console.log('Login response:', { data, error })
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase.auth.signUp({ 
+          email: username, 
+          password,
+          options: {
+            data: {
+              username: username.split('@')[0]
+            }
+          }
+        })
+        console.log('Signup response:', { data, error })
+        if (error) throw error
+        
+        // Only show verification message if email confirmation is pending
+        if (!data.session && data.user?.identities?.length === 0) {
+          alert('Please check your email for verification')
+        }
+      }
     } catch (error) {
       console.error('Error:', error.message)
       alert(error.message)
@@ -27,10 +62,6 @@ export default function Home() {
     <div className="flex min-h-screen bg-gray-900 items-center justify-center relative overflow-hidden">
       <Head>
         <title>Talk2D2 - Your Galactic Chat Hub</title>
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" 
-          rel="stylesheet"
-        />
       </Head>
 
       {/* Animated stars background */}
@@ -80,7 +111,7 @@ export default function Home() {
               <button
                 onClick={() => handleLogin('SIGNUP', username, password)}
                 disabled={isLoading}
-                className="w-full py-3 rounded font-orbitron bg-yellow-500 hover:bg-yellow-400 text-black transition-colors duration-300 flex items-center justify-center space-x-2"
+                className="w-full py-3 rounded font-orbitron bg-yellow-500 hover:bg-yellow-400 text-black transition-colors duration-300 flex items-center justify-center space-x-2 disabled:opacity-50"
               >
                 {isLoading ? (
                   <>
@@ -95,7 +126,7 @@ export default function Home() {
               <button
                 onClick={() => handleLogin('LOGIN', username, password)}
                 disabled={isLoading}
-                className="w-full py-3 rounded font-orbitron bg-blue-600 hover:bg-blue-500 text-white transition-colors duration-300 flex items-center justify-center"
+                className="w-full py-3 rounded font-orbitron bg-blue-600 hover:bg-blue-500 text-white transition-colors duration-300 flex items-center justify-center disabled:opacity-50"
               >
                 {isLoading ? (
                   <>

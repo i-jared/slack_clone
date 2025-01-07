@@ -3,12 +3,10 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import UserContext from 'lib/UserContext'
 import { supabase } from 'lib/Store'
-import { jwtDecode } from 'jwt-decode'
 import LoadingScreen from '~/components/LoadingScreen'
 
 const ensureUserRecord = async (user) => {
   try {
-    // First check if user exists
     const { data: existingUser } = await supabase
       .from('users')
       .select('*')
@@ -19,16 +17,13 @@ const ensureUserRecord = async (user) => {
       return existingUser
     }
 
-    // Create new user record if doesn't exist
     const { data: newUser, error: insertError } = await supabase
       .from('users')
-      .insert([
-        { 
-          id: user.id,
-          username: user.email.split('@')[0],
-          status: 'ONLINE'
-        }
-      ])
+      .insert([{ 
+        id: user.id,
+        username: user.email.split('@')[0],
+        status: 'ONLINE'
+      }])
       .select()
       .single()
     
@@ -46,80 +41,73 @@ export default function App({ Component, pageProps }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    let mounted = true
+    if (!router.isReady) return
 
-    // Handle route change loading states
-    const handleStart = () => setIsLoading(true)
-    const handleComplete = () => setIsLoading(false)
+    // Handle auth state changes
+    const handleAuthChange = async (event, session) => {
+      console.log('Auth state changed:', event, session)
+      console.log('Current pathname:', router.pathname)
+      console.log('Router ready:', router.isReady)
+      
+      // Only process certain auth events
+      if (!['SIGNED_IN', 'SIGNED_OUT', 'INITIAL'].includes(event)) {
+        console.log('Skipping auth event:', event)
+        return
+      }
 
-    router.events.on('routeChangeStart', handleStart)
-    router.events.on('routeChangeComplete', handleComplete)
-    router.events.on('routeChangeError', handleComplete)
-
-    // Initial auth check
-    const getInitialSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (session?.user && mounted) {
+      if (session?.user) {
+        console.log('Session user found:', session.user.email)
+        try {
+          console.log('Ensuring user record...')
           const dbUser = await ensureUserRecord(session.user)
+          console.log('DB User:', dbUser)
+          
+          // Set user state
           setUser({ ...session.user, dbUser })
           
-          // Only redirect if we're on the home page
+          // Handle redirect
           if (router.pathname === '/') {
+            console.log('On home page, redirecting to channels...')
             await router.push('/channels/1')
+            console.log('Redirect complete')
+          } else {
+            console.log('Not on home page, current path:', router.pathname)
           }
+        } catch (error) {
+          console.error('Error handling auth change:', error)
+          setUser(null)
         }
-      } catch (error) {
-        console.error('Error checking session:', error)
-      } finally {
-        if (mounted) {
-          setIsLoading(false)
+      } else {
+        console.log('No session user, clearing state')
+        setUser(null)
+        if (router.pathname !== '/') {
+          await router.push('/')
         }
       }
+      setIsLoading(false)
     }
 
-    getInitialSession()
+    // Set up auth subscription
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange)
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session)
-      
-      if (mounted) {
-        if (session?.user) {
-          const dbUser = await ensureUserRecord(session.user)
-          setUser({ ...session.user, dbUser })
-          
-          // Redirect to chat on login/signup
-          if (event === 'SIGNED_IN' || event === 'SIGNED_UP') {
-            await router.push('/channels/1')
-          }
-        } else {
-          setUser(null)
-          // Redirect to home on signout
-          if (event === 'SIGNED_OUT') {
-            await router.push('/')
-          }
-        }
-      }
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleAuthChange('INITIAL', session)
     })
 
     return () => {
-      mounted = false
-      router.events.off('routeChangeStart', handleStart)
-      router.events.off('routeChangeComplete', handleComplete)
-      router.events.off('routeChangeError', handleComplete)
       subscription?.unsubscribe()
     }
-  }, [router])
+  }, [router.isReady, router.pathname])
 
   const signOut = async () => {
     try {
+      setIsLoading(true)
       await supabase.auth.signOut()
-      setUser(null)
-      await router.push('/')
     } catch (error) {
       console.error('Error signing out:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 

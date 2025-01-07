@@ -232,7 +232,7 @@ const Message = ({ message }) => {
     return (
       <div className="message-content">
         {starWarsContent.split('\n').map((line, i) => (
-          <p key={i}>{line}</p>
+          <div key={i} className="message-line">{line}</div>
         ))}
       </div>
     )
@@ -250,71 +250,67 @@ const Message = ({ message }) => {
           />
         ) : (
           <div 
-            className="w-9 h-9 rounded flex items-center justify-center flex-shrink-0 sw-profile-icon"
+            className="w-9 h-9 rounded bg-gray-600 flex items-center justify-center text-sm font-medium text-white flex-shrink-0"
             title={username}
           >
             {initials}
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center">
-            <span className="font-bold text-yellow-400 mr-2">{username}</span>
-            <span className="text-xs text-gray-400">{timestamp}</span>
-            
-            <div className="ml-2 flex items-center space-x-2">
-              <div className="relative">
-                <ReactionButton onClick={() => setShowEmojiPicker(!showEmojiPicker)} />
-                {showEmojiPicker && (
-                  <EmojiPicker 
-                    onSelect={handleEmojiSelect}
-                    onClose={() => setShowEmojiPicker(false)}
-                  />
-                )}
-              </div>
-              
-              {canDelete && (
-                <button 
-                  onClick={() => deleteMessage(localMessage.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-yellow-400"
-                >
-                  <TrashIcon />
-                </button>
-              )}
-            </div>
+          <div className="flex items-baseline gap-2">
+            <span className="font-medium text-yellow-400">{username}</span>
+            <span className="text-xs text-gray-400">{formatTime(message.inserted_at)}</span>
           </div>
-          
-          {localMessage.message && (
-            <p className="text-gray-100 whitespace-pre-wrap break-words">
-              {renderMessageContent(localMessage.message)}
-            </p>
-          )}
-          
-          {localMessage.attachments && localMessage.attachments.length > 0 && (
-            <div className="mt-2 space-y-2">
-              {localMessage.attachments.map((attachment, index) => (
-                <div key={index}>
-                  {renderAttachment(attachment)}
-                </div>
+          <div className="mt-1 text-gray-100">
+            {renderMessageContent(message.message)}
+            {message.attachments?.map((attachment, index) => (
+              <div key={index} className="mt-2">
+                {renderAttachment(attachment)}
+              </div>
+            ))}
+          </div>
+          {/* Reactions */}
+          {Object.keys(reactionGroups).length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {Object.entries(reactionGroups).map(([emoji, reactions]) => (
+                <button
+                  key={emoji}
+                  onClick={() => handleEmojiSelect(emoji)}
+                  className={`
+                    flex items-center space-x-1 text-sm px-2 py-0.5 rounded 
+                    ${reactions.some(r => r.user_id === user?.id)
+                      ? 'bg-yellow-500/20 text-yellow-400'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }
+                  `}
+                  title={reactions.map(r => r.user?.username).join(', ')}
+                >
+                  <span>{emoji}</span>
+                  <span>{reactions.length}</span>
+                </button>
               ))}
             </div>
           )}
-
-          {/* Display emoji reactions */}
-          <div className="mt-1 flex flex-wrap gap-1">
-            {Object.entries(reactionGroups).map(([emoji, reactions]) => (
-              <button
-                key={emoji}
-                onClick={() => handleEmojiSelect(emoji)}
-                className={`inline-flex items-center space-x-1 rounded px-2 py-0.5 text-sm hover:bg-gray-600 ${
-                  reactions.some(r => r.user_id === user?.id) ? 'bg-gray-600' : 'bg-gray-700'
-                }`}
-                title={reactions.map(r => r.user?.username || 'Unknown User').join(', ')}
-              >
-                <span>{emoji}</span>
-                <span className="text-gray-400">{reactions.length}</span>
-              </button>
-            ))}
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="relative">
+            <ReactionButton onClick={() => setShowEmojiPicker(!showEmojiPicker)} />
+            {showEmojiPicker && (
+              <EmojiPicker
+                onSelect={handleEmojiSelect}
+                onClose={() => setShowEmojiPicker(false)}
+              />
+            )}
           </div>
+          {canDelete && (
+            <button
+              onClick={() => deleteMessage(message.id)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-400"
+              title="Delete message"
+            >
+              <TrashIcon />
+            </button>
+          )}
         </div>
       </div>
     </div>

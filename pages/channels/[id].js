@@ -6,15 +6,31 @@ import { useStore, addMessage } from '~/lib/Store'
 import { useContext, useEffect, useRef } from 'react'
 import UserContext from '~/lib/UserContext'
 
-const ChannelsPage = (props) => {
+export default function ChannelPage() {
+  const { user } = useContext(UserContext)
   const router = useRouter()
-  const { user, authLoaded, signOut } = useContext(UserContext)
+
+  useEffect(() => {
+    console.log('Channels page - User state:', user)
+    if (!user) {
+      console.log('No user found, redirecting to home...')
+      router.push('/')
+    }
+  }, [user, router])
+
+  if (!user) {
+    console.log('No user, rendering null')
+    return null
+  }
+
   const messagesEndRef = useRef(null)
 
   // Get current channel
   const { id: channelId } = router.query
+  console.log('Channel ID:', channelId)
   const { messages, channels } = useStore({ channelId })
   const currentChannel = channels.find(channel => channel.id === Number(channelId))
+  console.log('Current channel:', currentChannel)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -64,5 +80,3 @@ const ChannelsPage = (props) => {
     </Layout>
   )
 }
-
-export default ChannelsPage
