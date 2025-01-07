@@ -1,20 +1,16 @@
-import Link from 'next/link'
-import { useContext, useState, useEffect, Suspense, lazy } from 'react'
+import React, { Component, useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
+import { useStore } from '~/lib/Store'
+import { useContext } from 'react'
 import UserContext from '~/lib/UserContext'
-import { addChannel, deleteChannel } from '~/lib/Store'
-import TrashIcon from '~/components/TrashIcon'
-import UserProfile from './UserProfile'
-import { useStore, useMessageCount } from '~/lib/Store'
 import Starfield from './Starfield'
-import React from 'react'
-
-// Lazy load non-critical components
-const FlyingShips = lazy(() => import('./FlyingShips'))
-const BackgroundMusic = lazy(() => import('./BackgroundMusic'))
-const RandomCharacters = lazy(() => import('./RandomCharacters'))
+import FlyingShips from './FlyingShips'
+import BackgroundMusic from './BackgroundMusic'
+import RandomCharacters from './RandomCharacters'
+import UserProfile from './UserProfile'
 
 // Error Boundary Component
-class ErrorBoundary extends React.Component {
+class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
     this.state = { hasError: false }
@@ -24,137 +20,136 @@ class ErrorBoundary extends React.Component {
     return { hasError: true }
   }
 
-  componentDidCatch(error, errorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo)
-  }
-
   render() {
     if (this.state.hasError) {
-      return <div>Something went wrong.</div>
+      return (
+        <div className="text-red-500 p-4">
+          Something went wrong. Please try refreshing the page.
+        </div>
+      )
     }
+
     return this.props.children
   }
 }
 
-export default function Layout(props) {
-  const { signOut, user } = useContext(UserContext)
+const Layout = ({ children }) => {
+  const { user, signOut } = useContext(UserContext)
+  const router = useRouter()
+  const { channels } = useStore()
   const [isProfileOpen, setIsProfileOpen] = useState(false)
-  const [showLightspeed, setShowLightspeed] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
 
+  // Debug logs with more detail
   useEffect(() => {
-    const handleRouteChange = () => {
-      setShowLightspeed(true)
-      setTimeout(() => setShowLightspeed(false), 500)
+    console.log('📊 Layout state:', {
+      currentPath: router.asPath,
+      query: router.query,
+      isReady: router.isReady,
+      user: user?.email,
+      channelsCount: channels?.length,
+      isNavigating
+    })
+  }, [router.asPath, router.query, router.isReady, user, channels, isNavigating])
+
+  // Handle channel switching
+  const handleChannelSwitch = async (channelId) => {
+    try {
+      if (isNavigating) {
+        console.log('⚠️ Already navigating, ignoring click')
+        return
+      }
+      
+      setIsNavigating(true)
+      console.log('🔄 Starting channel switch to:', channelId)
+      console.log('📍 Current path:', router.asPath)
+      
+      const targetPath = `/channels/${channelId}`
+      console.log('🎯 Target path:', targetPath)
+      
+      await router.replace(targetPath, undefined, { 
+        shallow: false,
+        scroll: false
+      })
+      
+      console.log('✅ Navigation complete')
+    } catch (error) {
+      console.error('❌ Error switching channel:', error)
+    } finally {
+      console.log('🔄 Resetting navigation state')
+      setIsNavigating(false)
     }
-
-    window.addEventListener('routeChangeStart', handleRouteChange)
-    return () => window.removeEventListener('routeChangeStart', handleRouteChange)
-  }, [])
-
-  const slugify = (text) => {
-    return text
-      .toString()
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^\w-]+/g, '')
-      .replace(/--+/g, '-')
-      .replace(/^-+/, '')
-      .replace(/-+$/, '')
   }
 
-  const newChannel = async () => {
-    const slug = prompt('Please enter channel name')
-    if (slug) {
-      addChannel(slugify(slug), user.id)
-    }
-  }
-
-  // Generate user initials for avatar
-  const userInitials = user?.email?.slice(0, 2)?.toUpperCase() || '??'
+  // Ensure we're in the browser
+  if (typeof window === 'undefined') return null
 
   return (
     <ErrorBoundary>
-      <main className="main flex h-screen w-screen overflow-hidden bg-gray-800">
+      <main className="flex h-screen text-gray-100 bg-gray-900 relative overflow-hidden">
+        {/* Background Effects */}
         <Starfield />
-        <Suspense fallback={null}>
-          <FlyingShips />
-          <BackgroundMusic />
-          <RandomCharacters />
-        </Suspense>
-        {showLightspeed && <div className="lightspeed-transition active" />}
-        
+        <FlyingShips />
+        <BackgroundMusic />
+        <RandomCharacters />
+
         {/* Sidebar */}
-        <nav
-          className="w-64 bg-opacity-90 bg-gray-900 text-gray-100 overflow-y-auto"
-          style={{ maxWidth: '20%', minWidth: 200 }}
-        >
-          {/* Workspace Header */}
-          <div className="px-4 py-2 border-b border-gray-800">
-            <h1 className="text-xl font-bold talk2d2-logo">Talk2D2</h1>
-            <p className="text-sm text-gray-400">Your Galactic Chat Hub</p>
-          </div>
-
-          {/* User Profile Section */}
-          <div className="p-4 border-b border-gray-800">
-            <button 
+        <nav className="w-64 bg-gray-800/90 border-r border-gray-700 flex flex-col relative z-10">
+          {/* User Profile */}
+          <div className="p-4 border-b border-gray-700">
+            <div 
+              className="flex items-center space-x-2 cursor-pointer hover:opacity-80"
               onClick={() => setIsProfileOpen(true)}
-              className="w-full flex items-center space-x-2 hover:bg-gray-800 p-2 rounded transition-colors"
             >
-              {user?.dbUser?.avatar_url ? (
-                <img 
-                  src={user.dbUser.avatar_url}
-                  alt={user.email}
-                  className="w-8 h-8 rounded object-cover flex-shrink-0 sw-profile-icon"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 sw-profile-icon">
-                  {userInitials}
-                </div>
-              )}
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium truncate">{user?.email}</p>
-                <p className="text-xs text-yellow-400">Online</p>
+              <div className="sw-profile-icon w-10 h-10 rounded-full flex items-center justify-center">
+                {user?.email?.[0]?.toUpperCase()}
               </div>
-              <div
-                onClick={(e) => {
-                  e.stopPropagation()
-                  signOut()
-                }}
-                className="text-gray-400 hover:text-yellow-400 cursor-pointer"
-              >
-                Sign out
+              <div>
+                <p className="font-orbitron text-yellow-400">{user?.email?.split('@')[0]}</p>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    signOut()
+                  }}
+                  className="text-sm text-gray-400 hover:text-yellow-400 transition-colors"
+                >
+                  Sign Out
+                </button>
               </div>
-            </button>
+            </div>
           </div>
 
-          {/* Channels Section */}
-          <div className="px-4 py-2">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-yellow-400">Channels</h2>
-              <button
-                onClick={() => newChannel()}
-                className="text-gray-400 hover:text-yellow-400 text-xl"
-                title="Add Channel"
-              >
-                +
-              </button>
+          {/* Channel List */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-4">
+              <h2 className="font-orbitron text-yellow-400 mb-2">Channels</h2>
+              <ul className="space-y-1">
+                {channels?.map((channel) => (
+                  <li key={channel.id}>
+                    <button
+                      onClick={() => handleChannelSwitch(channel.id)}
+                      disabled={isNavigating}
+                      className={`
+                        sw-channel w-full px-2 py-1 rounded text-left transition-colors
+                        ${router.query.id === channel.id.toString() 
+                          ? 'bg-yellow-500/20 text-yellow-400' 
+                          : 'text-gray-400 hover:bg-gray-700 hover:text-yellow-400'
+                        }
+                        ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}
+                      `}
+                    >
+                      # {channel.slug}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="space-y-1">
-              {props.channels.map((x) => (
-                <SidebarItem
-                  channel={x}
-                  key={x.id}
-                  isActiveChannel={x.id === Number(props.activeChannelId)}
-                  user={user}
-                />
-              ))}
-            </ul>
           </div>
         </nav>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col bg-opacity-90 bg-gray-800">
-          {props.children}
+        <div className="flex-1 flex flex-col overflow-hidden relative z-10 bg-gray-900/90">
+          {children}
         </div>
 
         {/* User Profile Sidebar */}
@@ -164,34 +159,4 @@ export default function Layout(props) {
   )
 }
 
-const SidebarItem = ({ channel, isActiveChannel, user }) => {
-  const messageCount = useMessageCount(channel.id)
-  
-  return (
-    <li>
-      <div className={`flex items-center justify-between group px-2 py-1 rounded sw-channel ${
-        isActiveChannel ? 'active' : ''
-      }`}>
-        <Link
-          href={`/channels/${channel.id}`}
-          className={`flex-1 truncate ${isActiveChannel ? 'font-bold text-yellow-400' : ''}`}
-        >
-          <div className="flex items-center justify-between">
-            <span># {channel.slug}</span>
-            <span className="text-xs text-gray-400">{messageCount}</span>
-          </div>
-        </Link>
-        {channel.id !== 1 && (channel.created_by === user?.id || user?.appRole === 'admin') && (
-          <button 
-            onClick={() => deleteChannel(channel.id)}
-            className={`opacity-0 group-hover:opacity-100 transition-opacity ${
-              isActiveChannel ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'
-            }`}
-          >
-            <TrashIcon />
-          </button>
-        )}
-      </div>
-    </li>
-  )
-}
+export default Layout

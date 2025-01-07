@@ -32,26 +32,36 @@ const Starfield = () => {
 
     // Animate stars
     const animate = () => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      
-      stars.forEach(star => {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-        ctx.beginPath()
-        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2)
-        ctx.fill()
+      try {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
         
-        // Move star
-        star.y += star.speed
+        stars.forEach(star => {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+          ctx.beginPath()
+          ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2)
+          ctx.fill()
+          
+          star.y += star.speed
+          
+          if (star.y > canvas.height) {
+            star.y = 0
+            star.x = Math.random() * canvas.width
+          }
+        })
         
-        // Reset star position if it goes off screen
-        if (star.y > canvas.height) {
-          star.y = 0
-          star.x = Math.random() * canvas.width
-        }
-      })
-      
-      animationFrameId = requestAnimationFrame(animate)
+        // Throttle the animation to ~30fps for better performance
+        setTimeout(() => {
+          animationFrameId = requestAnimationFrame(animate)
+        }, 1000 / 30)
+      } catch (error) {
+        console.error('Starfield animation error:', error)
+        // Attempt to recover
+        cancelAnimationFrame(animationFrameId)
+        setTimeout(() => {
+          animationFrameId = requestAnimationFrame(animate)
+        }, 1000)
+      }
     }
 
     // Initialize

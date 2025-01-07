@@ -38,31 +38,42 @@ const FlyingShips = () => {
     }
 
     const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      
-      // Add new ship randomly
-      if (Math.random() < 0.005 && ships.current.length < 5) {
-        const newShip = createShip()
-        newShip.image.src = newShip.imagePath
-        ships.current.push(newShip)
-      }
-      
-      // Update and draw ships
-      ships.current = ships.current.filter(ship => {
-        ship.x += ship.speed * ship.direction
+      try {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
         
-        // Remove ships that are off screen
-        if (ship.direction > 0 && ship.x > canvas.width + 100) return false
-        if (ship.direction < 0 && ship.x < -100) return false
-        
-        if (ship.image.complete) {
-          ctx.drawImage(ship.image, ship.x, ship.y, ship.size, ship.size * (ship.image.height / ship.image.width))
+        // Add new ship randomly with reduced frequency
+        if (Math.random() < 0.002 && ships.current.length < 3) {
+          const newShip = createShip()
+          newShip.image.src = newShip.imagePath
+          ships.current.push(newShip)
         }
         
-        return true
-      })
-      
-      animationFrameId = requestAnimationFrame(animate)
+        // Update and draw ships
+        ships.current = ships.current.filter(ship => {
+          ship.x += ship.speed * ship.direction
+          
+          if (ship.direction > 0 && ship.x > canvas.width + 100) return false
+          if (ship.direction < 0 && ship.x < -100) return false
+          
+          if (ship.image.complete) {
+            ctx.drawImage(ship.image, ship.x, ship.y, ship.size, ship.size * (ship.image.height / ship.image.width))
+          }
+          
+          return true
+        })
+        
+        // Throttle animation to ~30fps
+        setTimeout(() => {
+          animationFrameId = requestAnimationFrame(animate)
+        }, 1000 / 30)
+      } catch (error) {
+        console.error('FlyingShips animation error:', error)
+        // Attempt to recover
+        cancelAnimationFrame(animationFrameId)
+        setTimeout(() => {
+          animationFrameId = requestAnimationFrame(animate)
+        }, 1000)
+      }
     }
 
     resizeCanvas()

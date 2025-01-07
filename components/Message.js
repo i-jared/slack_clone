@@ -56,25 +56,11 @@ const EmojiPicker = ({ onSelect, onClose }) => {
 const Message = ({ message }) => {
   const { user } = useContext(UserContext)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [localMessage, setLocalMessage] = useState(message)
   const isAuthor = user?.id === message.user_id
   const canDelete = isAuthor || ['admin', 'moderator'].includes(user?.appRole)
 
-  // Update local message when prop changes
-  useEffect(() => {
-    setLocalMessage(message)
-  }, [message])
-
-  const timestamp = new Date(message.inserted_at).toLocaleTimeString()
-  const username = message.author?.username || 'Unknown User'
-  const initials = username
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-
   // Group reactions by emoji
-  const reactionGroups = (localMessage.reactions || []).reduce((groups, reaction) => {
+  const reactionGroups = (message.reactions || []).reduce((groups, reaction) => {
     if (!groups[reaction.emoji]) {
       groups[reaction.emoji] = []
     }
@@ -85,57 +71,37 @@ const Message = ({ message }) => {
   const handleEmojiSelect = async (emoji) => {
     try {
       console.log('Handling emoji select:', {
-        messageId: localMessage.id,
+        messageId: message.id,
         emoji,
         userId: user.id,
-        currentReactions: localMessage.reactions
+        currentReactions: message.reactions
       })
 
       // Check if user has already reacted with this emoji
-      const existingReaction = localMessage.reactions?.find(
+      const existingReaction = message.reactions?.find(
         r => r.user_id === user.id && r.emoji === emoji
       )
 
-      // Update local state immediately
-      const currentReactions = localMessage.reactions || []
-      let newReactions
-
       if (existingReaction) {
         console.log('Removing existing reaction:', existingReaction)
-        // Remove reaction locally
-        newReactions = currentReactions.filter(
-          r => !(r.user_id === user.id && r.emoji === emoji)
-        )
-        // Remove from database
-        await removeReaction(localMessage.id, emoji, user.id)
+        await removeReaction(message.id, emoji, user.id)
       } else {
         console.log('Adding new reaction')
-        // Add reaction locally
-        const newReaction = {
-          emoji,
-          user_id: user.id,
-          user: {
-            id: user.id,
-            username: user.email.split('@')[0]
-          }
-        }
-        newReactions = [...currentReactions, newReaction]
-        // Add to database
-        await addReaction(localMessage.id, emoji, user.id)
+        await addReaction(message.id, emoji, user.id)
       }
-
-      // Update local state
-      setLocalMessage(prev => ({
-        ...prev,
-        reactions: newReactions
-      }))
 
     } catch (error) {
       console.error('Error handling reaction:', error)
-      // Revert local state on error
-      setLocalMessage(message)
     }
   }
+
+  const timestamp = new Date(message.inserted_at).toLocaleTimeString()
+  const username = message.author?.username || 'Unknown User'
+  const initials = username
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
 
   const renderAttachment = (attachment) => {
     const isImage = attachment.type?.startsWith('image/')

@@ -45,46 +45,40 @@ export default function App({ Component, pageProps }) {
 
     // Handle auth state changes
     const handleAuthChange = async (event, session) => {
-      console.log('Auth state changed:', event, session)
-      console.log('Current pathname:', router.pathname)
-      console.log('Router ready:', router.isReady)
-      
-      // Only process certain auth events
-      if (!['SIGNED_IN', 'SIGNED_OUT', 'INITIAL'].includes(event)) {
-        console.log('Skipping auth event:', event)
-        return
-      }
-
-      if (session?.user) {
-        console.log('Session user found:', session.user.email)
-        try {
-          console.log('Ensuring user record...')
+      try {
+        console.log('🔐 Auth state changed:', event, session?.user?.email)
+        
+        if (session?.user) {
+          console.log('👤 Ensuring user record...')
           const dbUser = await ensureUserRecord(session.user)
-          console.log('DB User:', dbUser)
           
-          // Set user state
+          if (!dbUser) {
+            console.error('❌ Failed to ensure user record')
+            setUser(null)
+            setIsLoading(false)
+            return
+          }
+
+          console.log('✅ User record confirmed:', dbUser.username)
           setUser({ ...session.user, dbUser })
           
-          // Handle redirect
           if (router.pathname === '/') {
-            console.log('On home page, redirecting to channels...')
+            console.log('🔄 Redirecting to channels...')
             await router.push('/channels/1')
-            console.log('Redirect complete')
-          } else {
-            console.log('Not on home page, current path:', router.pathname)
           }
-        } catch (error) {
-          console.error('Error handling auth change:', error)
+        } else {
+          console.log('⚠️ No session user, clearing state')
           setUser(null)
+          if (router.pathname !== '/') {
+            await router.push('/')
+          }
         }
-      } else {
-        console.log('No session user, clearing state')
+      } catch (error) {
+        console.error('❌ Error in auth change:', error)
         setUser(null)
-        if (router.pathname !== '/') {
-          await router.push('/')
-        }
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }
 
     // Set up auth subscription
@@ -92,28 +86,36 @@ export default function App({ Component, pageProps }) {
 
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔍 Checking initial session...')
       handleAuthChange('INITIAL', session)
     })
 
     return () => {
+      console.log('🧹 Cleaning up auth subscription')
       subscription?.unsubscribe()
     }
   }, [router.isReady, router.pathname])
 
-  const signOut = async () => {
-    try {
-      setIsLoading(true)
-      await supabase.auth.signOut()
-    } catch (error) {
-      console.error('Error signing out:', error)
-    } finally {
-      setIsLoading(false)
+  // Provide auth context
+  const value = {
+    user,
+    signOut: async () => {
+      try {
+        await supabase.auth.signOut()
+        setUser(null)
+        router.push('/')
+      } catch (error) {
+        console.error('Error signing out:', error)
+      }
     }
   }
 
+  if (isLoading) {
+    return <LoadingScreen message="Establishing connection to the Galactic Network..." />
+  }
+
   return (
-    <UserContext.Provider value={{ user, signOut }}>
-      {isLoading && <LoadingScreen />}
+    <UserContext.Provider value={value}>
       <Component {...pageProps} />
     </UserContext.Provider>
   )

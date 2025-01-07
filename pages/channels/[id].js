@@ -1,82 +1,77 @@
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
+import { useStore } from '~/lib/Store'
 import Layout from '~/components/Layout'
 import Message from '~/components/Message'
 import MessageInput from '~/components/MessageInput'
-import { useRouter } from 'next/router'
-import { useStore, addMessage } from '~/lib/Store'
-import { useContext, useEffect, useRef } from 'react'
+import LoadingScreen from '~/components/LoadingScreen'
+import { useContext } from 'react'
 import UserContext from '~/lib/UserContext'
 
-export default function ChannelPage() {
-  const { user } = useContext(UserContext)
+const ChannelPageContent = () => {
   const router = useRouter()
+  const { id } = router.query
+  const { user } = useContext(UserContext)
+  const [channel, setChannel] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const { channels, messages: storeMessages } = useStore({ channelId: id })
 
+  // Update selected channel when channels or id changes
   useEffect(() => {
-    console.log('Channels page - User state:', user)
-    if (!user) {
-      console.log('No user found, redirecting to home...')
-      router.push('/')
+    if (channels?.length > 0 && id && router.isReady) {
+      console.log('🔍 Finding channel:', id, 'from', channels?.length, 'channels')
+      const selectedChannel = channels.find((x) => x.id === Number(id))
+      console.log(selectedChannel ? '✅ Channel found:' : '❌ Channel not found:', selectedChannel?.slug)
+      setChannel(selectedChannel)
+      setIsLoading(false)
     }
-  }, [user, router])
+  }, [channels, id, router.isReady])
 
+  // Render null if user is not authenticated
   if (!user) {
-    console.log('No user, rendering null')
+    console.log('⚠️ No user, rendering null')
     return null
   }
 
-  const messagesEndRef = useRef(null)
+  if (!router.isReady || isLoading) {
+    console.log('⏳ Showing loading screen:', { isReady: router.isReady, isLoading })
+    return <LoadingScreen message="Intercepting galactic transmissions..." />
+  }
 
-  // Get current channel
-  const { id: channelId } = router.query
-  console.log('Channel ID:', channelId)
-  const { messages, channels } = useStore({ channelId })
-  const currentChannel = channels.find(channel => channel.id === Number(channelId))
-  console.log('Current channel:', currentChannel)
+  console.log('🎨 Rendering channel page:', {
+    channel: channel?.slug,
+    messagesCount: storeMessages?.length
+  })
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      block: 'start',
-      behavior: 'smooth',
-    })
-  }, [messages])
-
-  // redirect to public channel when current channel is deleted
-  useEffect(() => {
-    if (!channels.some((channel) => channel.id === Number(channelId))) {
-      router.push('/channels/1')
-    }
-  }, [channels, channelId])
-
-  // Render the channels and messages
   return (
-    <Layout channels={channels} activeChannelId={channelId}>
-      {/* Channel Header */}
-      <div className="border-b border-gray-700 px-6 py-2 flex items-center">
-        <div className="flex-1">
-          <h2 className="text-white text-lg font-semibold">
-            # {currentChannel?.slug || 'loading...'}
-          </h2>
-          <p className="text-sm text-gray-400">
-            {messages.length} messages
-          </p>
-        </div>
+    <div className="relative h-screen flex flex-col">
+      <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
+        <h2 className="text-2xl font-orbitron text-yellow-400">
+          {channel?.slug || 'Loading...'}
+        </h2>
       </div>
-
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto">
-        <div className="py-4">
-          {messages.map((x) => (
-            <Message key={x.id} message={x} />
+        <div className="py-4 space-y-2">
+          {storeMessages?.map((message) => (
+            <Message key={message.id} message={message} />
           ))}
-          <div ref={messagesEndRef} style={{ height: 0 }} />
         </div>
       </div>
+      <MessageInput channel_id={Number(id)} />
+    </div>
+  )
+}
 
-      {/* Message Input */}
-      <div className="px-4 pb-4">
-        <MessageInput 
-          channel_id={channelId}
-        />
-      </div>
+const ChannelPage = () => {
+  const router = useRouter()
+  const { id } = router.query
+
+  // Use key prop to force remount of entire component tree
+  return (
+    <Layout key={id}>
+      <ChannelPageContent />
     </Layout>
   )
 }
+
+export default ChannelPage

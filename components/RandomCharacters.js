@@ -20,22 +20,41 @@ const RandomCharacters = () => {
   const [visibleCharacter, setVisibleCharacter] = useState(null)
 
   useEffect(() => {
+    let timeoutId = null
+    
     const showRandomCharacter = () => {
-      if (Math.random() < 0.2) {
-        const randomCharacter = characters[Math.floor(Math.random() * characters.length)]
-        setVisibleCharacter(randomCharacter)
-        
-        setTimeout(() => {
+      try {
+        if (Math.random() < 0.2) {
+          const randomCharacter = characters[Math.floor(Math.random() * characters.length)]
+          setVisibleCharacter(randomCharacter)
+          
+          // Clear previous timeout if exists
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+          }
+          
+          timeoutId = setTimeout(() => {
+            setVisibleCharacter(null)
+            timeoutId = null
+          }, 5000)
+        } else {
           setVisibleCharacter(null)
-        }, 5000)
-      } else {
+        }
+      } catch (error) {
+        console.error('Error in RandomCharacters:', error)
         setVisibleCharacter(null)
       }
     }
 
-    const interval = setInterval(showRandomCharacter, 10000)
+    // Increase interval to reduce resource usage
+    const interval = setInterval(showRandomCharacter, 15000)
     
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
   }, [])
 
   if (!visibleCharacter) return null

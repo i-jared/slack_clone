@@ -10,25 +10,45 @@ const BackgroundMusic = () => {
     
     const attemptAutoplay = async () => {
       try {
-        await audio.play()
-        setIsPlaying(true)
+        audio.preload = 'none' // Don't preload until user interaction
+        audio.volume = 0.3
+        audio.loop = true
+        
+        // Only try to play if user has interacted with the page
+        if (document.documentElement.hasAttribute('data-user-interacted')) {
+          await audio.play()
+          setIsPlaying(true)
+        } else {
+          setShowControls(true)
+        }
       } catch (error) {
-        console.log('Autoplay prevented. Showing controls.')
+        console.log('Autoplay prevented:', error)
         setShowControls(true)
       }
     }
 
-    audio.volume = 0.3 // Set initial volume to 30%
-    audio.loop = true
+    // Add interaction listener
+    const handleInteraction = () => {
+      document.documentElement.setAttribute('data-user-interacted', 'true')
+      if (!isPlaying) {
+        attemptAutoplay()
+      }
+    }
+    
+    document.addEventListener('click', handleInteraction, { once: true })
     
     // Try autoplay when component mounts
     attemptAutoplay()
 
     return () => {
-      audio.pause()
-      audio.currentTime = 0
+      document.removeEventListener('click', handleInteraction)
+      if (audio) {
+        audio.pause()
+        audio.src = '' // Clear the source
+        audio.load() // Reset the audio element
+      }
     }
-  }, [])
+  }, [isPlaying])
 
   const togglePlay = async () => {
     if (isPlaying) {

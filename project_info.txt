@@ -1,0 +1,120 @@
+# Talk2D2 - Star Wars Themed Chat Application
+
+## Tech Stack Overview
+
+### Frontend
+- Next.js (React Framework)
+- TailwindCSS for styling
+- Star Wars themed UI with custom animations and effects
+- Custom fonts including Star Wars font (Starjedi.ttf)
+
+### Backend
+- Supabase for:
+  - Authentication
+  - Real-time database
+  - Row Level Security (RLS)
+  - Storage for avatars and attachments
+
+### Database Structure
+Tables:
+1. channels
+2. message_reactions
+3. messages
+4. role_permissions
+5. user_roles
+6. users
+
+Storage Buckets:
+1. avatars (Public)
+2. message_attachments (Public)
+
+### Key Features
+1. Real-time Chat
+   - Channel-based messaging
+   - Message reactions
+   - File attachments
+   - Real-time updates
+
+2. Authentication & Authorization
+   - Email-based authentication
+   - Role-based access control (admin, moderator)
+   - Custom user roles and permissions
+
+3. Star Wars Theme
+   - Animated starfield background
+   - Flying ships animation
+   - Star Wars sound effects
+   - Themed UI components
+
+### Project Structure
+
+#### Core Components
+- Layout system with error boundaries
+- Real-time message handling
+- Channel management
+- User profile system
+- Custom animations
+
+#### Styling
+- TailwindCSS with custom configuration
+- Star Wars specific theme colors and animations
+- Responsive design
+- Custom font integration
+
+### Security Features
+1. Row Level Security
+   - Channel access control
+   - Message permissions
+   - User role restrictions
+
+2. Authentication Flow
+   - Secure password handling
+   - Email verification
+   - Session management
+
+### Development Setup
+1. Required Environment Variables:
+   - NEXT_PUBLIC_SUPABASE_URL
+   - NEXT_PUBLIC_SUPABASE_ANON_KEY
+   - NEXT_SITE_URL
+   - NEXT_REDIRECT_URLS
+
+2. Database Setup:
+   - Migrations in supabase/migrations
+   - Seed data for initial setup
+   - Custom types and enums
+
+### Performance Optimizations
+- Image optimization with Next.js
+- Throttled animations
+- Lazy loading components
+- Optimized real-time subscriptions
+
+### Deployment
+- Vercel integration
+- Supabase project configuration
+- Preview deployments with branching
+
+### Testing
+- Component testing capabilities
+- Database schema validation
+- Auth flow testing
+
+### File Structure
+/
+├── components/     # React components
+├── lib/           # Utility functions and context
+├── pages/         # Next.js pages
+├── public/        # Static assets
+├── styles/        # CSS and Tailwind styles
+├── supabase/      # Database configuration
+└── types/         # TypeScript definitions
+
+### Additional Notes
+- Uses Supabase's real-time subscriptions for instant updates
+- Custom error handling and recovery
+- Mobile-responsive design
+- Scalable architecture for future features
+- Environment-specific configurations
+
+This project combines modern web technologies with a unique Star Wars theme to create an engaging real-time chat experience while maintaining security and performance best practices. 
