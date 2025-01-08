@@ -1,0 +1,1056 @@
+Rules:
+
+Never run any sql commands that have destructive properties
+Restart the server after we're done making changes within a prompt
+Dont rewrite the code. Only fix errors. Use deep chain of thought reasoning to find root cause or errors and then fix them one by one. First analyze the code file, only fix errors in specific lines that are causing issues, don't regenerate complete code for that page. If you need clarification or have any questions, feel free to ask.
+
+----
+
+This is out supabase project structure:
+
+{
+  "project": {
+    "name": "Reece's Supabase Project",
+    "owner": "reeceharding@gmail.com",
+    "platform": "Supabase",
+    "plan": "Free",
+    "current_date": "2025-01-08"
+  },
+  "schemas": {
+    "public": {
+      "description": "Primary schema containing core application tables.",
+      "tables": {
+        "channels": {
+          "description": "Stores information about communication channels.",
+          "columns": {
+            "id": {
+              "type": "int8",
+              "constraints": {
+                "primary_key": true,
+                "nullable": false
+              }
+            },
+            "inserted_at": {
+              "type": "timestamptz",
+              "constraints": {
+                "nullable": false,
+                "default": "now()"
+              }
+            },
+            "slug": {
+              "type": "text",
+              "constraints": {
+                "unique": true,
+                "nullable": false
+              }
+            },
+            "created_by": {
+              "type": "uuid",
+              "constraints": {
+                "foreign_key": {
+                  "references": "auth.users.id",
+                  "on_delete": "cascade"
+                },
+                "nullable": false
+              }
+            }
+          },
+          "indexes": [
+            {
+              "name": "channels_pkey",
+              "columns": ["id"],
+              "unique": true
+            },
+            {
+              "name": "channels_slug_key",
+              "columns": ["slug"],
+              "unique": true
+            }
+          ],
+          "policies": {
+            "insert": {
+              "description": "Allow authenticated users to create channels.",
+              "conditions": "auth.role() = 'authenticated'"
+            },
+            "select": {
+              "description": "Allow public read access to channels.",
+              "conditions": "true"
+            },
+            "update": {
+              "description": "Only the creator can update the channel.",
+              "conditions": "auth.uid() = created_by"
+            },
+            "delete": {
+              "description": "Only the creator can delete the channel.",
+              "conditions": "auth.uid() = created_by"
+            }
+          }
+        },
+        "direct_messages": {
+          "description": "Stores direct messages between users.",
+          "columns": {
+            "id": {
+              "type": "int8",
+              "constraints": {
+                "primary_key": true,
+                "nullable": false
+              }
+            },
+            "sender_id": {
+              "type": "uuid",
+              "constraints": {
+                "foreign_key": {
+                  "references": "auth.users.id",
+                  "on_delete": "cascade"
+                },
+                "nullable": false
+              }
+            },
+            "recipient_id": {
+              "type": "uuid",
+              "constraints": {
+                "foreign_key": {
+                  "references": "auth.users.id",
+                  "on_delete": "cascade"
+                },
+                "nullable": false
+              }
+            },
+            "message": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "attachments": {
+              "type": "jsonb",
+              "constraints": {
+                "nullable": true
+              }
+            },
+            "inserted_at": {
+              "type": "timestamptz",
+              "constraints": {
+                "nullable": false,
+                "default": "now()"
+              }
+            },
+            "updated_at": {
+              "type": "timestamptz",
+              "constraints": {
+                "nullable": true,
+                "default": "now()"
+              }
+            }
+          },
+          "indexes": [
+            {
+              "name": "direct_messages_pkey",
+              "columns": ["id"],
+              "unique": true
+            },
+            {
+              "name": "direct_messages_sender_id_idx",
+              "columns": ["sender_id"]
+            },
+            {
+              "name": "direct_messages_recipient_id_idx",
+              "columns": ["recipient_id"]
+            }
+          ],
+          "policies": {
+            "insert": {
+              "description": "Allow authenticated users to send direct messages.",
+              "conditions": "auth.role() = 'authenticated'"
+            },
+            "select": {
+              "description": "Only sender and recipient can read the messages.",
+              "conditions": "auth.uid() = sender_id OR auth.uid() = recipient_id"
+            },
+            "update": {
+              "description": "Only sender can update their messages.",
+              "conditions": "auth.uid() = sender_id"
+            },
+            "delete": {
+              "description": "Only sender can delete their messages.",
+              "conditions": "auth.uid() = sender_id"
+            }
+          }
+        },
+        "message_reactions": {
+          "description": "Stores reactions to messages by users.",
+          "columns": {
+            "id": {
+              "type": "int8",
+              "constraints": {
+                "primary_key": true,
+                "nullable": false
+              }
+            },
+            "message_id": {
+              "type": "int8",
+              "constraints": {
+                "foreign_key": {
+                  "references": "messages.id",
+                  "on_delete": "cascade"
+                },
+                "nullable": false
+              }
+            },
+            "user_id": {
+              "type": "uuid",
+              "constraints": {
+                "foreign_key": {
+                  "references": "auth.users.id",
+                  "on_delete": "cascade"
+                },
+                "nullable": false
+              }
+            },
+            "emoji": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "created_at": {
+              "type": "timestamptz",
+              "constraints": {
+                "nullable": false,
+                "default": "now()"
+              }
+            }
+          },
+          "indexes": [
+            {
+              "name": "message_reactions_pkey",
+              "columns": ["id"],
+              "unique": true
+            },
+            {
+              "name": "message_reactions_message_id_idx",
+              "columns": ["message_id"]
+            },
+            {
+              "name": "message_reactions_user_id_idx",
+              "columns": ["user_id"]
+            }
+          ],
+          "policies": {
+            "insert": {
+              "description": "Allow authenticated users to react to messages.",
+              "conditions": "auth.role() = 'authenticated'"
+            },
+            "select": {
+              "description": "Allow users to view reactions.",
+              "conditions": "true"
+            },
+            "update": {
+              "description": "Allow users to update their own reactions.",
+              "conditions": "auth.uid() = user_id"
+            },
+            "delete": {
+              "description": "Allow users to delete their own reactions.",
+              "conditions": "auth.uid() = user_id"
+            }
+          }
+        },
+        "messages": {
+          "description": "Stores messages within channels.",
+          "columns": {
+            "id": {
+              "type": "int8",
+              "constraints": {
+                "primary_key": true,
+                "nullable": false
+              }
+            },
+            "inserted_at": {
+              "type": "timestamptz",
+              "constraints": {
+                "nullable": false,
+                "default": "now()"
+              }
+            },
+            "message": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "user_id": {
+              "type": "uuid",
+              "constraints": {
+                "foreign_key": {
+                  "references": "auth.users.id",
+                  "on_delete": "cascade"
+                },
+                "nullable": false
+              }
+            },
+            "channel_id": {
+              "type": "int8",
+              "constraints": {
+                "foreign_key": {
+                  "references": "channels.id",
+                  "on_delete": "cascade"
+                },
+                "nullable": false
+              }
+            },
+            "attachments": {
+              "type": "jsonb",
+              "constraints": {
+                "nullable": true
+              }
+            }
+          },
+          "indexes": [
+            {
+              "name": "messages_pkey",
+              "columns": ["id"],
+              "unique": true
+            },
+            {
+              "name": "messages_user_id_idx",
+              "columns": ["user_id"]
+            },
+            {
+              "name": "messages_channel_id_idx",
+              "columns": ["channel_id"]
+            }
+          ],
+          "policies": {
+            "insert": {
+              "description": "Allow authenticated users to post messages.",
+              "conditions": "auth.role() = 'authenticated'"
+            },
+            "select": {
+              "description": "Allow users to read messages in channels they have access to.",
+              "conditions": "exists (select 1 from channels where channels.id = channel_id and (channels.created_by = auth.uid() OR ... ))"
+            },
+            "update": {
+              "description": "Only the message author can update their messages.",
+              "conditions": "auth.uid() = user_id"
+            },
+            "delete": {
+              "description": "Only the message author can delete their messages.",
+              "conditions": "auth.uid() = user_id"
+            }
+          }
+        },
+        "role_permissions": {
+          "description": "Defines permissions associated with roles.",
+          "columns": {
+            "id": {
+              "type": "int8",
+              "constraints": {
+                "primary_key": true,
+                "nullable": false
+              }
+            },
+            "role": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "app_role": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "permission": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "app_permission": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            }
+          },
+          "indexes": [
+            {
+              "name": "role_permissions_pkey",
+              "columns": ["id"],
+              "unique": true
+            }
+          ],
+          "policies": {
+            "insert": {
+              "description": "Allow admin roles to assign permissions.",
+              "conditions": "auth.role() = 'admin'"
+            },
+            "select": {
+              "description": "Allow roles to view permissions.",
+              "conditions": "true"
+            },
+            "update": {
+              "description": "Allow admin roles to update permissions.",
+              "conditions": "auth.role() = 'admin'"
+            },
+            "delete": {
+              "description": "Allow admin roles to delete permissions.",
+              "conditions": "auth.role() = 'admin'"
+            }
+          }
+        },
+        "user_roles": {
+          "description": "Associates users with their roles.",
+          "columns": {
+            "id": {
+              "type": "int8",
+              "constraints": {
+                "primary_key": true,
+                "nullable": false
+              }
+            },
+            "user_id": {
+              "type": "uuid",
+              "constraints": {
+                "foreign_key": {
+                  "references": "auth.users.id",
+                  "on_delete": "cascade"
+                },
+                "nullable": false
+              }
+            },
+            "role": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "app_role": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            }
+          },
+          "indexes": [
+            {
+              "name": "user_roles_pkey",
+              "columns": ["id"],
+              "unique": true
+            },
+            {
+              "name": "user_roles_user_id_idx",
+              "columns": ["user_id"]
+            }
+          ],
+          "policies": {
+            "insert": {
+              "description": "Allow admin roles to assign roles to users.",
+              "conditions": "auth.role() = 'admin'"
+            },
+            "select": {
+              "description": "Allow roles to view user roles.",
+              "conditions": "true"
+            },
+            "update": {
+              "description": "Allow admin roles to update user roles.",
+              "conditions": "auth.role() = 'admin'"
+            },
+            "delete": {
+              "description": "Allow admin roles to remove user roles.",
+              "conditions": "auth.role() = 'admin'"
+            }
+          }
+        },
+        "users": {
+          "description": "Stores user profiles.",
+          "columns": {
+            "id": {
+              "type": "uuid",
+              "constraints": {
+                "primary_key": true,
+                "nullable": false
+              }
+            },
+            "username": {
+              "type": "text",
+              "constraints": {
+                "unique": true,
+                "nullable": false
+              }
+            },
+            "status": {
+              "type": "user_status",
+              "constraints": {
+                "nullable": false,
+                "default": "'OFFLINE'"
+              },
+              "enum_values": ["ONLINE", "OFFLINE"]
+            },
+            "avatar_url": {
+              "type": "text",
+              "constraints": {
+                "nullable": true
+              }
+            },
+            "updated_at": {
+              "type": "timestamptz",
+              "constraints": {
+                "nullable": false,
+                "default": "now()"
+              }
+            }
+          },
+          "indexes": [
+            {
+              "name": "users_pkey",
+              "columns": ["id"],
+              "unique": true
+            },
+            {
+              "name": "users_username_key",
+              "columns": ["username"],
+              "unique": true
+            }
+          ],
+          "policies": {
+            "insert": {
+              "description": "Allow users to create their profiles.",
+              "conditions": "auth.role() = 'authenticated'"
+            },
+            "select": {
+              "description": "Allow users to view other user profiles.",
+              "conditions": "true"
+            },
+            "update": {
+              "description": "Allow users to update their own profiles.",
+              "conditions": "auth.uid() = id"
+            },
+            "delete": {
+              "description": "Allow admin roles to delete user profiles.",
+              "conditions": "auth.role() = 'admin'"
+            }
+          }
+        }
+      }
+    },
+    "storage": {
+      "description": "Handles file storage and management.",
+      "tables": {
+        "buckets": {
+          "description": "Defines storage buckets for organizing files.",
+          "columns": {
+            "id": {
+              "type": "uuid",
+              "constraints": {
+                "primary_key": true,
+                "nullable": false
+              }
+            },
+            "name": {
+              "type": "text",
+              "constraints": {
+                "unique": true,
+                "nullable": false
+              }
+            },
+            "public": {
+              "type": "boolean",
+              "constraints": {
+                "nullable": false,
+                "default": "false"
+              }
+            },
+            "created_at": {
+              "type": "timestamptz",
+              "constraints": {
+                "nullable": false,
+                "default": "now()"
+              }
+            }
+          },
+          "indexes": [
+            {
+              "name": "buckets_pkey",
+              "columns": ["id"],
+              "unique": true
+            },
+            {
+              "name": "buckets_name_key",
+              "columns": ["name"],
+              "unique": true
+            }
+          ],
+          "policies": {
+            "insert": {
+              "description": "Allow admin roles to create storage buckets.",
+              "conditions": "auth.role() = 'admin'"
+            },
+            "select": {
+              "description": "Allow users to view storage buckets based on permissions.",
+              "conditions": "true"
+            },
+            "update": {
+              "description": "Allow admin roles to update storage bucket configurations.",
+              "conditions": "auth.role() = 'admin'"
+            },
+            "delete": {
+              "description": "Allow admin roles to delete storage buckets.",
+              "conditions": "auth.role() = 'admin'"
+            }
+          }
+        },
+        "objects": {
+          "description": "Stores metadata for files within buckets.",
+          "columns": {
+            "id": {
+              "type": "uuid",
+              "constraints": {
+                "primary_key": true,
+                "nullable": false
+              }
+            },
+            "bucket_id": {
+              "type": "uuid",
+              "constraints": {
+                "foreign_key": {
+                  "references": "storage.buckets.id",
+                  "on_delete": "cascade"
+                },
+                "nullable": false
+              }
+            },
+            "name": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "path": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "url": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "size": {
+              "type": "int8",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "type": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "created_at": {
+              "type": "timestamptz",
+              "constraints": {
+                "nullable": false,
+                "default": "now()"
+              }
+            }
+          },
+          "indexes": [
+            {
+              "name": "objects_pkey",
+              "columns": ["id"],
+              "unique": true
+            },
+            {
+              "name": "objects_bucket_id_idx",
+              "columns": ["bucket_id"]
+            },
+            {
+              "name": "objects_path_key",
+              "columns": ["path"],
+              "unique": true
+            }
+          ],
+          "policies": {
+            "insert": {
+              "description": "Allow authenticated users to upload files to storage buckets based on bucket policies.",
+              "conditions": "auth.role() = 'authenticated'"
+            },
+            "select": {
+              "description": "Allow users to view files based on bucket policies.",
+              "conditions": "true"
+            },
+            "update": {
+              "description": "Allow users to update files they own based on bucket policies.",
+              "conditions": "auth.uid() = owner_id"
+            },
+            "delete": {
+              "description": "Allow users to delete files they own based on bucket policies.",
+              "conditions": "auth.uid() = owner_id"
+            }
+          }
+        }
+      },
+      "buckets": [
+        {
+          "name": "avatars",
+          "public": true,
+          "description": "Stores user avatar images.",
+          "policies": {
+            "INSERT": {
+              "description": "Allow authenticated users to upload avatars.",
+              "conditions": "auth.role() = 'authenticated'"
+            },
+            "DELETE": {
+              "description": "Allow users to delete their own avatars.",
+              "conditions": "auth.uid() = owner_id"
+            },
+            "UPDATE": {
+              "description": "Allow users to update their own avatars.",
+              "conditions": "auth.uid() = owner_id"
+            },
+            "SELECT": {
+              "description": "Allow public read access to view avatars.",
+              "conditions": "true"
+            }
+          }
+        },
+        {
+          "name": "message_attachments",
+          "public": true,
+          "description": "Stores files attached to messages.",
+          "policies": {
+            "INSERT": {
+              "description": "Allow authenticated users to upload message attachments.",
+              "conditions": "auth.role() = 'authenticated'"
+            },
+            "DELETE": {
+              "description": "Allow users to delete their own message attachments.",
+              "conditions": "auth.uid() = owner_id"
+            },
+            "UPDATE": {
+              "description": "Allow users to update their own message attachments.",
+              "conditions": "auth.uid() = owner_id"
+            },
+            "SELECT": {
+              "description": "Allow public read access to view message attachments.",
+              "conditions": "true"
+            }
+          }
+        }
+      ]
+    },
+    "auth": {
+      "description": "Handles user authentication and management.",
+      "tables": {
+        "users": {
+          "description": "Stores authentication user data.",
+          "columns": {
+            "id": {
+              "type": "uuid",
+              "constraints": {
+                "primary_key": true,
+                "nullable": false
+              }
+            },
+            "email": {
+              "type": "text",
+              "constraints": {
+                "unique": true,
+                "nullable": false
+              }
+            },
+            "password": {
+              "type": "text",
+              "constraints": {
+                "nullable": false
+              }
+            },
+            "created_at": {
+              "type": "timestamptz",
+              "constraints": {
+                "nullable": false,
+                "default": "now()"
+              }
+            },
+            "updated_at": {
+              "type": "timestamptz",
+              "constraints": {
+                "nullable": true,
+                "default": "now()"
+              }
+            },
+            "last_sign_in_at": {
+              "type": "timestamptz",
+              "constraints": {
+                "nullable": true
+              }
+            },
+            "provider": {
+              "type": "text",
+              "constraints": {
+                "nullable": true
+              }
+            }
+          },
+          "indexes": [
+            {
+              "name": "auth_users_pkey",
+              "columns": ["id"],
+              "unique": true
+            },
+            {
+              "name": "auth_users_email_key",
+              "columns": ["email"],
+              "unique": true
+            }
+          ],
+          "policies": {
+            "insert": {
+              "description": "Allow users to sign up.",
+              "conditions": "auth.role() = 'authenticated'"
+            },
+            "select": {
+              "description": "Allow authenticated users to view their own profiles.",
+              "conditions": "auth.uid() = id"
+            },
+            "update": {
+              "description": "Allow users to update their own profiles.",
+              "conditions": "auth.uid() = id"
+            },
+            "delete": {
+              "description": "Allow users to delete their own accounts.",
+              "conditions": "auth.uid() = id"
+            }
+          }
+        }
+      },
+      "authentication": {
+        "providers": ["email"],
+        "features": {
+          "rate_limits": "Default rate limits applied to authentication requests.",
+          "email_templates": "Custom email templates configured for verification and password resets.",
+          "url_configuration": "Custom URLs for authentication flows (e.g., redirect URLs).",
+          "hooks": "Authentication hooks set up for user events (e.g., post-signup, post-login).",
+          "beta_features": "List of beta authentication features enabled."
+        }
+      }
+    }
+  },
+  "storage": {
+    "description": "File storage configurations and objects.",
+    "buckets": [
+      {
+        "name": "avatars",
+        "public": true,
+        "description": "Bucket for storing user avatar images.",
+        "policies": {
+          "INSERT": {
+            "description": "Allow authenticated users to upload avatars.",
+            "conditions": "auth.role() = 'authenticated'"
+          },
+          "DELETE": {
+            "description": "Allow users to delete their own avatars.",
+            "conditions": "auth.uid() = owner_id"
+          },
+          "UPDATE": {
+            "description": "Allow users to update their own avatars.",
+            "conditions": "auth.uid() = owner_id"
+          },
+          "SELECT": {
+            "description": "Allow public read access to view avatars.",
+            "conditions": "true"
+          }
+        }
+      },
+      {
+        "name": "message_attachments",
+        "public": true,
+        "description": "Bucket for storing files attached to messages.",
+        "policies": {
+          "INSERT": {
+            "description": "Allow authenticated users to upload message attachments.",
+            "conditions": "auth.role() = 'authenticated'"
+          },
+          "DELETE": {
+            "description": "Allow users to delete their own message attachments.",
+            "conditions": "auth.uid() = owner_id"
+          },
+          "UPDATE": {
+            "description": "Allow users to update their own message attachments.",
+            "conditions": "auth.uid() = owner_id"
+          },
+          "SELECT": {
+            "description": "Allow public read access to view message attachments.",
+            "conditions": "true"
+          }
+        }
+      }
+    ]
+  },
+  "authentication": {
+    "description": "Authentication configurations and user management.",
+    "providers": ["email"],
+    "policies": {
+      "rate_limits": "Configured to prevent abuse and ensure security.",
+      "email_templates": "Customized templates for user verification and password recovery.",
+      "url_configuration": "Defined URLs for redirects during authentication processes.",
+      "hooks": "Implemented hooks for handling events like user signup, login, and logout."
+    }
+  },
+  "realtime": {
+    "description": "Realtime configurations for live updates.",
+    "enabled_features": ["channels", "direct_messages", "messages"],
+    "subscriptions": [
+      "Realtime updates for channels creation and updates.",
+      "Realtime updates for direct messages sent and received.",
+      "Realtime updates for messages within channels."
+    ]
+  },
+  "advisors": {
+    "description": "Performance and security advisors.",
+    "types": ["Performance Advisor", "Security Advisor"],
+    "details": {
+      "Performance Advisor": "Monitors and provides recommendations for database performance optimization.",
+      "Security Advisor": "Assesses and advises on database security configurations and policies."
+    }
+  },
+  "reports": {
+    "description": "Generated reports for various aspects of the database.",
+    "types": ["Usage Reports", "Error Logs", "Performance Metrics"]
+  },
+  "logs": {
+    "description": "Logging configurations and access logs.",
+    "types": ["Access Logs", "Error Logs", "Audit Logs"]
+  },
+  "api_docs": {
+    "description": "API documentation URLs and access details.",
+    "links": ["https://supabase.io/docs/api"]
+  },
+  "integrations": {
+    "description": "External integrations connected to the Supabase project.",
+    "services": ["Third-party authentication providers", "CI/CD pipelines", "Monitoring tools"]
+  },
+  "project_settings": {
+    "description": "General project configurations and settings.",
+    "options": ["Environment Variables", "Domain Settings", "API Keys Management"]
+  },
+  "commands": {
+    "description": "Available CLI and in-app commands for managing the project.",
+    "list": [
+      "Create new tables",
+      "Manage storage buckets",
+      "Configure authentication",
+      "Deploy edge functions",
+      "Monitor realtime updates",
+      "View logs and reports",
+      "Integrate with external services"
+    ]
+  },
+  "policies": {
+    "avatars": {
+      "description": "Access policies for the avatars bucket.",
+      "rules": [
+        {
+          "action": "INSERT",
+          "description": "Allow authenticated users to upload avatars.",
+          "conditions": "auth.role() = 'authenticated'"
+        },
+        {
+          "action": "DELETE",
+          "description": "Allow users to delete their own avatars.",
+          "conditions": "auth.uid() = owner_id"
+        },
+        {
+          "action": "UPDATE",
+          "description": "Allow users to update their own avatars.",
+          "conditions": "auth.uid() = owner_id"
+        },
+        {
+          "action": "SELECT",
+          "description": "Allow public read access to view avatars.",
+          "conditions": "true"
+        }
+      ]
+    },
+    "message_attachments": {
+      "description": "Access policies for the message_attachments bucket.",
+      "rules": [
+        {
+          "action": "INSERT",
+          "description": "Allow authenticated users to upload message attachments.",
+          "conditions": "auth.role() = 'authenticated'"
+        },
+        {
+          "action": "DELETE",
+          "description": "Allow users to delete their own message attachments.",
+          "conditions": "auth.uid() = owner_id"
+        },
+        {
+          "action": "UPDATE",
+          "description": "Allow users to update their own message attachments.",
+          "conditions": "auth.uid() = owner_id"
+        },
+        {
+          "action": "SELECT",
+          "description": "Allow public read access to view message attachments.",
+          "conditions": "true"
+        }
+      ]
+    }
+  },
+  "edge_functions": {
+    "description": "Serverless functions for custom backend logic.",
+    "functions": [
+      {
+        "name": "sendWelcomeEmail",
+        "description": "Sends a welcome email to new users upon signup.",
+        "url": "https://your-project.supabase.co/functions/v1/sendWelcomeEmail"
+      }
+      // Add additional edge functions here
+    ]
+  },
+  "backups": {
+    "description": "Backup configurations and schedules.",
+    "details": {
+      "frequency": "Daily",
+      "retention_period": "30 days",
+      "storage_location": "Secure cloud storage"
+    }
+  },
+  "migrations": {
+    "description": "Database migration history and status.",
+    "history": [
+      {
+        "version": "v1.0.0",
+        "description": "Initial schema setup with public, storage, and auth schemas.",
+        "applied_at": "2025-01-01T00:00:00+00:00"
+      },
+      {
+        "version": "v1.1.0",
+        "description": "Added message_reactions table.",
+        "applied_at": "2025-01-02T00:00:00+00:00"
+      }
+      // Add additional migration entries here
+    ]
+  },
+  "webhooks": {
+    "description": "Webhook configurations for real-time events and integrations.",
+    "webhooks": [
+      {
+        "name": "onUserSignup",
+        "url": "https://your-server.com/webhooks/userSignup",
+        "events": ["auth.users.insert"]
+      }
+      // Add additional webhook entries here
+    ]
+  },
+  "tools": {
+    "description": "Additional tools and integrations connected to the project.",
+    "list": ["Supabase Studio", "VS Code Extension", "Postman Collection"]
+  }
+}

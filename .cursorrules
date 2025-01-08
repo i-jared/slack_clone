@@ -1,0 +1,249 @@
+# Cursor Rules Document
+
+## 1. Project Instructions
+
+- **Adherence to Specifications:** Follow all provided specifications and guidelines meticulously throughout the development process.
+- **Comprehensive Coding:** Ensure that every step of the application is fully coded without taking shortcuts to maintain quality and functionality.
+- **Completion Focus:** Strive to completely finish each requested feature or component, avoiding partial implementations.
+- **Context Utilization:** Make use of designated context tags within the codebase to better understand the overall project structure and requirements.
+
+## 2. Overview
+
+- **Purpose:** This application provides a real-time messaging platform built on Supabase, supporting features such as channels, direct messaging, file attachments, and user roles.
+- **Scope:** Focus on implementing and maintaining the messaging, file storage, authentication, and user management features. Exclude any enterprise-level billing integrations or advanced analytics unless specifically requested.
+
+## 3. Tech Stack
+
+- **Frontend Technologies:**  
+  - Next.js (React framework) for server-side rendering and client-side interactions.  
+  - React for building UI components.  
+  - TypeScript to enable static typing and improved developer experience.  
+  - (Optional) Tailwind CSS or a similar styling approach if you are using a utility-first CSS framework.
+
+- **Backend Technologies:**  
+  - Supabase for database management, authentication, and storage.  
+  - PostgreSQL (provided by Supabase) for persistent data storage.  
+  - Supabase Edge Functions (if needed) for custom backend logic.
+
+- **Authentication:**  
+  - Supabase’s email-based authentication is used for user sign-ups, logins, and password resets.  
+  - Additional configuration is possible via providers or custom hooks defined in the “authentication” section if required.
+
+- **Payments:**  
+  - Currently no built-in payment processing in this scope. Could be integrated later if a paid subscription or premium features are introduced.
+
+- **Analytics:**  
+  - Basic monitoring and logging through Supabase’s logs and potential third-party integrations.  
+  - No dedicated analytics platform configured at present.
+
+- **Deployment:**  
+  - Supabase handles the database and authentication hosting.  
+  - Next.js is typically deployed on platforms like Vercel or a similar provider, though any Node-capable environment is possible.
+
+## 4. Project Structure
+
+- **Organization:**  
+  - “app/” directory (Next.js App Router) for core pages and components.  
+  - “serverActions/” or “actions/” for implementing server-side logic using Next.js Server Actions.  
+  - “components/” for reusable UI elements (client or server).  
+  - “schemas/” or “db/” for database-related definitions and references to Supabase schemas.  
+  - “lib/” or “utils/” for utility/helper functions.  
+  - “public/” or “static/” for images and static assets.  
+  - “types/” for TypeScript type definitions.
+
+- **Modularity:**  
+  - Separate concerns by domain (e.g., channels, direct_messages, users) to promote maintainability and scalability.
+
+## 5. Development Rules
+
+### General Rules
+
+- **Import Conventions:**  
+  - Use named imports for clarity where possible and default imports only for primary export modules.
+
+- **Naming Conventions:**  
+  - Use PascalCase for React components (e.g., MyComponent).  
+  - Use kebab-case or snake_case for filenames if preferred, ensuring consistency project-wide.
+
+- **Component Management:**  
+  - For shared components, update them carefully and check other areas of the application that depend on them.
+
+### Environment Variable Rules
+
+- **Updating Variables:**  
+  - If .env.local is updated, replicate changes in .env.example for documentation.
+
+- **Storage Location:**  
+  - All sensitive variables (e.g., API keys, JWT secrets) must remain in server-only environment files and never exposed to client code.
+
+- **Security:**  
+  - Ensure no secrets appear in public Git repos or client-exposed builds.
+
+- **Prefixing:**  
+  - Use NEXT_PUBLIC_ prefix only for environment variables that must be accessible client-side.
+
+- **Accessing Variables:**  
+  - Use process.env for server-side variables.  
+  - Use next/config or direct environment references for client-facing variables with NEXT_PUBLIC_.
+
+### Type Rules
+
+- **Type Imports:**  
+  - Import from “types/” directory or relevant library modules where possible to keep the codebase organized.
+
+- **File Naming:**  
+  - Use a .d.ts extension for pure type definition files.  
+  - Combine type definitions logically within domain-related files as needed.
+
+- **Centralized Types:**  
+  - Include a “types/index.d.ts” (or similar) for common, global types.
+
+- **Exporting Types:**  
+  - Export from a single index file in each “types/” subdirectory if multiple type files are used.
+
+- **Type Preferences:**  
+  - Prefer interfaces over type aliases for object shapes, especially when extending other objects.
+
+- **Database Types:**  
+  - Keep all Supabase table definitions in a file or auto-generate TypeScript definitions to ensure consistency.
+
+## 6. Frontend Development Rules
+
+### General Rules
+
+- **Icon Usage:**  
+  - Use a consistent icon library (e.g., Heroicons, Material UI icons) or an SVG approach for a uniform look.
+
+- **HTML Structure:**  
+  - Favor semantic HTML5 elements whenever possible (e.g., <section>, <header>, <main>, <footer>).
+
+- **Component Tagging:**  
+  - Clearly mark components as “use client” or remain server-side if relying on Next.js server component features.
+
+### Components
+
+- **Naming Convention:**  
+  - Use consistent naming patterns (e.g., Button, Card, Modal) in PascalCase.
+
+- **Component Placement:**  
+  - One-off pages in “app/”.  
+  - Reusable components in “components/”.
+
+### Data Fetching
+
+- **Server Components:**  
+  - Handle sensitive or data-heavy operations in server components.  
+  - Pass fetched results as props to child client components.
+
+- **Server Actions:**  
+  - Use Next.js Server Actions for performing secure, server-side updates or insertions into the database.
+
+### Server Components
+
+- **Declaration:**  
+  - Omit “use client” at the top, letting Next.js treat them as server by default.
+
+- **Asynchronous Handling:**  
+  - Leverage built-in React async/await patterns when fetching data from Supabase.
+
+- **Import Restrictions:**  
+  - Avoid direct imports into client components to prevent bundling server-only code.
+
+### Client Components
+
+- **Declaration:**  
+  - Add “use client” at the first line of the file if the component depends on browser APIs or state hooks.
+
+- **Data Reliance:**  
+  - Accept props from server components, only fetch new data if it’s user interaction–dependent and secure to do so on the client.
+
+## 7. Backend Development Rules
+
+### General Rules
+
+- **Migration Handling:**  
+  - Rely on Supabase auto-generated migrations or manually manage them with supabase CLI to keep the database in sync.
+
+### Organization
+
+- **Consistent Structure:**  
+  - Keep SQL or migration scripts (if any) and Supabase config in a “supabase/” folder or references for clarity.
+
+### Schemas
+
+- **Schema Imports:**  
+  - Reference Supabase’s “public,” “auth,” and “storage” schemas for table definitions.
+
+- **File Naming:**  
+  - Maintain descriptive names like channels.schema.json, messages.schema.json if storing offline references.
+
+- **Centralized Schemas:**  
+  - Supabase is the single source of truth. If you have local definitions, store them in one location for clarity.
+
+- **Exporting Schemas:**  
+  - If using code-gen tools, export typed definitions for each table from a dedicated index.
+
+- **Schema Integration:**  
+  - PDF or code-based representation of these schemas should be referenced for clarity but remain consistent with the live Supabase instance.
+
+- **User Identification:**  
+  - Use the standard “auth.uid()” from Supabase for row-level security and user ownership checks.
+
+- **Timestamp Columns:**  
+  - Rely on default “inserted_at,” “updated_at” columns provided in each table.
+
+- **Cascade Deletion:**  
+  - Retain or refine existing foreign key constraints (e.g., message attachments, channel ownership) as indicated in the schema.
+
+- **Enum Usage:**  
+  - For columns like user status, keep single-source enumerations to maintain data consistency.
+
+### Server Actions
+
+- **Action Imports:**  
+  - Organize within a dedicated folder (“serverActions/” or “actions/”) and import with absolute paths if configured.
+
+- **Action Organization:**  
+  - Separate actions by domain (e.g., channelActions, userActions, messageActions).
+
+- **File Naming:**  
+  - match the pattern <domain>.actions.ts or <domain>Actions.ts.
+
+- **Action Scope:**  
+  - Only create actions for essential DB interactions or business logic.
+
+- **Action Responses:**  
+  - Return structured response objects, e.g., { success: boolean, data, error }.
+
+- **Function Naming:**  
+  - Use descriptive names, e.g., createChannelAction, updateUserAction.
+
+- **Promise Returns:**  
+  - Always return promises from server actions (Next.js automatically handles them, but keep them typed well).
+
+- **CRUD Order:**  
+  - Create, Read, Update, Delete in that order if multiple actions in the same file.
+
+- **Undefined Data:**  
+  - Return null or a clear error object if no data is found or no data is needed.
+
+## 8. Authentication Rules
+
+- **Authentication Integration:**  
+  - All auth flows rely on Supabase’s “auth” schema and role-based policies (authenticated, admin, etc.).
+
+- **Auth Helper Usage:**  
+  - Use Supabase’s client or server-side methods (e.g., createClient, auth helpers) within server actions or in client components as needed.
+
+## 9. Payments Rules
+
+- **Payment Processing:**  
+  - This project does not currently implement payment processing. Future expansions can integrate Stripe or other providers if needed.
+
+## 10. Analytics Rules
+
+- **Analytics Integration:**  
+  - Limited to monitoring using Supabase logs, third-party solutions like Vercel’s analytics, or potential custom event logging.  
+  - Expand with a dedicated analytics platform only if required.
+
+--- 

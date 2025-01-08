@@ -6,13 +6,13 @@ import MessageInput from '~/components/MessageInput'
 import LoadingScreen from '~/components/LoadingScreen'
 import { useContext } from 'react'
 import UserContext from '~/lib/UserContext'
-import { CHANNELS, LOADING_MESSAGES } from '~/lib/constants'
 
 const ChannelPage = () => {
   const router = useRouter()
   const { id } = router.query
   const { messages, channels } = useStore({ channelId: id ? parseInt(id) : null })
   const { user } = useContext(UserContext)
+  const messagesEndRef = useRef(null)
 
   // Find the current channel
   const channel = useMemo(() => {
@@ -22,37 +22,59 @@ const ChannelPage = () => {
     return found
   }, [id, channels])
 
+  // Auto scroll to bottom when new messages arrive
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages]) // Scroll when messages change
+
   return (
-    <div className="relative flex flex-col flex-1 overflow-hidden bg-gray-800">
+    <div className="flex flex-col flex-1 overflow-hidden">
       {/* Channel Header */}
-      <header className="flex items-center h-16 px-6 bg-gray-900 border-b border-gray-800">
-        <h2 className="text-lg font-semibold text-yellow-400">
-          # {channel?.slug}
-        </h2>
-        <div className="ml-4 text-sm text-gray-400">
-          {channel?.description}
+      <header className="flex items-center h-16 px-6 bg-gray-900/75 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-10">
+        <div className="flex-1">
+          <h2 className="text-lg font-semibold text-yellow-400 flex items-center">
+            <span className="text-gray-500 mr-2">#</span>
+            {channel?.displayName || channel?.name || channel?.slug || 'Loading...'}
+          </h2>
+          <p className="text-sm text-gray-400">
+            {channel?.description || `Welcome to #${channel?.displayName || channel?.name || channel?.slug || 'channel'}`}
+          </p>
         </div>
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages?.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-gray-400 text-center">
-              <p className="text-2xl mb-2">Welcome to #{channel?.slug}!</p>
-              <p>This is the start of the channel.</p>
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="max-w-4xl mx-auto space-y-4">
+          {messages?.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+              <div className="text-yellow-400 text-4xl mb-4">👋</div>
+              <h3 className="text-2xl font-semibold text-yellow-400 mb-2">
+                Welcome to #{channel?.name || channel?.slug}!
+              </h3>
+              <p className="text-gray-400">
+                This is the start of the channel. Send a message to get the conversation going!
+              </p>
             </div>
-          </div>
-        ) : (
-          messages?.map((message) => (
-            <Message key={message.id} message={message} />
-          ))
-        )}
+          ) : (
+            <>
+              {messages?.map((message) => (
+                <Message key={message.id} message={message} />
+              ))}
+              <div ref={messagesEndRef} /> {/* Scroll anchor */}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Message Input */}
-      <div className="p-4 border-t border-gray-800">
-        <MessageInput channel_id={parseInt(id)} />
+      <div className="p-4 bg-gray-900/75 backdrop-blur-sm border-t border-gray-800">
+        <div className="max-w-4xl mx-auto">
+          <MessageInput channel_id={parseInt(id)} />
+        </div>
       </div>
     </div>
   )
