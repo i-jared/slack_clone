@@ -1,50 +1,33 @@
-import { useContext, useEffect } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import UserContext from '~/lib/UserContext'
 import MessageReactions from './MessageReactions'
+import ThreadPanel from './ThreadPanel'
 
 export default function Message({ message }) {
   const { user } = useContext(UserContext)
+  const [showThread, setShowThread] = useState(false)
   
-  // Log the incoming message data
   useEffect(() => {
-    console.log('📩 Message component received:', {
-      messageId: message.id,
-      message: message.message,
-      sender: message.sender || message.user,
-      currentUser: user,
-      isDirect: message.isDirect
-    })
-  }, [message, user])
+    // Optionally log or track message
+  }, [message])
 
   const isCurrentUser = message.user?.id === user?.id || message.sender?.id === user?.id
   
-  // Handle timestamp display
   const timestamp = message.inserted_at
-  const formattedTimestamp = timestamp ? 
-    formatDistanceToNow(new Date(timestamp), { addSuffix: true }) : 
-    'Just now'
+  const formattedTimestamp = timestamp
+    ? formatDistanceToNow(new Date(timestamp), { addSuffix: true })
+    : 'Just now'
 
-  // Get the correct user display name
-  const displayName = message.user?.username || 
-    message.sender?.username || 
-    message.user?.email?.split('@')[0] || 
-    message.sender?.email?.split('@')[0] || 
+  const displayName =
+    message.user?.username ||
+    message.sender?.username ||
     'Unknown User'
 
-  console.log('🎨 Rendering Message:', {
-    messageId: message.id,
-    senderId: message.sender?.id || message.user?.id,
-    currentUserId: user?.id,
-    isCurrentUser,
-    displayName,
-    timestamp: formattedTimestamp
-  })
-
   return (
-    <div className={`flex items-start gap-3 max-w-2xl px-4 ${isCurrentUser ? 'ml-auto flex-row-reverse' : ''}`}>
+    <div className={`flex items-start gap-3 max-w-2xl px-4 ${isCurrentUser ? 'ml-auto flex-row-reverse' : ''}`} id={`message-${message.id}`}>
       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
-        {message.user?.avatar_url || message.sender?.avatar_url ? (
+        {(message.user?.avatar_url || message.sender?.avatar_url) ? (
           <img
             src={message.user?.avatar_url || message.sender?.avatar_url}
             alt={displayName}
@@ -69,7 +52,26 @@ export default function Message({ message }) {
           {message.message}
         </div>
         <MessageReactions messageId={message.id} />
+        {/* Thread Button */}
+        <div className="text-xs mt-1">
+          <button
+            className="text-blue-400 hover:text-blue-300"
+            onClick={() => setShowThread(true)}
+          >
+            Show thread
+          </button>
+        </div>
       </div>
+      {showThread && (
+        <div className="fixed inset-0 flex justify-end bg-black bg-opacity-50" onClick={() => setShowThread(false)}>
+          <div className="h-full" onClick={(e) => e.stopPropagation()}>
+            <ThreadPanel
+              parentMessageId={message.id}
+              onClose={() => setShowThread(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

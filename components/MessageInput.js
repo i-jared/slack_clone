@@ -17,8 +17,6 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
       setIsSending(true)
       setError(null)
       
-      console.log('Sending message:', { isDirect, content, channel_id, recipient_id })
-      
       if (isDirect && recipient_id) {
         await sendDirectMessage(content.trim(), recipient_id)
       } else if (!isDirect && channel_id) {
@@ -61,8 +59,8 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
       setIsUploading(true)
       setError(null)
 
-      const fileUrl = await uploadFile(file, 'message-attachments')
-      const fileMessage = `[File: ${file.name}](${fileUrl})`
+      const result = await uploadFile(file, 'message-attachments')
+      const fileMessage = `[File: ${file.name}](${result.url})`
       
       if (isDirect && recipient_id) {
         await sendDirectMessage(fileMessage, recipient_id)

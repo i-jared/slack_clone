@@ -8,7 +8,6 @@ import Layout from '~/components/Layout'
 
 const ensureUserRecord = async (user) => {
   try {
-    console.log('🔍 Checking for existing user record:', user.id)
     const { data: existingUser, error: selectError } = await supabase
       .from('users')
       .select('*')
@@ -16,22 +15,18 @@ const ensureUserRecord = async (user) => {
       .single()
 
     if (selectError) {
-      console.error('❌ Error checking for existing user:', selectError)
       throw selectError
     }
 
     if (existingUser) {
-      console.log('✅ Found existing user record:', existingUser.username)
       return existingUser
     }
 
-    console.log('📝 Creating new user record for:', user.email)
     const { data: newUser, error: insertError } = await supabase
       .from('users')
       .insert([{ 
         id: user.id,
         username: user.email.split('@')[0],
-        email: user.email,
         status: 'ONLINE',
         avatar_url: null
       }])
@@ -39,11 +34,9 @@ const ensureUserRecord = async (user) => {
       .single()
     
     if (insertError) {
-      console.error('❌ Error creating user record:', insertError)
       throw insertError
     }
 
-    console.log('✅ Created new user record:', newUser.username)
     return newUser
   } catch (error) {
     console.error('❌ Error in ensureUserRecord:', error)
@@ -57,41 +50,40 @@ export default function App({ Component, pageProps }) {
   const [isLoading, setIsLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
 
+  const updateStatus = async (userId, newStatus) => {
+    if (!userId) return
+    try {
+      await supabase
+        .from('users')
+        .update({ status: newStatus })
+        .eq('id', userId)
+    } catch (err) {
+      console.error('Failed to update user status:', err.message)
+    }
+  }
+
   useEffect(() => {
     if (!router.isReady) return
 
     let authSubscription = null
 
-    // Handle auth state changes
     const handleAuthChange = async (event, session) => {
+      if (event !== 'TOKEN_REFRESHED') setIsLoading(true)
       try {
-        console.log('🔐 Auth state changed:', event, session?.user?.email)
-        
-        if (event !== 'TOKEN_REFRESHED') {
-          setIsLoading(true)
-        }
-        
         if (session?.user) {
-          console.log('👤 Ensuring user record...')
-          try {
-            const dbUser = await ensureUserRecord(session.user)
-            console.log('✅ User record confirmed:', dbUser.username)
-            setUser({ ...session.user, dbUser })
-            setAuthError(null)
-            
-            if (router.pathname === '/') {
-              console.log('🔄 Redirecting to channels...')
-              await router.push('/channels/1')
-            }
-          } catch (error) {
-            console.error('❌ Failed to ensure user record:', error)
-            setAuthError(error.message)
-            await supabase.auth.signOut()
-            setUser(null)
-            await router.push('/')
+          // Ensure user record and set user status to ONLINE
+          const dbUser = await ensureUserRecord(session.user)
+          await updateStatus(dbUser.id, 'ONLINE')
+          setUser({ ...session.user, dbUser })
+          setAuthError(null)
+          if (router.pathname === '/') {
+            await router.push('/channels/1')
           }
         } else {
-          console.log('⚠️ No session user, clearing state')
+          // No session user => set OFFLINE if we previously had a user
+          if (user?.id) {
+            await updateStatus(user.id, 'OFFLINE')
+          }
           setUser(null)
           if (router.pathname !== '/') {
             await router.push('/')
@@ -103,33 +95,26 @@ export default function App({ Component, pageProps }) {
         setUser(null)
         await router.push('/')
       } finally {
-        if (event !== 'TOKEN_REFRESHED') {
-          setIsLoading(false)
-        }
+        // Always clear loading state unless it's a token refresh
+        if (event !== 'TOKEN_REFRESHED') setIsLoading(false)
       }
     }
 
     const setupAuth = async () => {
       try {
-        // Initialize Supabase auth
         const { data, error } = await supabase.auth.getSession()
-        
         if (error) {
-          console.error('❌ Error getting session:', error)
           setAuthError(error.message)
           setIsLoading(false)
           return
         }
-
-        console.log('🔍 Initial session check:', data?.session ? 'Found session' : 'No session')
         await handleAuthChange('INITIAL', data?.session)
 
-        // Set up auth state change subscription
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange)
+        const {
+          data: { subscription }
+        } = supabase.auth.onAuthStateChange(handleAuthChange)
         authSubscription = subscription
-
       } catch (error) {
-        console.error('❌ Error in setupAuth:', error)
         setAuthError(error.message)
         setIsLoading(false)
       }
@@ -138,30 +123,72 @@ export default function App({ Component, pageProps }) {
     setupAuth()
 
     return () => {
-      console.log('🧹 Cleaning up auth subscription')
       if (authSubscription) {
         authSubscription.unsubscribe()
       }
     }
   }, [router.isReady, router.pathname])
 
-  const value = {
-    user,
-    signOut: async () => {
-      try {
-        setIsLoading(true)
-        const { error } = await supabase.auth.signOut()
-        if (error) throw error
-        setUser(null)
-        await router.push('/')
-      } catch (error) {
-        console.error('Error signing out:', error)
-        setAuthError(error.message)
-      } finally {
-        setIsLoading(false)
+  const signOut = async () => {
+    try {
+      setIsLoading(true)
+      // First sign out from Supabase
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+
+      // Then update user status and clean up
+      if (user?.id) {
+        try {
+          await updateStatus(user.id, 'OFFLINE')
+        } catch (err) {
+          console.error('Failed to update status during sign out:', err)
+          // Continue with sign out even if status update fails
+        }
       }
+
+      // Clear local state
+      setUser(null)
+      setAuthError(null)
+      
+      // Redirect to home
+      await router.push('/')
+    } catch (error) {
+      console.error('Error signing out:', error)
+      setAuthError(error.message)
+    } finally {
+      setIsLoading(false)
     }
   }
+
+  // Add route protection
+  useEffect(() => {
+    if (!router.isReady) return
+
+    // Check if the current route needs authentication
+    const isProtectedRoute = router.pathname !== '/'
+    const isAuthenticated = !!user
+
+    if (isProtectedRoute && !isAuthenticated && !isLoading) {
+      console.log('Unauthorized access, redirecting to login...')
+      router.push('/')
+    }
+  }, [router.isReady, router.pathname, user, isLoading])
+
+  // Add navigation loading state
+  useEffect(() => {
+    const handleStart = () => setIsLoading(true)
+    const handleComplete = () => setIsLoading(false)
+
+    router.events.on('routeChangeStart', handleStart)
+    router.events.on('routeChangeComplete', handleComplete)
+    router.events.on('routeChangeError', handleComplete)
+
+    return () => {
+      router.events.off('routeChangeStart', handleStart)
+      router.events.off('routeChangeComplete', handleComplete)
+      router.events.off('routeChangeError', handleComplete)
+    }
+  }, [router])
 
   if (isLoading) {
     return <LoadingScreen message="Establishing connection to the Galactic Network..." />
@@ -175,6 +202,11 @@ export default function App({ Component, pageProps }) {
         </div>
       </div>
     )
+  }
+
+  const value = {
+    user,
+    signOut
   }
 
   return (

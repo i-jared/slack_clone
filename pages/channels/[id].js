@@ -1,35 +1,47 @@
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useRef, useContext } from 'react'
 import { useRouter } from 'next/router'
 import { useStore } from '~/lib/Store'
 import Message from '~/components/Message'
 import MessageInput from '~/components/MessageInput'
-import LoadingScreen from '~/components/LoadingScreen'
-import { useContext } from 'react'
 import UserContext from '~/lib/UserContext'
 
 const ChannelPage = () => {
   const router = useRouter()
   const { id } = router.query
-  const { messages, channels } = useStore({ channelId: id ? parseInt(id) : null })
   const { user } = useContext(UserContext)
+  const scrollToMessageId = router.query.scrollToMessage
+  const { messages, channels } = useStore({ channelId: id ? parseInt(id) : null })
+
   const messagesEndRef = useRef(null)
 
-  // Find the current channel
-  const channel = useMemo(() => {
-    console.log('🔍 Finding channel:', id, 'from', channels.length, 'channels')
-    const found = channels.find(x => x.id === parseInt(id))
-    if (found) console.log('✅ Channel found:', found.slug)
-    return found
-  }, [id, channels])
-
-  // Auto scroll to bottom when new messages arrive
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  useEffect(() => {
+    if (!user) {
+      router.push('/')
+      return
+    }
+  }, [user, router])
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages]) // Scroll when messages change
+    if (scrollToMessageId) {
+      // Delay to ensure messages are loaded
+      const timer = setTimeout(() => {
+        const elem = document.getElementById(`message-${scrollToMessageId}`)
+        if (elem) {
+          elem.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [scrollToMessageId, messages])
+
+  const channel = channels.find((c) => c.id === parseInt(id))
+
+  useEffect(() => {
+    // Auto-scroll to bottom if there's no specific message to scroll to
+    if (!scrollToMessageId && messages?.length) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages, scrollToMessageId])
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -38,10 +50,10 @@ const ChannelPage = () => {
         <div className="flex-1">
           <h2 className="text-lg font-semibold text-yellow-400 flex items-center">
             <span className="text-gray-500 mr-2">#</span>
-            {channel?.displayName || channel?.name || channel?.slug || 'Loading...'}
+            {channel?.name || channel?.slug || 'Loading...'}
           </h2>
           <p className="text-sm text-gray-400">
-            {channel?.description || `Welcome to #${channel?.displayName || channel?.name || channel?.slug || 'channel'}`}
+            {channel?.description || `Welcome to #${channel?.name || channel?.slug || 'channel'}`}
           </p>
         </div>
       </header>
@@ -64,7 +76,7 @@ const ChannelPage = () => {
               {messages?.map((message) => (
                 <Message key={message.id} message={message} />
               ))}
-              <div ref={messagesEndRef} /> {/* Scroll anchor */}
+              <div ref={messagesEndRef} />
             </>
           )}
         </div>

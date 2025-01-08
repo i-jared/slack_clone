@@ -2,7 +2,6 @@ import React, { useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import UserContext from '~/lib/UserContext'
 import { supabase } from '~/lib/Store'
-import { CHANNELS } from '~/lib/constants'
 import Link from 'next/link'
 
 const Layout = ({ children }) => {
@@ -11,16 +10,50 @@ const Layout = ({ children }) => {
   const [isNavigating, setIsNavigating] = useState(false)
   const [channels, setChannels] = useState([])
   const [users, setUsers] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [showProfilePopup, setShowProfilePopup] = useState(false)
   const [username, setUsername] = useState(user?.dbUser?.username || '')
   const [avatarUrl, setAvatarUrl] = useState(user?.dbUser?.avatar_url || '')
   const [uploading, setUploading] = useState(false)
 
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+
   useEffect(() => {
-    fetchChannels()
-    fetchUsers()
+    const initialize = async () => {
+      setIsLoading(true)
+      try {
+        await Promise.all([
+          fetchChannels(),
+          fetchUsers()
+        ])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    initialize()
   }, [])
+
+  // Add router change event handlers
+  useEffect(() => {
+    const handleStart = () => setIsNavigating(true)
+    const handleComplete = () => setIsNavigating(false)
+
+    router.events.on('routeChangeStart', handleStart)
+    router.events.on('routeChangeComplete', handleComplete)
+    router.events.on('routeChangeError', handleComplete)
+
+    return () => {
+      router.events.off('routeChangeStart', handleStart)
+      router.events.off('routeChangeComplete', handleComplete)
+      router.events.off('routeChangeError', handleComplete)
+    }
+  }, [router])
+
+  // Show loading screen during navigation
+  if (isNavigating) {
+    return <LoadingScreen message="Navigating through hyperspace..." />
+  }
 
   const fetchChannels = async () => {
     try {
@@ -31,8 +64,7 @@ const Layout = ({ children }) => {
 
       if (error) throw error
 
-      // Map channels to ensure we have all required fields
-      const mappedChannels = data.map(channel => ({
+      const mappedChannels = (data || []).map((channel) => ({
         ...channel,
         slug: channel.slug || `channel-${channel.id}`,
         name: channel.name || channel.slug || `Channel ${channel.id}`,
@@ -47,18 +79,76 @@ const Layout = ({ children }) => {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase.from('users').select('*')
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('username', { ascending: true })
+
       if (error) throw error
-      setUsers(data)
+      setUsers(data || [])
     } catch (error) {
       console.error('Error fetching users:', error)
     }
   }
 
+  const handleSearch = async (term) => {
+    if (!term.trim()) {
+      setSearchResults([])
+      return
+    }
+    try {
+      // Search channels
+      const { data: channelMatches } = await supabase
+        .from('channels')
+        .select('id, slug, name')
+        .ilike('name', `%${term}%`)
+
+      // Search users
+      const { data: userMatches } = await supabase
+        .from('users')
+        .select('id, username, avatar_url')
+        .ilike('username', `%${term}%`)
+
+      // Search messages
+      // We also fetch channel_id so we can jump to that message
+      const { data: messageMatches } = await supabase
+        .from('messages')
+        .select(`
+          id,
+          channel_id,
+          message
+        `)
+        .ilike('message', `%${term}%`)
+        .order('id', { ascending: false })  // most recent first
+
+      // Combine results
+      setSearchResults([
+        ...((channelMatches || []).map((c) => ({ type: 'channel', data: c }))),
+        ...((userMatches || []).map((u) => ({ type: 'user', data: u }))),
+        ...((messageMatches || []).map((m) => ({ type: 'message', data: m })))
+      ])
+    } catch (err) {
+      console.error('Error searching:', err)
+      setSearchResults([])
+    }
+  }
+
+  const goToResult = (item) => {
+    if (item.type === 'channel') {
+      router.push(`/channels/${item.data.id}`)
+    } else if (item.type === 'user') {
+      router.push(`/dms/${item.data.id}`)
+    } else if (item.type === 'message') {
+      // We navigate to that message's channel, then we can add a query param with the message ID
+      router.push(`/channels/${item.data.channel_id}?scrollToMessage=${item.data.id}`)
+    }
+    setSearchTerm('')
+    setSearchResults([])
+  }
+
   const uploadAvatar = async (event) => {
     try {
       setUploading(true)
-      
       if (!event.target.files || event.target.files.length === 0) {
         throw new Error('You must select an image to upload.')
       }
@@ -67,14 +157,12 @@ const Layout = ({ children }) => {
       const fileExt = file.name.split('.').pop()
       const filePath = `${user.id}-${Math.random()}.${fileExt}`
 
-      // Upload file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath)
@@ -129,7 +217,7 @@ const Layout = ({ children }) => {
                       : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`}
                 >
                   <span className="text-gray-500 mr-1.5">#</span>
-                  {channel.displayName || channel.name || channel.slug}
+                  {channel.name || channel.slug}
                 </Link>
               ))}
             </nav>
@@ -143,10 +231,13 @@ const Layout = ({ children }) => {
                 <div
                   key={otherUser.id}
                   className="flex items-center px-2 py-1.5 text-sm text-gray-400 rounded-md hover:bg-gray-800 hover:text-gray-200 cursor-pointer"
+                  onClick={() => router.push(`/dms/${otherUser.id}`)}
                 >
-                  <span className={`w-2 h-2 rounded-full mr-2 ${
-                    otherUser.status === 'ONLINE' ? 'bg-green-500' : 'bg-gray-500'
-                  }`} />
+                  <span
+                    className={`w-2 h-2 rounded-full mr-2 ${
+                      otherUser.status === 'ONLINE' ? 'bg-green-500' : 'bg-gray-500'
+                    }`}
+                  />
                   {otherUser.username}
                 </div>
               ))}
@@ -241,6 +332,47 @@ const Layout = ({ children }) => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col bg-gray-800">
+        {/* Search Bar */}
+        <div className="relative bg-gray-900/75 p-3 border-b border-gray-800">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              handleSearch(e.target.value)
+            }}
+            placeholder="Search messages, channels, or users..."
+            className="w-full px-4 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          />
+          {/* Search Results Dropdown */}
+          {searchResults.length > 0 && (
+            <div className="absolute mt-2 w-full bg-gray-800 border border-gray-700 rounded shadow-lg max-h-64 overflow-y-auto z-10">
+              {searchResults.map((item, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => goToResult(item)}
+                  className="px-4 py-2 hover:bg-gray-700 cursor-pointer"
+                >
+                  {item.type === 'channel' && (
+                    <div>
+                      <span className="text-yellow-400">#</span> {item.data.name || item.data.slug}
+                    </div>
+                  )}
+                  {item.type === 'user' && (
+                    <div>
+                      <span className="text-blue-400">@</span> {item.data.username}
+                    </div>
+                  )}
+                  {item.type === 'message' && (
+                    <div>
+                      <span className="text-green-400">Msg:</span> {item.data.message.slice(0, 40)}...
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         {children}
       </main>
     </div>
