@@ -1,7 +1,6 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useStore } from '~/lib/Store'
-import Layout from '~/components/Layout'
 import Message from '~/components/Message'
 import MessageInput from '~/components/MessageInput'
 import LoadingScreen from '~/components/LoadingScreen'
@@ -9,161 +8,53 @@ import { useContext } from 'react'
 import UserContext from '~/lib/UserContext'
 import { CHANNELS, LOADING_MESSAGES } from '~/lib/constants'
 
-const ChannelPageContent = () => {
-  const router = useRouter()
-  const { id } = router.query
-  const { user } = useContext(UserContext)
-  const [channel, setChannel] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const { channels, messages: storeMessages } = useStore({ channelId: id })
-  const [loadingMessage] = useState(() => 
-    LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]
-  )
-  const messagesEndRef = useRef(null)
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    scrollToBottom()
-  }, [storeMessages])
-
-  // Update selected channel when channels or id changes
-  useEffect(() => {
-    if (channels?.length > 0 && id && router.isReady) {
-      console.log('🔍 Finding channel:', id, 'from', channels?.length, 'channels')
-      const selectedChannel = channels.find((x) => x.id === Number(id))
-      console.log(selectedChannel ? '✅ Channel found:' : '❌ Channel not found:', selectedChannel?.slug)
-      setChannel(selectedChannel)
-      setIsLoading(false)
-    }
-  }, [channels, id, router.isReady])
-
-  // Render null if user is not authenticated
-  if (!user) {
-    console.log('⚠️ No user, rendering null')
-    return null
-  }
-
-  if (!router.isReady || isLoading) {
-    console.log('⏳ Showing loading screen:', { isReady: router.isReady, isLoading })
-    return <LoadingScreen message={loadingMessage} />
-  }
-
-  console.log('🎨 Rendering channel page:', {
-    channel: channel?.slug,
-    messagesCount: storeMessages?.length
-  })
-
-  const channelConfig = Object.values(CHANNELS).find(c => c.slug === channel?.slug) || {
-    displayName: channel?.slug || 'Loading...',
-    description: 'Channel description'
-  }
-
-  return (
-    <div className="relative h-screen flex flex-col">
-      <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
-        <h2 className="text-2xl font-orbitron text-yellow-400">
-          {channelConfig.displayName}
-        </h2>
-        <p className="text-sm text-gray-400 font-orbitron">{channelConfig.description}</p>
-      </div>
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-        <div className="py-4 space-y-2">
-          {storeMessages?.map((message) => (
-            <Message key={message.id} message={message} />
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-      <MessageInput channel_id={Number(id)} />
-    </div>
-  )
-}
-
 const ChannelPage = () => {
   const router = useRouter()
   const { id } = router.query
+  const { messages, channels } = useStore({ channelId: id ? parseInt(id) : null })
   const { user } = useContext(UserContext)
-  const [channel, setChannel] = useState(null)
-  const { channels, messages } = useStore({ channelId: id ? Number(id) : null })
-  const messagesEndRef = useRef(null)
 
-  // Find channel when channels are loaded
-  useEffect(() => {
-    if (channels?.length > 0 && id && router.isReady) {
-      console.log('🔍 Finding channel:', id, 'from', channels.length, 'channels')
-      const foundChannel = channels.find(c => c.id.toString() === id.toString())
-      if (foundChannel) {
-        console.log('✅ Channel found:', foundChannel.slug)
-        setChannel(foundChannel)
-      } else {
-        console.log('❌ Channel not found')
-        setChannel(null)
-      }
-    }
-  }, [channels, id, router.isReady])
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    if (messages?.length > 0) {
-      console.log('📜 Messages updated:', messages?.length)
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [messages])
-
-  // Render null if user is not authenticated
-  if (!user) {
-    console.log('⚠️ No user, rendering null')
-    return null
-  }
-
-  if (!router.isReady) {
-    return <LoadingScreen message="Loading..." />
-  }
-
-  if (!channel) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-screen">
-          <div className="text-red-400 bg-red-400/10 px-4 py-2 rounded-lg">
-            Channel not found
-          </div>
-        </div>
-      </Layout>
-    )
-  }
-
-  const channelConfig = Object.values(CHANNELS).find(c => c.slug === channel.slug) || {
-    displayName: channel.slug,
-    description: 'Channel description'
-  }
+  // Find the current channel
+  const channel = useMemo(() => {
+    console.log('🔍 Finding channel:', id, 'from', channels.length, 'channels')
+    const found = channels.find(x => x.id === parseInt(id))
+    if (found) console.log('✅ Channel found:', found.slug)
+    return found
+  }, [id, channels])
 
   return (
-    <Layout>
-      <div className="relative h-screen flex flex-col">
-        <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
-          <h2 className="text-2xl font-orbitron text-yellow-400">
-            {channelConfig.displayName}
-          </h2>
-          <p className="text-sm text-gray-400 font-orbitron">{channelConfig.description}</p>
+    <div className="relative flex flex-col flex-1 overflow-hidden bg-gray-800">
+      {/* Channel Header */}
+      <header className="flex items-center h-16 px-6 bg-gray-900 border-b border-gray-800">
+        <h2 className="text-lg font-semibold text-yellow-400">
+          # {channel?.slug}
+        </h2>
+        <div className="ml-4 text-sm text-gray-400">
+          {channel?.description}
         </div>
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-          <div className="py-4 space-y-2">
-            {messages?.map((message) => (
-              <Message 
-                key={`${message.id}-${message.inserted_at}`} 
-                message={message} 
-              />
-            ))}
-            <div ref={messagesEndRef} />
+      </header>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messages?.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-gray-400 text-center">
+              <p className="text-2xl mb-2">Welcome to #{channel?.slug}!</p>
+              <p>This is the start of the channel.</p>
+            </div>
           </div>
-        </div>
-        <MessageInput channel_id={Number(id)} />
+        ) : (
+          messages?.map((message) => (
+            <Message key={message.id} message={message} />
+          ))
+        )}
       </div>
-    </Layout>
+
+      {/* Message Input */}
+      <div className="p-4 border-t border-gray-800">
+        <MessageInput channel_id={parseInt(id)} />
+      </div>
+    </div>
   )
 }
 

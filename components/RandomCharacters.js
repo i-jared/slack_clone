@@ -10,7 +10,7 @@ const characters = [
   },
   {
     name: 'Luke Skywalker',
-    image: '/images/lukeSkywalker.jpg',
+    image: '/images/lukeSkywalker.png',
     position: 'bottom-0 right-0',
     size: { width: 96, height: 128 }
   }
@@ -18,6 +18,7 @@ const characters = [
 
 const RandomCharacters = () => {
   const [visibleCharacter, setVisibleCharacter] = useState(null)
+  const [imageError, setImageError] = useState(false)
 
   useEffect(() => {
     let timeoutId = null
@@ -27,6 +28,7 @@ const RandomCharacters = () => {
         if (Math.random() < 0.2) {
           const randomCharacter = characters[Math.floor(Math.random() * characters.length)]
           setVisibleCharacter(randomCharacter)
+          setImageError(false)
           
           // Clear previous timeout if exists
           if (timeoutId) {
@@ -57,7 +59,7 @@ const RandomCharacters = () => {
     }
   }, [])
 
-  if (!visibleCharacter) return null
+  if (!visibleCharacter || imageError) return null
 
   return (
     <div 
@@ -74,6 +76,10 @@ const RandomCharacters = () => {
           sizes="96px"
           className="object-contain filter brightness-75"
           priority={false}
+          onError={() => {
+            console.error('Failed to load character image:', visibleCharacter.image)
+            setImageError(true)
+          }}
         />
       </div>
     </div>

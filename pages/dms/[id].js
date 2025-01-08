@@ -13,6 +13,7 @@ const DirectMessageContent = () => {
   const { id } = router.query
   const { user } = useContext(UserContext)
   const [recipient, setRecipient] = useState(null)
+  const [isLoadingRecipient, setIsLoadingRecipient] = useState(true)
   const { messages: directMessages, isLoading: isLoadingMessages } = useDirectMessages({ recipientId: id })
   const messagesEndRef = useRef(null)
 
@@ -22,7 +23,7 @@ const DirectMessageContent = () => {
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    if (!isLoadingMessages) {
+    if (!isLoadingMessages && directMessages?.length > 0) {
       scrollToBottom()
     }
   }, [directMessages, isLoadingMessages])
@@ -32,17 +33,26 @@ const DirectMessageContent = () => {
     const fetchRecipient = async () => {
       if (id && router.isReady) {
         try {
+          setIsLoadingRecipient(true)
+          console.log('🔍 Fetching recipient data:', id)
+          
           const { data: userData, error } = await supabase
             .from('users')
             .select('*')
             .eq('id', id)
             .single()
 
-          if (error) throw error
+          if (error) {
+            console.error('❌ Error fetching recipient:', error)
+            throw error
+          }
 
+          console.log('✅ Recipient data:', userData)
           setRecipient(userData)
         } catch (error) {
           console.error('Error fetching recipient:', error)
+        } finally {
+          setIsLoadingRecipient(false)
         }
       }
     }
@@ -56,6 +66,10 @@ const DirectMessageContent = () => {
     return null
   }
 
+  if (isLoadingRecipient) {
+    return <LoadingScreen message="Loading user data..." />
+  }
+
   if (!recipient) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -66,25 +80,42 @@ const DirectMessageContent = () => {
     )
   }
 
+  console.log('📊 Rendering DM page:', {
+    recipientId: id,
+    messagesCount: directMessages?.length,
+    isLoading: isLoadingMessages
+  })
+
   return (
     <div className="relative h-screen flex flex-col">
       <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
         <h2 className="text-2xl font-orbitron text-yellow-400">
-          {recipient.username || 'Unknown User'}
+          {recipient.username || recipient.email?.split('@')[0] || 'Unknown User'}
         </h2>
         <p className="text-sm text-gray-400 font-orbitron">
           Private conversation
         </p>
       </div>
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-        {directMessages?.length === 0 ? (
+        {isLoadingMessages ? (
+          <div className="flex items-center justify-center h-full">
+            <LoadingScreen message="Loading messages..." />
+          </div>
+        ) : directMessages?.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-400">
             No messages yet. Start the conversation!
           </div>
         ) : (
           <div className="py-4 space-y-2">
             {directMessages?.map((message) => (
-              <Message key={message.id} message={message} />
+              <Message 
+                key={`${message.id}-${message.inserted_at}`} 
+                message={{
+                  ...message,
+                  user: message.sender,
+                  isDirect: true
+                }} 
+              />
             ))}
             <div ref={messagesEndRef} />
           </div>

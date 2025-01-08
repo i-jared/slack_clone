@@ -1,62 +1,120 @@
 import { useState, useContext } from 'react'
-import { supabase, sendMessage } from '~/lib/Store'
+import { supabase, sendMessage, sendDirectMessage, uploadFile } from '~/lib/Store'
 import UserContext from '~/lib/UserContext'
 
 export default function MessageInput({ channel_id, recipient_id, isDirect = false }) {
   const [content, setContent] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState(null)
   const { user } = useContext(UserContext)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!content.trim()) return
+    if (!content.trim() || isSending) return
 
     try {
       setIsSending(true)
+      setError(null)
       
-      if (isDirect) {
-        // Handle direct message
-        const { error } = await supabase.from('direct_messages').insert([{
-          message: content.trim(),
-          sender_id: user.id,
-          recipient_id: recipient_id
-        }])
-        if (error) throw error
-      } else {
-        // Handle channel message using the sendMessage function
+      console.log('Sending message:', { isDirect, content, channel_id, recipient_id })
+      
+      if (isDirect && recipient_id) {
+        await sendDirectMessage(content.trim(), recipient_id)
+      } else if (!isDirect && channel_id) {
         await sendMessage(content.trim(), channel_id)
+      } else {
+        throw new Error(isDirect ? 'Recipient not specified' : 'Channel not specified')
       }
 
       setContent('')
     } catch (error) {
       console.error('Error sending message:', error)
-      alert('Failed to send message. Please try again.')
+      setError(error.message || 'Failed to send message')
     } finally {
       setIsSending(false)
     }
   }
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Reset error state
+    setError(null)
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024 // 5MB in bytes
+    if (file.size > maxSize) {
+      setError('File size must be less than 5MB')
+      return
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']
+    if (!allowedTypes.includes(file.type)) {
+      setError('Only images (JPEG, PNG, GIF) and PDF files are allowed')
+      return
+    }
+
+    try {
+      setIsUploading(true)
+      setError(null)
+
+      const fileUrl = await uploadFile(file, 'message-attachments')
+      const fileMessage = `[File: ${file.name}](${fileUrl})`
+      
+      if (isDirect && recipient_id) {
+        await sendDirectMessage(fileMessage, recipient_id)
+      } else if (!isDirect && channel_id) {
+        await sendMessage(fileMessage, channel_id)
+      } else {
+        throw new Error(isDirect ? 'Recipient not specified' : 'Channel not specified')
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      setError(error.message || 'Failed to upload file')
+      // Reset file input
+      e.target.value = ''
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   return (
     <form onSubmit={handleSubmit} className="p-4 bg-gray-800/90">
+      {error && (
+        <div className="mb-2 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
       <div className="flex space-x-2">
         <input
           type="text"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Type your message..."
-          className="flex-1 bg-gray-700 text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          disabled={isSending}
+          placeholder={isDirect ? "Send a direct message..." : "Type your message..."}
+          className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          disabled={isSending || isUploading}
         />
+        <label className={`px-4 py-2 bg-gray-700 text-white rounded-lg cursor-pointer hover:bg-gray-600 
+          ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <input
+            type="file"
+            onChange={handleFileUpload}
+            className="hidden"
+            accept="image/jpeg,image/png,image/gif,application/pdf"
+            disabled={isSending || isUploading}
+          />
+          {isUploading ? '📤 Uploading...' : '📎'}
+        </label>
         <button
           type="submit"
-          disabled={!content.trim() || isSending}
-          className={`px-4 py-2 rounded font-orbitron ${
-            !content.trim() || isSending
-              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              : 'bg-yellow-500 hover:bg-yellow-600 text-black'
-          }`}
+          disabled={isSending || isUploading || !content.trim()}
+          className={`px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg font-medium
+            ${(isSending || isUploading || !content.trim()) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-yellow-400'}`}
         >
-          Send
+          {isSending ? 'Sending...' : 'Send'}
         </button>
       </div>
     </form>

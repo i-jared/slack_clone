@@ -1,222 +1,218 @@
-import React, { Component, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import { useStore } from '~/lib/Store'
-import { useContext } from 'react'
 import UserContext from '~/lib/UserContext'
-import Starfield from './Starfield'
-import FlyingShips from './FlyingShips'
-import BackgroundMusic from './BackgroundMusic'
-import RandomCharacters from './RandomCharacters'
-import UserProfile from './UserProfile'
+import { supabase } from '~/lib/Store'
 import { CHANNELS } from '~/lib/constants'
-import Link from 'next/link'
-import LoadingScreen from './LoadingScreen'
-
-// Error Boundary Component
-class ErrorBoundary extends Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false }
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="text-red-500 p-4">
-          Something went wrong. Please try refreshing the page.
-        </div>
-      )
-    }
-
-    return this.props.children
-  }
-}
 
 const Layout = ({ children }) => {
-  const router = useRouter()
-  const { user } = useContext(UserContext)
-  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const { user, signOut } = useContext(UserContext)
   const [isNavigating, setIsNavigating] = useState(false)
-  const { channels, users } = useStore()
+  const [channels, setChannels] = useState([])
+  const [users, setUsers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [showProfilePopup, setShowProfilePopup] = useState(false)
+  const [username, setUsername] = useState(user?.dbUser?.username || '')
+  const [avatarUrl, setAvatarUrl] = useState(user?.dbUser?.avatar_url || '')
+  const [uploading, setUploading] = useState(false)
 
-  // Global loading timeout
   useEffect(() => {
-    const loadingTimeout = setTimeout(() => {
-      setIsLoading(false)
-    }, 2000) // Reduced to 2 seconds maximum loading time
+    fetchChannels()
+    fetchUsers()
+  }, [])
 
-    return () => clearTimeout(loadingTimeout)
-  }, [router.asPath]) // Reset timer on route change
-
-  // Debug logs with more detail
-  useEffect(() => {
-    console.log('📊 Layout state:', {
-      currentPath: router.asPath,
-      query: router.query,
-      isReady: router.isReady,
-      user: user?.email,
-      channelsCount: channels?.length,
-      isNavigating,
-      isLoading
-    })
-  }, [router.asPath, router.query, router.isReady, user, channels, isNavigating, isLoading])
-
-  // Handle channel switching
-  const handleChannelSwitch = async (channelId) => {
+  const fetchChannels = async () => {
     try {
-      setIsNavigating(true)
-      setIsLoading(true) // Reset loading state on navigation
-      await router.push(`/channels/${channelId}`)
+      const { data, error } = await supabase.from('channels').select('*')
+      if (error) throw error
+      setChannels(data)
     } catch (error) {
-      console.error('Error switching channels:', error)
-    } finally {
-      setIsNavigating(false)
+      console.error('Error fetching channels:', error)
     }
   }
 
-  // Show loading screen if necessary
-  if (!router.isReady || !user || isLoading) {
-    return <LoadingScreen message="Establishing connection to the Galactic Network..." />
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase.from('users').select('*')
+      if (error) throw error
+      setUsers(data)
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    }
   }
 
-  // Ensure we're in the browser
-  if (typeof window === 'undefined') return null
+  const uploadAvatar = async (event) => {
+    try {
+      setUploading(true)
+      
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error('You must select an image to upload.')
+      }
+
+      const file = event.target.files[0]
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${user.id}-${Math.random()}.${fileExt}`
+
+      // Upload file to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      setAvatarUrl(publicUrl)
+    } catch (error) {
+      console.error('Error uploading avatar:', error)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const updateProfile = async () => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          username: username,
+          avatar_url: avatarUrl,
+        })
+        .eq('id', user.id)
+
+      if (error) throw error
+      setShowProfilePopup(false)
+    } catch (error) {
+      console.error('Error updating profile:', error)
+    }
+  }
 
   return (
-    <ErrorBoundary>
-      <main className="flex h-screen text-gray-100">
-        {/* Background Effects */}
-        <div className="fixed inset-0 pointer-events-none">
-          <Starfield />
-          <FlyingShips />
-          <BackgroundMusic />
-          <RandomCharacters />
+    <div className="flex h-screen">
+      <div className="bg-gray-900 text-gray-100 w-64 flex flex-col">
+        <div className="p-4 border-b border-gray-800">
+          <h1 className="text-2xl font-bold text-yellow-400">Star Wars Chat</h1>
         </div>
-
-        {/* Sidebar Navigation */}
-        <nav className="w-64 bg-gray-900/90 border-r border-gray-700 flex-shrink-0 relative z-10 flex flex-col">
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <div className="p-4">
-              <h1 className="text-2xl font-orbitron text-yellow-400 mb-4">
-                Star Wars Chat
-              </h1>
-
-              {/* Channels Section */}
-              <div className="mb-6">
-                <h3 className="px-2 mb-2 text-yellow-400 font-orbitron text-sm">CHANNELS</h3>
-                <ul className="space-y-1">
-                  {channels?.map((channel) => {
-                    const channelConfig = Object.values(CHANNELS).find(c => c.slug === channel.slug) || {
-                      displayName: channel.slug,
-                      description: 'Channel description'
-                    }
-                    return (
-                      <li key={channel.id}>
-                        <button
-                          onClick={() => handleChannelSwitch(channel.id)}
-                          disabled={isNavigating}
-                          className={`
-                            sw-channel w-full px-2 py-1 rounded text-left transition-colors group
-                            ${router.query.id === channel.id.toString() 
-                              ? 'bg-yellow-500/20 text-yellow-400' 
-                              : 'text-gray-400 hover:bg-gray-700 hover:text-yellow-400'
-                            }
-                            ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}
-                          `}
-                          title={channelConfig.description}
-                        >
-                          <span className="inline-block w-4 opacity-50 group-hover:opacity-100">#</span>
-                          <span>{channelConfig.displayName}</span>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-
-              {/* Direct Messages Section */}
-              <div>
-                <h3 className="px-2 mb-2 text-yellow-400 font-orbitron text-sm">DIRECT MESSAGES</h3>
-                <div className="overflow-y-auto max-h-[calc(100vh-300px)] scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent pr-2">
-                  {users?.length === 0 ? (
-                    <div className="px-4 py-2 text-gray-400 text-sm">
-                      No users available
-                    </div>
-                  ) : (
-                    users?.map((otherUser) => {
-                      // Don't show current user in DM list
-                      if (otherUser.id === user?.id) return null
-
-                      const isActive = router.pathname === '/dms/[id]' && 
-                                    router.query.id === otherUser.id
-
-                      return (
-                        <Link
-                          key={otherUser.id}
-                          href={`/dms/${otherUser.id}`}
-                          className={`block px-4 py-1.5 ${
-                            isActive
-                              ? 'bg-yellow-500/10 text-yellow-400'
-                              : 'text-gray-300 hover:bg-gray-700'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 rounded-full bg-green-400" />
-                            <span className="font-orbitron">
-                              {otherUser.username || 'Unknown User'}
-                            </span>
-                          </div>
-                        </Link>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4">
+            <h2 className="text-lg font-semibold mb-2 text-yellow-400">CHANNELS</h2>
+            <ul>
+              {channels.map((channel) => {
+                const channelConfig = Object.values(CHANNELS).find(c => c.id === channel.id) || {
+                  displayName: channel.slug || `Channel ${channel.id}`,
+                  description: 'Channel description'
+                }
+                return (
+                  <li key={channel.id} className="mb-1">
+                    <a href={`/channels/${channel.id}`} className="text-gray-300 hover:text-white">
+                      # {channelConfig.displayName}
+                    </a>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+          <div className="p-4">
+            <h2 className="text-lg font-semibold mb-2 text-yellow-400">DIRECT MESSAGES</h2>
+            <ul>
+              {users.map((otherUser) => (
+                <li key={otherUser.id} className="mb-1">
+                  <span className="flex items-center">
+                    <span className={`w-2 h-2 rounded-full mr-2 ${otherUser.status === 'ONLINE' ? 'bg-green-500' : 'bg-gray-500'}`}></span>
+                    <span className="text-gray-300">{otherUser.username}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div className="p-4 border-t border-gray-800 relative">
+          <div 
+            className="flex items-center cursor-pointer" 
+            onClick={() => setShowProfilePopup(!showProfilePopup)}
+          >
+            <div className="w-8 h-8 bg-gray-700 rounded-full mr-2">
+              {avatarUrl && (
+                <img 
+                  src={avatarUrl} 
+                  alt="Profile" 
+                  className="w-full h-full rounded-full object-cover"
+                />
+              )}
+            </div>
+            <div className="text-sm">
+              <div className="font-medium">{username || user?.email}</div>
+              <div className="text-gray-400">Click to edit profile</div>
             </div>
           </div>
 
-          {/* User Profile Section */}
-          {user && (
-            <div className="p-4 border-t border-gray-700 bg-gray-900/90">
-              <button
-                onClick={() => setIsProfileOpen(true)}
-                className="flex items-center space-x-2 text-gray-300 hover:text-yellow-400 transition-colors w-full"
-              >
-                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                  {user.user_metadata?.avatar_url ? (
-                    <img
-                      src={user.user_metadata.avatar_url}
-                      alt={user.email}
-                      className="w-8 h-8 rounded-full"
-                    />
-                  ) : (
-                    <span className="text-sm font-medium">
-                      {user.email?.[0]?.toUpperCase() || '?'}
-                    </span>
-                  )}
+          {/* Profile Popup */}
+          {showProfilePopup && (
+            <div className="absolute bottom-full left-0 mb-2 w-64 bg-gray-800 rounded-lg shadow-lg p-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 text-white"
+                  />
                 </div>
-                <span className="flex-1 truncate text-left font-orbitron">
-                  {user.email}
-                </span>
-              </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Avatar
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gray-700 rounded-full">
+                      {avatarUrl && (
+                        <img 
+                          src={avatarUrl} 
+                          alt="Avatar Preview" 
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <label className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={uploadAvatar}
+                        className="hidden"
+                      />
+                      <div className={`px-3 py-2 bg-gray-700 rounded border border-gray-600 text-white text-center cursor-pointer hover:bg-gray-600 ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        {uploading ? 'Uploading...' : 'Upload Image'}
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <button
+                    onClick={updateProfile}
+                    className="px-4 py-2 bg-yellow-500 text-gray-900 rounded hover:bg-yellow-400"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={signOut}
+                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-400"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
             </div>
           )}
-        </nav>
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden relative z-10 bg-gray-900/90">
-          {children}
         </div>
-
-        {/* User Profile Sidebar */}
-        <UserProfile isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      </div>
+      <main className="flex-1 bg-gray-800 flex flex-col">
+        {children}
       </main>
-    </ErrorBoundary>
+    </div>
   )
 }
 

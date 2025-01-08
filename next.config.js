@@ -7,21 +7,18 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     formats: ['image/webp'],
   },
-  webpack: (config) => {
-    config.module.rules.push({
-      test: /\.(mp3)$/,
-      use: {
-        loader: 'file-loader',
-        options: {
-          publicPath: '/_next/static/audio/',
-          outputPath: 'static/audio/',
-          name: '[name].[hash].[ext]',
-          esModule: false,
-        },
-      },
-    })
+  webpackDevMiddleware: config => {
+    config.watchOptions = {
+      poll: 1000,
+      aggregateTimeout: 300,
+    }
     return config
   },
+  webpack: (config, { isServer }) => {
+    // Add WebSocket handling
+    config.externals = [...(config.externals || []), { 'utf-8-validate': 'commonjs utf-8-validate', 'bufferutil': 'commonjs bufferutil' }]
+    return config
+  }
 }
 
 module.exports = nextConfig
