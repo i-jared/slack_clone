@@ -1,0 +1,925 @@
+
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+
+CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "pgsodium" WITH SCHEMA "pgsodium";
+
+
+
+
+
+
+COMMENT ON SCHEMA "public" IS 'standard public schema';
+
+
+
+CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "pgjwt" WITH SCHEMA "extensions";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+
+
+
+
+
+
+CREATE TYPE "public"."app_permission" AS ENUM (
+    'channels.delete',
+    'messages.delete'
+);
+
+
+ALTER TYPE "public"."app_permission" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."app_role" AS ENUM (
+    'admin',
+    'moderator'
+);
+
+
+ALTER TYPE "public"."app_role" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."user_status" AS ENUM (
+    'ONLINE',
+    'OFFLINE'
+);
+
+
+ALTER TYPE "public"."user_status" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."authorize"("requested_permission" "public"."app_permission") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  bind_permissions int;
+begin
+  select count(*)
+  from public.role_permissions
+  where role_permissions.permission = authorize.requested_permission
+    and role_permissions.role = (auth.jwt() ->> 'user_role')::public.app_role
+  into bind_permissions;
+  
+  return bind_permissions > 0;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."authorize"("requested_permission" "public"."app_permission") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_user"("email" "text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'auth'
+    AS $$
+  declare
+  user_id uuid;
+begin
+  user_id := extensions.uuid_generate_v4();
+  
+  insert into auth.users (id, email)
+    values (user_id, email)
+    returning id into user_id;
+
+    return user_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."create_user"("email" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."custom_access_token_hook"("event" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE
+    AS $$
+  declare
+    claims jsonb;
+    user_role public.app_role;
+  begin
+    -- Check if the user is marked as admin in the profiles table
+    select role into user_role from public.user_roles where user_id = (event->>'user_id')::uuid;
+
+    claims := event->'claims';
+
+    if user_role is not null then
+      -- Set the claim
+      claims := jsonb_set(claims, '{user_role}', to_jsonb(user_role));
+    else 
+      claims := jsonb_set(claims, '{user_role}', 'null');
+    end if;
+
+    -- Update the 'claims' object in the original event
+    event := jsonb_set(event, '{claims}', claims);
+
+    -- Return the modified or original event
+    return event;
+  end;
+$$;
+
+
+ALTER FUNCTION "public"."custom_access_token_hook"("event" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'auth', 'public'
+    AS $$
+declare is_admin boolean;
+begin
+  insert into public.users (id, username)
+  values (new.id, new.email);
+  
+  select count(*) = 1 from auth.users into is_admin;
+  
+  if position('+supaadmin@' in new.email) > 0 then
+    insert into public.user_roles (user_id, role) values (new.id, 'admin');
+  elsif position('+supamod@' in new.email) > 0 then
+    insert into public.user_roles (user_id, role) values (new.id, 'moderator');
+  end if;
+  
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."handle_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."handle_updated_at"() OWNER TO "postgres";
+
+SET default_tablespace = '';
+
+SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."channels" (
+    "id" bigint NOT NULL,
+    "inserted_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "slug" "text" NOT NULL,
+    "created_by" "uuid" NOT NULL
+);
+
+ALTER TABLE ONLY "public"."channels" REPLICA IDENTITY FULL;
+
+
+ALTER TABLE "public"."channels" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."channels" IS 'Topics and groups.';
+
+
+
+ALTER TABLE "public"."channels" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."channels_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."direct_messages" (
+    "id" bigint NOT NULL,
+    "sender_id" "uuid",
+    "recipient_id" "uuid",
+    "content" "text" NOT NULL,
+    "attachments" "jsonb",
+    "inserted_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL
+);
+
+
+ALTER TABLE "public"."direct_messages" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."direct_messages" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."direct_messages_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."messages" (
+    "id" bigint NOT NULL,
+    "inserted_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "message" "text",
+    "user_id" "uuid" NOT NULL,
+    "channel_id" bigint NOT NULL
+);
+
+ALTER TABLE ONLY "public"."messages" REPLICA IDENTITY FULL;
+
+
+ALTER TABLE "public"."messages" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."messages" IS 'Individual messages sent by each user.';
+
+
+
+ALTER TABLE "public"."messages" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."messages_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."role_permissions" (
+    "id" bigint NOT NULL,
+    "role" "public"."app_role" NOT NULL,
+    "permission" "public"."app_permission" NOT NULL
+);
+
+
+ALTER TABLE "public"."role_permissions" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."role_permissions" IS 'Application permissions for each role.';
+
+
+
+ALTER TABLE "public"."role_permissions" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."role_permissions_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."user_roles" (
+    "id" bigint NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "role" "public"."app_role" NOT NULL
+);
+
+
+ALTER TABLE "public"."user_roles" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."user_roles" IS 'Application roles for each user.';
+
+
+
+ALTER TABLE "public"."user_roles" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."user_roles_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."users" (
+    "id" "uuid" NOT NULL,
+    "username" "text",
+    "status" "public"."user_status" DEFAULT 'OFFLINE'::"public"."user_status"
+);
+
+ALTER TABLE ONLY "public"."users" REPLICA IDENTITY FULL;
+
+
+ALTER TABLE "public"."users" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."users" IS 'Profile data for each user.';
+
+
+
+COMMENT ON COLUMN "public"."users"."id" IS 'References the internal Supabase Auth user.';
+
+
+
+ALTER TABLE ONLY "public"."channels"
+    ADD CONSTRAINT "channels_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."channels"
+    ADD CONSTRAINT "channels_slug_key" UNIQUE ("slug");
+
+
+
+ALTER TABLE ONLY "public"."direct_messages"
+    ADD CONSTRAINT "direct_messages_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."messages"
+    ADD CONSTRAINT "messages_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."role_permissions"
+    ADD CONSTRAINT "role_permissions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."role_permissions"
+    ADD CONSTRAINT "role_permissions_role_permission_key" UNIQUE ("role", "permission");
+
+
+
+ALTER TABLE ONLY "public"."user_roles"
+    ADD CONSTRAINT "user_roles_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_roles"
+    ADD CONSTRAINT "user_roles_user_id_role_key" UNIQUE ("user_id", "role");
+
+
+
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id");
+
+
+
+CREATE INDEX "direct_messages_inserted_at_idx" ON "public"."direct_messages" USING "btree" ("inserted_at");
+
+
+
+CREATE INDEX "direct_messages_recipient_id_idx" ON "public"."direct_messages" USING "btree" ("recipient_id");
+
+
+
+CREATE INDEX "direct_messages_sender_id_idx" ON "public"."direct_messages" USING "btree" ("sender_id");
+
+
+
+CREATE OR REPLACE TRIGGER "handle_direct_messages_updated_at" BEFORE UPDATE ON "public"."direct_messages" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
+
+
+
+ALTER TABLE ONLY "public"."channels"
+    ADD CONSTRAINT "channels_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."direct_messages"
+    ADD CONSTRAINT "direct_messages_recipient_id_fkey" FOREIGN KEY ("recipient_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."direct_messages"
+    ADD CONSTRAINT "direct_messages_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."messages"
+    ADD CONSTRAINT "messages_channel_id_fkey" FOREIGN KEY ("channel_id") REFERENCES "public"."channels"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."messages"
+    ADD CONSTRAINT "messages_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."user_roles"
+    ADD CONSTRAINT "user_roles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id");
+
+
+
+CREATE POLICY "Allow auth admin to read user roles" ON "public"."user_roles" FOR SELECT TO "supabase_auth_admin" USING (true);
+
+
+
+CREATE POLICY "Allow authorized delete access" ON "public"."channels" FOR DELETE USING ("public"."authorize"('channels.delete'::"public"."app_permission"));
+
+
+
+CREATE POLICY "Allow authorized delete access" ON "public"."messages" FOR DELETE USING ("public"."authorize"('messages.delete'::"public"."app_permission"));
+
+
+
+CREATE POLICY "Allow individual delete access" ON "public"."channels" FOR DELETE USING (("auth"."uid"() = "created_by"));
+
+
+
+CREATE POLICY "Allow individual delete access" ON "public"."messages" FOR DELETE USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Allow individual insert access" ON "public"."channels" FOR INSERT WITH CHECK (("auth"."uid"() = "created_by"));
+
+
+
+CREATE POLICY "Allow individual insert access" ON "public"."messages" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Allow individual insert access" ON "public"."users" FOR INSERT WITH CHECK (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "Allow individual read access" ON "public"."user_roles" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Allow individual update access" ON "public"."messages" FOR UPDATE USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Allow individual update access" ON "public"."users" FOR UPDATE USING (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "Allow logged-in read access" ON "public"."channels" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
+
+
+
+CREATE POLICY "Allow logged-in read access" ON "public"."messages" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
+
+
+
+CREATE POLICY "Allow logged-in read access" ON "public"."users" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
+
+
+
+CREATE POLICY "Users can delete their own sent messages" ON "public"."direct_messages" FOR DELETE USING (("auth"."uid"() = "sender_id"));
+
+
+
+CREATE POLICY "Users can insert messages they send" ON "public"."direct_messages" FOR INSERT WITH CHECK (("auth"."uid"() = "sender_id"));
+
+
+
+CREATE POLICY "Users can read their own direct messages" ON "public"."direct_messages" FOR SELECT USING ((("auth"."uid"() = "sender_id") OR ("auth"."uid"() = "recipient_id")));
+
+
+
+ALTER TABLE "public"."channels" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."direct_messages" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."messages" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."role_permissions" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."user_roles" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
+
+
+
+
+ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
+
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."channels";
+
+
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."messages";
+
+
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."users";
+
+
+
+
+
+
+GRANT USAGE ON SCHEMA "public" TO "postgres";
+GRANT USAGE ON SCHEMA "public" TO "anon";
+GRANT USAGE ON SCHEMA "public" TO "authenticated";
+GRANT USAGE ON SCHEMA "public" TO "service_role";
+GRANT USAGE ON SCHEMA "public" TO "supabase_auth_admin";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+GRANT ALL ON FUNCTION "public"."authorize"("requested_permission" "public"."app_permission") TO "anon";
+GRANT ALL ON FUNCTION "public"."authorize"("requested_permission" "public"."app_permission") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."authorize"("requested_permission" "public"."app_permission") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."create_user"("email" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."create_user"("email" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_user"("email" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."custom_access_token_hook"("event" "jsonb") TO "service_role";
+GRANT ALL ON FUNCTION "public"."custom_access_token_hook"("event" "jsonb") TO "supabase_auth_admin";
+
+
+
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."handle_updated_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_updated_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_updated_at"() TO "service_role";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+GRANT ALL ON TABLE "public"."channels" TO "anon";
+GRANT ALL ON TABLE "public"."channels" TO "authenticated";
+GRANT ALL ON TABLE "public"."channels" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."channels_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."channels_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."channels_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."direct_messages" TO "anon";
+GRANT ALL ON TABLE "public"."direct_messages" TO "authenticated";
+GRANT ALL ON TABLE "public"."direct_messages" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."direct_messages_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."direct_messages_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."direct_messages_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."messages" TO "anon";
+GRANT ALL ON TABLE "public"."messages" TO "authenticated";
+GRANT ALL ON TABLE "public"."messages" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."messages_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."messages_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."messages_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."role_permissions" TO "anon";
+GRANT ALL ON TABLE "public"."role_permissions" TO "authenticated";
+GRANT ALL ON TABLE "public"."role_permissions" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."role_permissions_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."role_permissions_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."role_permissions_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."user_roles" TO "service_role";
+GRANT ALL ON TABLE "public"."user_roles" TO "supabase_auth_admin";
+
+
+
+GRANT ALL ON SEQUENCE "public"."user_roles_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."user_roles_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."user_roles_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."users" TO "anon";
+GRANT ALL ON TABLE "public"."users" TO "authenticated";
+GRANT ALL ON TABLE "public"."users" TO "service_role";
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "service_role";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+RESET ALL;

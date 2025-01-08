@@ -1,11 +1,11 @@
 -- Create buckets if they don't exist
 insert into storage.buckets (id, name, public)
 values 
-    ('message_attachments', 'message_attachments', true),
+    ('message-attachments', 'message-attachments', true),
     ('avatars', 'avatars', true)
 on conflict (id) do update 
 set public = true,
-    file_size_limit = 10485760; -- 10MB in bytes
+    file_size_limit = 5242880; -- 5MB in bytes
 
 -- Create policies for message_attachments with unique names
 create policy "msg_attach_read_20240107_1701"

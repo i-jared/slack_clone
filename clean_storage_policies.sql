@@ -32,7 +32,7 @@ BEGIN
         USING (bucket_id = 'message-attachments');
     END IF;
 
-    -- Authenticated upload
+    -- Authenticated upload with file type validation
     IF NOT EXISTS (
         SELECT 1 FROM pg_policies 
         WHERE schemaname = 'storage' 
@@ -45,6 +45,10 @@ BEGIN
         WITH CHECK (
             bucket_id = 'message-attachments'
             AND (storage.foldername(name))[1] = auth.uid()::text
+            AND (
+                lower(right(name, 4)) IN ('.jpg', 'jpeg', '.png', '.gif', '.pdf')
+                OR lower(right(name, 5)) = '.jpeg'
+            )
         );
     END IF;
 
