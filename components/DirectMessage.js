@@ -65,13 +65,14 @@ export default function DirectMessage({ recipientId, recipient }) {
                 messageId: message.id,
                 senderId: message.sender?.id,
                 recipientId: message.recipient?.id,
-                content: message.message
+                content: message.content
               })
               return (
                 <Message 
                   key={`${message.id}-${message.inserted_at}`}
                   message={{
                     ...message,
+                    message: message.content,
                     user: message.sender,
                     isDirect: true
                   }}

@@ -11,20 +11,20 @@ const ChannelPage = () => {
   const { id } = router.query
   const { user } = useContext(UserContext)
   const scrollToMessageId = router.query.scrollToMessage
-  const { messages, channels } = useStore({ channelId: id ? parseInt(id) : null })
 
+  // This custom store hook loads channels and messages
+  const { messages, channels } = useStore({ channelId: id ? parseInt(id) : null })
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
     if (!user) {
       router.push('/')
-      return
     }
   }, [user, router])
 
+  // If scrollToMessageId is set, scroll to that message
   useEffect(() => {
-    if (scrollToMessageId) {
-      // Delay to ensure messages are loaded
+    if (scrollToMessageId && messages?.length) {
       const timer = setTimeout(() => {
         const elem = document.getElementById(`message-${scrollToMessageId}`)
         if (elem) {
@@ -35,14 +35,15 @@ const ChannelPage = () => {
     }
   }, [scrollToMessageId, messages])
 
-  const channel = channels.find((c) => c.id === parseInt(id))
-
+  // auto-scroll to bottom if no specific message
   useEffect(() => {
-    // Auto-scroll to bottom if there's no specific message to scroll to
     if (!scrollToMessageId && messages?.length) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages, scrollToMessageId])
+
+  // get the channel from the store
+  const channel = channels.find((c) => c.id === parseInt(id))
 
   if (!user) {
     return <Layout />
@@ -56,10 +57,10 @@ const ChannelPage = () => {
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-yellow-400 flex items-center">
               <span className="text-gray-500 mr-2">#</span>
-              {channel?.name || channel?.slug || 'Loading...'}
+              {channel?.slug || 'Loading...'}
             </h2>
             <p className="text-sm text-gray-400">
-              {channel?.description || `Welcome to #${channel?.name || channel?.slug || 'channel'}`}
+              {channel ? `Welcome to #${channel.slug}` : 'Channel not found'}
             </p>
           </div>
         </header>
@@ -71,7 +72,7 @@ const ChannelPage = () => {
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
                 <div className="text-yellow-400 text-4xl mb-4">👋</div>
                 <h3 className="text-2xl font-semibold text-yellow-400 mb-2">
-                  Welcome to #{channel?.name || channel?.slug}!
+                  {channel ? `Welcome to #${channel.slug}!` : 'No channel loaded'}
                 </h3>
                 <p className="text-gray-400">
                   This is the start of the channel. Send a message to get the conversation going!
@@ -79,7 +80,7 @@ const ChannelPage = () => {
               </div>
             ) : (
               <>
-                {messages?.map((message) => (
+                {messages.map((message) => (
                   <Message key={message.id} message={message} />
                 ))}
                 <div ref={messagesEndRef} />
