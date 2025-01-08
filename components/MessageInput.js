@@ -59,7 +59,7 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
       setIsUploading(true)
       setError(null)
 
-      const result = await uploadFile(file, 'message-attachments')
+      const result = await uploadFile(file, 'message_attachments')
       const fileMessage = `[File: ${file.name}](${result.url})`
       
       if (isDirect && recipient_id) {

@@ -214,9 +214,7 @@ export default function App({ Component, pageProps }) {
       {router.pathname === '/' ? (
         <Component {...pageProps} />
       ) : (
-        <Layout>
-          <Component {...pageProps} />
-        </Layout>
+        <Component {...pageProps} />
       )}
     </UserContext.Provider>
   )
