@@ -11,7 +11,10 @@ create type public.user_status as enum ('ONLINE', 'OFFLINE');
 create table public.users (
   id          uuid references auth.users not null primary key, -- UUID from auth.users
   username    text,
-  status      user_status default 'OFFLINE'::public.user_status
+  status      user_status default 'OFFLINE'::public.user_status,
+  avatar_url  text,
+  last_seen   timestamptz,
+  created_at  timestamptz default timezone('utc'::text, now()) not null
 );
 comment on table public.users is 'Profile data for each user.';
 comment on column public.users.id is 'References the internal Supabase Auth user.';

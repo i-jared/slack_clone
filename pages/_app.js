@@ -48,19 +48,178 @@ export default function App({ Component, pageProps }) {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false)
+  const [isRouteChanging, setIsRouteChanging] = useState(false)
   const [authError, setAuthError] = useState(null)
 
-  const updateStatus = async (userId, newStatus) => {
-    if (!userId) return
-    try {
-      await supabase
-        .from('users')
-        .update({ status: newStatus })
-        .eq('id', userId)
-    } catch (err) {
-      console.error('Failed to update user status:', err.message)
+  // Add debounce function at the top
+  const debounce = (func, wait) => {
+    let timeout
+    return (...args) => {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => func.apply(this, args), wait)
     }
   }
+
+  const updateStatus = debounce(async (userId, newStatus) => {
+    if (!userId) return
+    try {
+      setIsStatusUpdating(true)
+      const timestamp = new Date().toISOString()
+      
+      // Get fresh session token
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        console.error('No session available for status update')
+        return
+      }
+
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          status: newStatus,
+          last_seen: timestamp
+        })
+        .eq('id', userId)
+
+      if (error) {
+        console.error('Status update error:', error)
+      }
+    } catch (err) {
+      console.error('Failed to update user status:', err.message)
+    } finally {
+      setIsStatusUpdating(false)
+    }
+  }, 1000) // Debounce for 1 second
+
+  // Handle route change loading
+  useEffect(() => {
+    let routeChangeTimeout;
+
+    const handleStart = () => {
+      setIsRouteChanging(true)
+      // Clear any existing timeout
+      if (routeChangeTimeout) clearTimeout(routeChangeTimeout)
+    }
+
+    const handleComplete = () => {
+      // Add a small delay to ensure data is loaded
+      routeChangeTimeout = setTimeout(() => {
+        setIsRouteChanging(false)
+        setIsLoading(false)
+      }, 500)
+    }
+
+    const handleError = () => {
+      if (routeChangeTimeout) clearTimeout(routeChangeTimeout)
+      setIsRouteChanging(false)
+      setIsLoading(false)
+    }
+
+    router.events.on('routeChangeStart', handleStart)
+    router.events.on('routeChangeComplete', handleComplete)
+    router.events.on('routeChangeError', handleError)
+
+    return () => {
+      if (routeChangeTimeout) clearTimeout(routeChangeTimeout)
+      router.events.off('routeChangeStart', handleStart)
+      router.events.off('routeChangeComplete', handleComplete)
+      router.events.off('routeChangeError', handleError)
+    }
+  }, [router])
+
+  // Handle browser events for online/offline status
+  useEffect(() => {
+    if (!user?.id) return
+
+    const handleOnline = () => {
+      updateStatus(user.id, 'ONLINE')
+    }
+
+    const handleOffline = () => {
+      updateStatus(user.id, 'OFFLINE')
+    }
+
+    // Use BroadcastChannel to sync status across tabs
+    const statusChannel = new BroadcastChannel('user_status')
+    
+    // Track visibility state across tabs
+    let visibleTabsCount = 1
+    
+    statusChannel.onmessage = (event) => {
+      if (event.data.type === 'visibility_change') {
+        if (event.data.state === 'visible') {
+          visibleTabsCount++
+        } else {
+          visibleTabsCount--
+        }
+      }
+    }
+
+    const handleVisibilityChange = async () => {
+      const isVisible = document.visibilityState === 'visible'
+      
+      // Broadcast visibility change to other tabs
+      statusChannel.postMessage({
+        type: 'visibility_change',
+        state: isVisible ? 'visible' : 'hidden'
+      })
+
+      // Only update status if all tabs are hidden
+      if (isVisible) {
+        await updateStatus(user.id, 'ONLINE')
+      } else if (visibleTabsCount <= 0) {
+        await updateStatus(user.id, 'OFFLINE')
+      }
+    }
+
+    const handleBeforeUnload = () => {
+      // Only set offline if this is the last tab
+      if (visibleTabsCount <= 1) {
+        const timestamp = new Date().toISOString()
+        const headers = {
+          'Content-Type': 'application/json',
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${supabase.auth.getSession()?.data?.session?.access_token}`
+        }
+        const blob = new Blob([
+          JSON.stringify({ 
+            status: 'OFFLINE',
+            last_seen: timestamp
+          })
+        ], { type: 'application/json' })
+        
+        navigator.sendBeacon(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`,
+          blob,
+          headers
+        )
+      }
+    }
+
+    // Set up event listeners
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // Set initial online status without blocking
+    if (navigator.onLine) {
+      updateStatus(user.id, 'ONLINE')
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      statusChannel.close()
+      // Only set offline if this is the last tab
+      if (visibleTabsCount <= 1) {
+        updateStatus(user.id, 'OFFLINE')
+      }
+    }
+  }, [user?.id])
 
   useEffect(() => {
     if (!router.isReady) return
@@ -68,18 +227,37 @@ export default function App({ Component, pageProps }) {
     let authSubscription = null
 
     const handleAuthChange = async (event, session) => {
-      if (event !== 'TOKEN_REFRESHED') setIsLoading(true)
+      console.log('Auth change event:', event, 'Session:', session?.user?.email)
+      
+      // Only skip if it's truly the same session and not a signup/signin
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      if (
+        event !== 'INITIAL' &&
+        event !== 'SIGNED_IN' &&
+        event !== 'SIGNED_UP' &&
+        currentSession?.access_token === session?.access_token
+      ) {
+        console.log('Skipping auth change - same session')
+        return
+      }
+
+      setIsLoading(true)
       try {
         if (session?.user) {
+          console.log('Setting up user after auth change')
           // Ensure user record and set user status to ONLINE
           const dbUser = await ensureUserRecord(session.user)
           await updateStatus(dbUser.id, 'ONLINE')
           setUser({ ...session.user, dbUser })
           setAuthError(null)
+          
+          // Only redirect if we're on the login page
           if (router.pathname === '/') {
+            console.log('Redirecting to channels after auth')
             await router.push('/channels/1')
           }
         } else {
+          console.log('No session, cleaning up')
           // No session user => set OFFLINE if we previously had a user
           if (user?.id) {
             await updateStatus(user.id, 'OFFLINE')
@@ -95,15 +273,19 @@ export default function App({ Component, pageProps }) {
         setUser(null)
         await router.push('/')
       } finally {
-        // Always clear loading state unless it's a token refresh
-        if (event !== 'TOKEN_REFRESHED') setIsLoading(false)
+        // Only clear loading if we're not in the middle of a route change
+        if (!isRouteChanging) {
+          setIsLoading(false)
+        }
       }
     }
 
     const setupAuth = async () => {
       try {
+        console.log('Setting up auth...')
         const { data, error } = await supabase.auth.getSession()
         if (error) {
+          console.error('Error getting session:', error)
           setAuthError(error.message)
           setIsLoading(false)
           return
@@ -115,6 +297,7 @@ export default function App({ Component, pageProps }) {
         } = supabase.auth.onAuthStateChange(handleAuthChange)
         authSubscription = subscription
       } catch (error) {
+        console.error('Error in setupAuth:', error)
         setAuthError(error.message)
         setIsLoading(false)
       }
@@ -123,9 +306,7 @@ export default function App({ Component, pageProps }) {
     setupAuth()
 
     return () => {
-      if (authSubscription) {
-        authSubscription.unsubscribe()
-      }
+      if (authSubscription) authSubscription.unsubscribe()
     }
   }, [router.isReady, router.pathname])
 
@@ -169,86 +350,27 @@ export default function App({ Component, pageProps }) {
     const isAuthenticated = !!user
 
     if (isProtectedRoute && !isAuthenticated && !isLoading) {
-      console.log('Unauthorized access, redirecting to login...')
+      console.log('Route protection check - Path:', router.pathname, 'Auth:', isAuthenticated, 'Loading:', isLoading)
       router.push('/')
     }
   }, [router.isReady, router.pathname, user, isLoading])
 
-  // Add navigation loading state
-  useEffect(() => {
-    let loadingTimeout;
-
-    const handleStart = () => {
-      // Clear any existing timeout
-      if (loadingTimeout) {
-        clearTimeout(loadingTimeout)
-      }
-      setIsLoading(true)
-    }
-
-    const handleComplete = () => {
-      // Add a small delay before hiding the loading screen
-      loadingTimeout = setTimeout(() => {
-        setIsLoading(false)
-      }, 300)
-    }
-
-    const handleError = () => {
-      if (loadingTimeout) {
-        clearTimeout(loadingTimeout)
-      }
-      setIsLoading(false)
-    }
-
-    // Handle visibility change
-    const handleVisibilityChange = () => {
-      if (!document.hidden && isLoading) {
-        // If we return to the tab and loading is still shown, clear it
-        handleComplete()
-      }
-    }
-
-    router.events.on('routeChangeStart', handleStart)
-    router.events.on('routeChangeComplete', handleComplete)
-    router.events.on('routeChangeError', handleError)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      router.events.off('routeChangeStart', handleStart)
-      router.events.off('routeChangeComplete', handleComplete)
-      router.events.off('routeChangeError', handleError)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      if (loadingTimeout) {
-        clearTimeout(loadingTimeout)
-      }
-    }
-  }, [router, isLoading])
-
-  if (isLoading) {
-    return <LoadingScreen message="Establishing connection to the Galactic Network..." />
+  // Show loading screen if any major state change is happening
+  if (isLoading && isRouteChanging) {
+    console.log('Full loading screen shown - Loading:', isLoading, 'Route changing:', isRouteChanging)
+    return <LoadingScreen />
   }
 
-  if (authError) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <div className="p-4 bg-red-900/50 text-red-200 rounded-lg">
-          {authError}
-        </div>
-      </div>
-    )
-  }
-
-  const value = {
-    user,
-    signOut
-  }
+  // Show minimal loading indicator for status updates or route changes
+  const showMinimalLoading = !isLoading && (isStatusUpdating || isRouteChanging)
 
   return (
-    <UserContext.Provider value={value}>
-      {router.pathname === '/' ? (
-        <Component {...pageProps} />
-      ) : (
-        <Component {...pageProps} />
+    <UserContext.Provider value={{ user, signOut }}>
+      <Component {...pageProps} />
+      {showMinimalLoading && (
+        <div className="fixed bottom-4 right-4 bg-yellow-500 text-black px-4 py-2 rounded-lg opacity-75">
+          {isStatusUpdating ? 'Updating status...' : 'Loading...'}
+        </div>
       )}
     </UserContext.Provider>
   )

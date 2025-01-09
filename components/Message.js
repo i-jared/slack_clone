@@ -4,13 +4,50 @@ import { supabase } from '~/lib/Store'
 import UserContext from '~/lib/UserContext'
 import MessageReactions from './MessageReactions'
 import ThreadPanel from './ThreadPanel'
+import UserStatusDot from './UserStatusDot'
 
 export default function Message({ message }) {
   const { user } = useContext(UserContext)
   const [showThread, setShowThread] = useState(false)
   const [replyCount, setReplyCount] = useState(0)
+  const [userStatus, setUserStatus] = useState('OFFLINE')
   
   useEffect(() => {
+    let isSubscribed = true;
+
+    // Initial status fetch
+    const fetchInitialStatus = async () => {
+      if (!message.user?.id) return;
+      
+      try {
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('status, updated_at')
+          .eq('id', message.user.id)
+          .single()
+        
+        if (error) throw error;
+        
+        if (userData && isSubscribed) {
+          const lastUpdate = userData.updated_at ? new Date(userData.updated_at) : null;
+          const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000); // More strict: 2 minutes
+          
+          // Only show as online if status is ONLINE and updated within last 2 minutes
+          setUserStatus(
+            userData.status === 'ONLINE' && lastUpdate && lastUpdate > twoMinutesAgo 
+              ? 'ONLINE' 
+              : 'OFFLINE'
+          );
+        }
+      } catch (error) {
+        console.error('Error fetching user status:', error);
+        if (isSubscribed) setUserStatus('OFFLINE');
+      }
+    }
+
+    fetchInitialStatus();
+    const fetchInterval = setInterval(fetchInitialStatus, 30000); // Refresh every 30 seconds
+
     // Fetch reply count when message loads
     const fetchReplyCount = async () => {
       const { data, error } = await supabase
@@ -26,7 +63,7 @@ export default function Message({ message }) {
     fetchReplyCount()
 
     // Subscribe to changes in replies
-    const subscription = supabase
+    const threadSubscription = supabase
       .channel(`thread-count-${message.id}`)
       .on(
         'postgres_changes',
@@ -42,10 +79,39 @@ export default function Message({ message }) {
       )
       .subscribe()
 
+    // Subscribe to user status changes
+    const statusSubscription = supabase
+      .channel(`user-status-${message.user?.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+          filter: `id=eq.${message.user?.id}`
+        },
+        (payload) => {
+          if (!isSubscribed) return;
+          
+          const lastUpdate = payload.new.updated_at ? new Date(payload.new.updated_at) : null;
+          const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+          
+          setUserStatus(
+            payload.new.status === 'ONLINE' && lastUpdate && lastUpdate > twoMinutesAgo 
+              ? 'ONLINE' 
+              : 'OFFLINE'
+          );
+        }
+      )
+      .subscribe()
+
     return () => {
-      subscription.unsubscribe()
+      isSubscribed = false;
+      clearInterval(fetchInterval);
+      threadSubscription.unsubscribe();
+      statusSubscription.unsubscribe();
     }
-  }, [message.id])
+  }, [message.id, message.user?.id])
 
   const isCurrentUser = message.user?.id === user?.id || message.sender?.id === user?.id
   
@@ -62,7 +128,7 @@ export default function Message({ message }) {
   return (
     <>
       <div className={`flex items-start gap-3 max-w-2xl px-4 ${isCurrentUser ? 'ml-auto flex-row-reverse' : ''}`} id={`message-${message.id}`}>
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center relative">
           {(message.user?.avatar_url || message.sender?.avatar_url) ? (
             <img
               src={message.user?.avatar_url || message.sender?.avatar_url}
@@ -74,6 +140,9 @@ export default function Message({ message }) {
               {displayName.charAt(0).toUpperCase()}
             </span>
           )}
+          <div className="absolute bottom-0 right-0 transform translate-x-1/4 translate-y-1/4">
+            <UserStatusDot status={userStatus} />
+          </div>
         </div>
         <div className={`flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}`}>
           <div className="flex items-center gap-2">
