@@ -13,7 +13,7 @@ const DirectMessagePage = () => {
   const { id } = router.query
   const { user } = useContext(UserContext)
   const [recipient, setRecipient] = useState(null)
-  const [isLoadingRecipient, setIsLoadingRecipient] = useState(false)
+  const [isLoadingRecipient, setIsLoadingRecipient] = useState(true)
   const { messages: directMessages, isLoading: isLoadingMessages } = useDirectMessages({ recipientId: id })
   const messagesEndRef = useRef(null)
 
@@ -28,23 +28,14 @@ const DirectMessagePage = () => {
     }
   }, [directMessages, isLoadingMessages])
 
-  // Cleanup effect
-  useEffect(() => {
-    return () => {
-      setIsLoadingRecipient(false)
-      setRecipient(null)
-    }
-  }, [])
-
   // Fetch recipient user data
   useEffect(() => {
     let isMounted = true
 
     const fetchRecipient = async () => {
-      if (!id || !router.isReady) return
+      if (!id || !router.isReady || !user) return
 
       try {
-        setIsLoadingRecipient(true)
         console.log('🔍 Fetching recipient data:', id)
         
         const { data: userData, error } = await supabase
@@ -61,28 +52,34 @@ const DirectMessagePage = () => {
         if (isMounted) {
           console.log('✅ Recipient data:', userData)
           setRecipient(userData)
-          setIsLoadingRecipient(false)
         }
       } catch (error) {
         console.error('Error fetching recipient:', error)
+      } finally {
         if (isMounted) {
           setIsLoadingRecipient(false)
         }
       }
     }
 
+    setIsLoadingRecipient(true)
     fetchRecipient()
 
     return () => {
       isMounted = false
     }
-  }, [id, router.isReady])
+  }, [id, router.isReady, user])
 
+  // Show loading screen while auth is initializing
   if (!user) {
-    console.log('⚠️ No user, rendering null')
-    return <Layout />
+    return (
+      <Layout>
+        <LoadingScreen message="Initializing..." />
+      </Layout>
+    )
   }
 
+  // Show loading screen while fetching recipient data
   if (isLoadingRecipient) {
     return (
       <Layout>
@@ -91,6 +88,7 @@ const DirectMessagePage = () => {
     )
   }
 
+  // Show error if recipient not found
   if (!recipient) {
     return (
       <Layout>

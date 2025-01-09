@@ -40,17 +40,33 @@ export default function Home() {
           router.push('/channels/1')
         }
       } else {
+        // For signup, set the username to the part before @ in email
+        const usernameToSet = username.split('@')[0]
+        console.log('Setting username:', usernameToSet)
+        
         const { data, error } = await supabase.auth.signUp({ 
           email: username, 
           password,
           options: {
             data: {
-              username: username.split('@')[0]
+              username: usernameToSet
             }
           }
         })
         console.log('Signup response:', { data, error })
         if (error) throw error
+        
+        // After signup, update the username in the users table
+        if (data?.user) {
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ username: usernameToSet })
+            .eq('id', data.user.id)
+          
+          if (updateError) {
+            console.error('Error updating username:', updateError)
+          }
+        }
         
         // Redirect after successful signup
         if (data?.session) {
