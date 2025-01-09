@@ -12,53 +12,80 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
   const handleSubmit = async (e) => {
     e.preventDefault()
     console.log('🔍 Debug: Starting handleSubmit')
-    console.log('📝 Message content:', content)
-    console.log('🎯 Target:', isDirect ? 'Direct Message' : 'Channel Message')
-    console.log('Parameters:', {
-      isDirect,
-      channel_id,
-      recipient_id,
-      content: content.trim(),
-      user: user?.id
-    })
-
-    if (!content.trim() || isSending) {
-      console.log('⚠️ Validation failed:', {
-        emptyContent: !content.trim(),
-        isSending
-      })
+    
+    const messageContent = content.trim()
+    if (!messageContent || isSending) {
       return
     }
 
+    // Create temporary message
+    const tempId = `temp-${Date.now()}`
+    const optimisticMessage = {
+      id: tempId,
+      message: messageContent,
+      content: messageContent,
+      sender_id: user.id,
+      recipient_id: recipient_id,
+      channel_id: channel_id,
+      inserted_at: new Date().toISOString(),
+      sender: {
+        id: user.id,
+        username: user.email?.split('@')[0],
+        avatar_url: user.user_metadata?.avatar_url
+      }
+    }
+
+    // Show optimistic update
+    if (isDirect) {
+      window.dispatchEvent(new CustomEvent('newDirectMessage', { 
+        detail: optimisticMessage 
+      }))
+    } else {
+      window.dispatchEvent(new CustomEvent('newChannelMessage', { 
+        detail: optimisticMessage 
+      }))
+    }
+
+    // Clear input immediately
+    setContent('')
+    
     try {
-      console.log('🚀 Attempting to send message...')
+      console.log('🚀 Sending message in background...')
       setIsSending(true)
       setError(null)
       
+      let confirmedMessage
       if (isDirect && recipient_id) {
         console.log('📨 Sending direct message to:', recipient_id)
-        await sendDirectMessage(content.trim(), recipient_id)
+        confirmedMessage = await sendDirectMessage(messageContent, recipient_id)
       } else if (!isDirect && channel_id) {
         console.log('📢 Sending channel message to:', channel_id)
-        await sendMessage(content.trim(), channel_id)
+        confirmedMessage = await sendMessage(messageContent, channel_id)
       } else {
-        console.error('❌ Invalid message target:', { isDirect, channel_id, recipient_id })
         throw new Error(isDirect ? 'Recipient not specified' : 'Channel not specified')
       }
 
-      console.log('✅ Message sent successfully!')
-      setContent('')
+      // Dispatch confirmation event
+      const confirmEvent = new CustomEvent(isDirect ? 'messageConfirmed' : 'channelMessageConfirmed', {
+        detail: {
+          tempId,
+          confirmedMessage
+        }
+      })
+      window.dispatchEvent(confirmEvent)
+
+      console.log('✅ Message sent and confirmed')
     } catch (error) {
       console.error('❌ Error sending message:', error)
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      })
       setError(error.message || 'Failed to send message')
+      
+      // Dispatch failure event
+      const failEvent = new CustomEvent(isDirect ? 'messageFailed' : 'channelMessageFailed', {
+        detail: { messageId: tempId }
+      })
+      window.dispatchEvent(failEvent)
     } finally {
       setIsSending(false)
-      console.log('🏁 handleSubmit completed')
     }
   }
 
