@@ -38,9 +38,25 @@ const ChannelPage = () => {
   // auto-scroll to bottom if no specific message
   useEffect(() => {
     if (!scrollToMessageId && messages?.length) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      console.log('📜 Scrolling to bottom of channel messages')
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100) // Small delay to ensure content is rendered
+      return () => clearTimeout(timer)
     }
   }, [messages, scrollToMessageId])
+
+  // Also scroll when new messages are added
+  useEffect(() => {
+    const lastMessage = messages?.[messages.length - 1]
+    if (lastMessage && !scrollToMessageId) {
+      console.log('📜 New message detected, scrolling to bottom')
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [messages?.length, scrollToMessageId])
 
   // get the channel from the store
   const channel = channels.find((c) => c.id === parseInt(id))

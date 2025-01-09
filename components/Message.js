@@ -25,53 +25,51 @@ export default function Message({ message }) {
     'Unknown User'
 
   return (
-    <div className={`flex items-start gap-3 max-w-2xl px-4 ${isCurrentUser ? 'ml-auto flex-row-reverse' : ''}`} id={`message-${message.id}`}>
-      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
-        {(message.user?.avatar_url || message.sender?.avatar_url) ? (
-          <img
-            src={message.user?.avatar_url || message.sender?.avatar_url}
-            alt={displayName}
-            className="w-10 h-10 rounded-full"
-          />
-        ) : (
-          <span className="text-lg text-yellow-400">
-            {displayName.charAt(0).toUpperCase()}
-          </span>
-        )}
-      </div>
-      <div className={`flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}`}>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-yellow-400 font-orbitron">{displayName}</span>
-          <span className="text-xs text-gray-500">{formattedTimestamp}</span>
+    <>
+      <div className={`flex items-start gap-3 max-w-2xl px-4 ${isCurrentUser ? 'ml-auto flex-row-reverse' : ''}`} id={`message-${message.id}`}>
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
+          {(message.user?.avatar_url || message.sender?.avatar_url) ? (
+            <img
+              src={message.user?.avatar_url || message.sender?.avatar_url}
+              alt={displayName}
+              className="w-10 h-10 rounded-full"
+            />
+          ) : (
+            <span className="text-lg text-yellow-400">
+              {displayName.charAt(0).toUpperCase()}
+            </span>
+          )}
         </div>
-        <div className={`mt-1 px-4 py-2 rounded-lg ${
-          isCurrentUser 
-            ? 'bg-yellow-500 text-black' 
-            : 'bg-gray-700 text-white'
-        }`}>
-          {message.message}
-        </div>
-        <MessageReactions messageId={message.id} />
-        {/* Thread Button */}
-        <div className="text-xs mt-1">
-          <button
-            className="text-blue-400 hover:text-blue-300"
-            onClick={() => setShowThread(true)}
-          >
-            Show thread
-          </button>
+        <div className={`flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}`}>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-yellow-400 font-orbitron">{displayName}</span>
+            <span className="text-xs text-gray-500">{formattedTimestamp}</span>
+          </div>
+          <div className={`mt-1 px-4 py-2 rounded-lg ${
+            isCurrentUser 
+              ? 'bg-yellow-500 text-black' 
+              : 'bg-gray-700 text-white'
+          }`}>
+            {message.message}
+          </div>
+          <MessageReactions messageId={message.id} />
+          {/* Thread Button */}
+          <div className="text-xs mt-1">
+            <button
+              className="text-blue-400 hover:text-blue-300"
+              onClick={() => setShowThread(true)}
+            >
+              Show thread
+            </button>
+          </div>
         </div>
       </div>
       {showThread && (
-        <div className="fixed inset-0 flex justify-end bg-black bg-opacity-50" onClick={() => setShowThread(false)}>
-          <div className="h-full" onClick={(e) => e.stopPropagation()}>
-            <ThreadPanel
-              parentMessageId={message.id}
-              onClose={() => setShowThread(false)}
-            />
-          </div>
-        </div>
+        <ThreadPanel
+          parentMessageId={message.id}
+          onClose={() => setShowThread(false)}
+        />
       )}
-    </div>
+    </>
   )
 }

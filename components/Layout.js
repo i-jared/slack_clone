@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import UserContext from '~/lib/UserContext'
 import { supabase, useStore } from '~/lib/Store'
 import Link from 'next/link'
+import LoadingScreen from '~/components/LoadingScreen'
 
 const Layout = ({ children, hideSidebar = false }) => {
   const { user, signOut } = useContext(UserContext)
@@ -33,23 +34,69 @@ const Layout = ({ children, hideSidebar = false }) => {
 
   // Add router change event handlers
   useEffect(() => {
-    const handleStart = () => setIsNavigating(true)
-    const handleComplete = () => setIsNavigating(false)
+    let navigationTimeout;
+
+    const handleStart = () => {
+      setIsNavigating(true)
+      // Clear any existing timeout
+      if (navigationTimeout) {
+        clearTimeout(navigationTimeout)
+      }
+    }
+
+    const handleComplete = () => {
+      // Add a small delay before hiding the loading screen to prevent flashing
+      navigationTimeout = setTimeout(() => {
+        setIsNavigating(false)
+      }, 300)
+    }
+
+    const handleError = () => {
+      // In case of error, ensure we hide the loading screen
+      if (navigationTimeout) {
+        clearTimeout(navigationTimeout)
+      }
+      setIsNavigating(false)
+    }
+
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isNavigating) {
+        // If we return to the tab and loading is still shown, clear it
+        handleComplete()
+      }
+    }
 
     router.events.on('routeChangeStart', handleStart)
     router.events.on('routeChangeComplete', handleComplete)
-    router.events.on('routeChangeError', handleComplete)
+    router.events.on('routeChangeError', handleError)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       router.events.off('routeChangeStart', handleStart)
       router.events.off('routeChangeComplete', handleComplete)
-      router.events.off('routeChangeError', handleComplete)
+      router.events.off('routeChangeError', handleError)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (navigationTimeout) {
+        clearTimeout(navigationTimeout)
+      }
     }
-  }, [router])
+  }, [router, isNavigating])
 
   // Show loading screen during navigation
   if (isNavigating) {
-    return <LoadingScreen message="Navigating through hyperspace..." />
+    return <LoadingScreen 
+      message="Navigating through hyperspace..." 
+      onHide={() => setIsNavigating(false)}
+    />
+  }
+
+  // Show loading screen during initial load
+  if (isLoading) {
+    return <LoadingScreen 
+      message="Establishing connection to the Galactic Network..." 
+      onHide={() => setIsLoading(false)}
+    />
   }
 
   const fetchUsers = async () => {

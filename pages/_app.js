@@ -176,19 +176,53 @@ export default function App({ Component, pageProps }) {
 
   // Add navigation loading state
   useEffect(() => {
-    const handleStart = () => setIsLoading(true)
-    const handleComplete = () => setIsLoading(false)
+    let loadingTimeout;
+
+    const handleStart = () => {
+      // Clear any existing timeout
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout)
+      }
+      setIsLoading(true)
+    }
+
+    const handleComplete = () => {
+      // Add a small delay before hiding the loading screen
+      loadingTimeout = setTimeout(() => {
+        setIsLoading(false)
+      }, 300)
+    }
+
+    const handleError = () => {
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout)
+      }
+      setIsLoading(false)
+    }
+
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isLoading) {
+        // If we return to the tab and loading is still shown, clear it
+        handleComplete()
+      }
+    }
 
     router.events.on('routeChangeStart', handleStart)
     router.events.on('routeChangeComplete', handleComplete)
-    router.events.on('routeChangeError', handleComplete)
+    router.events.on('routeChangeError', handleError)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       router.events.off('routeChangeStart', handleStart)
       router.events.off('routeChangeComplete', handleComplete)
-      router.events.off('routeChangeError', handleComplete)
+      router.events.off('routeChangeError', handleError)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout)
+      }
     }
-  }, [router])
+  }, [router, isLoading])
 
   if (isLoading) {
     return <LoadingScreen message="Establishing connection to the Galactic Network..." />
