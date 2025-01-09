@@ -139,6 +139,20 @@ alter publication supabase_realtime add table public.channels;
 alter publication supabase_realtime add table public.messages;
 alter publication supabase_realtime add table public.users;
 
+-- Enable RLS
+alter table public.channels enable row level security;
+
+-- Create policies
+create policy "Allow authenticated users to read channels"
+  on public.channels for select
+  to authenticated
+  using (true);
+
+create policy "Allow users to create channels"
+  on public.channels for insert
+  to authenticated
+  with check (auth.uid() = created_by);
+
 /**
  * HELPER FUNCTIONS
  * Create test user helper method.

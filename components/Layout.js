@@ -1,20 +1,20 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import UserContext from '~/lib/UserContext'
-import { supabase } from '~/lib/Store'
+import { supabase, useStore } from '~/lib/Store'
 import Link from 'next/link'
 
 const Layout = ({ children, hideSidebar = false }) => {
   const { user, signOut } = useContext(UserContext)
   const router = useRouter()
   const [isNavigating, setIsNavigating] = useState(false)
-  const [channels, setChannels] = useState([])
   const [users, setUsers] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [showProfilePopup, setShowProfilePopup] = useState(false)
   const [username, setUsername] = useState(user?.dbUser?.username || '')
   const [avatarUrl, setAvatarUrl] = useState(user?.dbUser?.avatar_url || '')
   const [uploading, setUploading] = useState(false)
+  const { channels } = useStore()  // Get channels from the store
 
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -23,10 +23,7 @@ const Layout = ({ children, hideSidebar = false }) => {
     const initialize = async () => {
       setIsLoading(true)
       try {
-        await Promise.all([
-          fetchChannels(),
-          fetchUsers()
-        ])
+        await fetchUsers()
       } finally {
         setIsLoading(false)
       }
@@ -53,28 +50,6 @@ const Layout = ({ children, hideSidebar = false }) => {
   // Show loading screen during navigation
   if (isNavigating) {
     return <LoadingScreen message="Navigating through hyperspace..." />
-  }
-
-  const fetchChannels = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('channels')
-        .select('id, slug, name, description')
-        .order('id', { ascending: true })
-
-      if (error) throw error
-
-      const mappedChannels = (data || []).map((channel) => ({
-        ...channel,
-        slug: channel.slug || `channel-${channel.id}`,
-        name: channel.name || channel.slug || `Channel ${channel.id}`,
-        description: channel.description || `Welcome to #${channel.name || channel.slug}`
-      }))
-
-      setChannels(mappedChannels)
-    } catch (error) {
-      console.error('Error fetching channels:', error)
-    }
   }
 
   const fetchUsers = async () => {
