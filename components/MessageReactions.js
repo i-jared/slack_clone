@@ -121,7 +121,7 @@ export default function MessageReactions({ messageId }) {
         
         {/* Emoji picker */}
         {showEmojiPicker && (
-          <div className="absolute bottom-full left-0 mb-2 p-2 bg-gray-800 rounded-lg shadow-lg flex gap-1 z-50">
+          <div className="absolute bottom-full right-0 mb-2 p-2 bg-gray-800 rounded-lg shadow-lg flex gap-1 z-50">
             {EMOJI_LIST.map(emoji => (
               <button
                 key={emoji}

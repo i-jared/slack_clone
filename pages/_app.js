@@ -95,23 +95,35 @@ export default function App({ Component, pageProps }) {
   // Handle route change loading
   useEffect(() => {
     let routeChangeTimeout;
+    let forceLoadTimeout;
 
     const handleStart = () => {
       setIsRouteChanging(true)
-      // Clear any existing timeout
+      // Clear any existing timeouts
       if (routeChangeTimeout) clearTimeout(routeChangeTimeout)
+      if (forceLoadTimeout) clearTimeout(forceLoadTimeout)
+
+      // Force clear loading after 20 seconds
+      forceLoadTimeout = setTimeout(() => {
+        setIsRouteChanging(false)
+        setIsLoading(false)
+      }, 20000)
     }
 
     const handleComplete = () => {
       // Add a small delay to ensure data is loaded
       routeChangeTimeout = setTimeout(() => {
         setIsRouteChanging(false)
-        setIsLoading(false)
+        // Only clear loading if we're not in the middle of an auth change
+        if (!isStatusUpdating) {
+          setIsLoading(false)
+        }
       }, 500)
     }
 
     const handleError = () => {
       if (routeChangeTimeout) clearTimeout(routeChangeTimeout)
+      if (forceLoadTimeout) clearTimeout(forceLoadTimeout)
       setIsRouteChanging(false)
       setIsLoading(false)
     }
@@ -122,11 +134,12 @@ export default function App({ Component, pageProps }) {
 
     return () => {
       if (routeChangeTimeout) clearTimeout(routeChangeTimeout)
+      if (forceLoadTimeout) clearTimeout(forceLoadTimeout)
       router.events.off('routeChangeStart', handleStart)
       router.events.off('routeChangeComplete', handleComplete)
       router.events.off('routeChangeError', handleError)
     }
-  }, [router])
+  }, [router, isStatusUpdating])
 
   // Handle browser events for online/offline status
   useEffect(() => {
@@ -356,13 +369,16 @@ export default function App({ Component, pageProps }) {
   }, [router.isReady, router.pathname, user, isLoading])
 
   // Show loading screen if any major state change is happening
-  if (isLoading && isRouteChanging) {
+  if (isLoading || isRouteChanging) {
     console.log('Full loading screen shown - Loading:', isLoading, 'Route changing:', isRouteChanging)
-    return <LoadingScreen />
+    return <LoadingScreen onHide={() => {
+      setIsLoading(false)
+      setIsRouteChanging(false)
+    }} />
   }
 
-  // Show minimal loading indicator for status updates or route changes
-  const showMinimalLoading = !isLoading && (isStatusUpdating || isRouteChanging)
+  // Show minimal loading indicator for status updates
+  const showMinimalLoading = isStatusUpdating && !isLoading && !isRouteChanging
 
   return (
     <UserContext.Provider value={{ user, signOut }}>

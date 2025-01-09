@@ -1,6 +1,7 @@
 import { useEffect, useRef, useContext } from 'react'
 import { useRouter } from 'next/router'
 import { useStore } from '~/lib/Store'
+import { useChannelMessages } from '~/lib/useChannelMessages'
 import Message from '~/components/Message'
 import MessageInput from '~/components/MessageInput'
 import UserContext from '~/lib/UserContext'
@@ -12,8 +13,12 @@ const ChannelPage = () => {
   const { user } = useContext(UserContext)
   const scrollToMessageId = router.query.scrollToMessage
 
-  // This custom store hook loads channels and messages
-  const { messages, channels } = useStore({ channelId: id ? parseInt(id) : null })
+  // This custom store hook loads channels
+  const { channels } = useStore()
+  // This hook handles messages with optimistic updates
+  const { messages, isLoading } = useChannelMessages({ 
+    channelId: id ? parseInt(id) : null 
+  })
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -84,7 +89,14 @@ const ChannelPage = () => {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="max-w-4xl mx-auto space-y-4">
-            {messages?.length === 0 ? (
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                <div className="text-yellow-400 text-4xl mb-4">⌛</div>
+                <h3 className="text-2xl font-semibold text-yellow-400 mb-2">
+                  Loading messages...
+                </h3>
+              </div>
+            ) : messages?.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
                 <div className="text-yellow-400 text-4xl mb-4">👋</div>
                 <h3 className="text-2xl font-semibold text-yellow-400 mb-2">
