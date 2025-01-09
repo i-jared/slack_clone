@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
+import { supabase } from '~/lib/Store'
 import UserContext from '~/lib/UserContext'
 import MessageReactions from './MessageReactions'
 import ThreadPanel from './ThreadPanel'
@@ -7,10 +8,44 @@ import ThreadPanel from './ThreadPanel'
 export default function Message({ message }) {
   const { user } = useContext(UserContext)
   const [showThread, setShowThread] = useState(false)
+  const [replyCount, setReplyCount] = useState(0)
   
   useEffect(() => {
-    // Optionally log or track message
-  }, [message])
+    // Fetch reply count when message loads
+    const fetchReplyCount = async () => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact' })
+        .eq('parent_id', message.id)
+
+      if (!error && data) {
+        setReplyCount(data.length)
+      }
+    }
+
+    fetchReplyCount()
+
+    // Subscribe to changes in replies
+    const subscription = supabase
+      .channel(`thread-count-${message.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `parent_id=eq.${message.id}`
+        },
+        () => {
+          fetchReplyCount()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [message.id])
 
   const isCurrentUser = message.user?.id === user?.id || message.sender?.id === user?.id
   
@@ -56,10 +91,16 @@ export default function Message({ message }) {
           {/* Thread Button */}
           <div className="text-xs mt-1">
             <button
-              className="text-blue-400 hover:text-blue-300"
+              className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
               onClick={() => setShowThread(true)}
             >
-              Show thread
+              {replyCount > 0 ? (
+                <>
+                  <span>{replyCount} repl{replyCount === 1 ? 'y' : 'ies'}</span>
+                </>
+              ) : (
+                'Start thread'
+              )}
             </button>
           </div>
         </div>

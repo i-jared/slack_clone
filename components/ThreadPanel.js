@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '~/lib/Store'
+import Message from './Message'
 
 /**
  * This component fetches and displays thread messages associated with a "parent" message.
@@ -34,7 +35,14 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
           id,
           message,
           inserted_at,
-          user:user_id ( id, username, avatar_url )
+          channel_id,
+          parent_id,
+          attachments,
+          user:user_id (
+            id,
+            username,
+            avatar_url
+          )
         `)
         .eq('parent_id', parentMessageId)
         .order('inserted_at', { ascending: true })
@@ -156,7 +164,7 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
             <h2 className="text-lg font-semibold text-yellow-400">Thread</h2>
             <button onClick={onClose} className="text-gray-300 hover:text-white">Close</button>
           </div>
-          
+
           {/* Thread Messages */}
           <div className="flex-1 overflow-y-auto p-4">
             {isLoading ? (
@@ -166,10 +174,7 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
             ) : (
               <div className="space-y-4">
                 {threadMessages.map((msg) => (
-                  <div key={msg.id} className="bg-gray-700/50 rounded-lg p-3">
-                    <div className="text-sm text-yellow-300 mb-1">{msg.user?.username}</div>
-                    <div className="text-white">{msg.message}</div>
-                  </div>
+                  <Message key={msg.id} message={msg} />
                 ))}
                 <div ref={messagesEndRef} /> {/* Scroll anchor */}
               </div>
