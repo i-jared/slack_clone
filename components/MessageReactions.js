@@ -25,7 +25,12 @@ export default function MessageReactions({ messageId }) {
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            setReactions(prev => [...prev, payload.new])
+            setReactions(prev => {
+              // Check if reaction already exists to prevent duplicates
+              const exists = prev.some(r => r.id === payload.new.id)
+              if (exists) return prev
+              return [...prev, payload.new]
+            })
           } else if (payload.eventType === 'DELETE') {
             setReactions(prev => prev.filter(r => r.id !== payload.old.id))
           }
@@ -34,7 +39,7 @@ export default function MessageReactions({ messageId }) {
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      channel.unsubscribe()
     }
   }, [messageId])
 
@@ -61,10 +66,15 @@ export default function MessageReactions({ messageId }) {
         .delete()
         .match({ id: existingReaction.id })
 
-      if (error) console.error('Error removing reaction:', error)
+      if (error) {
+        console.error('Error removing reaction:', error)
+      } else {
+        // Optimistically update the UI
+        setReactions(prev => prev.filter(r => r.id !== existingReaction.id))
+      }
     } else {
       // Add reaction
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('message_reactions')
         .insert([
           {
@@ -73,8 +83,14 @@ export default function MessageReactions({ messageId }) {
             emoji: emoji
           }
         ])
+        .select()
 
-      if (error) console.error('Error adding reaction:', error)
+      if (error) {
+        console.error('Error adding reaction:', error)
+      } else if (data?.[0]) {
+        // Optimistically update the UI
+        setReactions(prev => [...prev, data[0]])
+      }
     }
   }
 

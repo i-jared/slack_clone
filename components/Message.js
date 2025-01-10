@@ -6,14 +6,26 @@ import MessageReactions from './MessageReactions'
 import ThreadPanel from './ThreadPanel'
 import UserStatusDot from './UserStatusDot'
 
-export default function Message({ message }) {
+export default function Message({ message, isThread = false, isParentMessage = false }) {
   const { user } = useContext(UserContext)
   const [showThread, setShowThread] = useState(false)
   const [replyCount, setReplyCount] = useState(0)
   const [userStatus, setUserStatus] = useState('OFFLINE')
-  
+
+  // Message container styles
+  const messageStyles = {
+    display: 'flex',
+    padding: '8px 0',
+    position: 'relative',
+    transition: 'background-color 0.15s ease',
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.02)'
+    }
+  }
+
   useEffect(() => {
     let isSubscribed = true;
+    let subscription;
 
     // Initial status fetch
     const fetchInitialStatus = async () => {
@@ -30,9 +42,8 @@ export default function Message({ message }) {
         
         if (userData && isSubscribed) {
           const lastUpdate = userData.updated_at ? new Date(userData.updated_at) : null;
-          const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000); // More strict: 2 minutes
+          const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
           
-          // Only show as online if status is ONLINE and updated within last 2 minutes
           setUserStatus(
             userData.status === 'ONLINE' && lastUpdate && lastUpdate > twoMinutesAgo 
               ? 'ONLINE' 
@@ -45,141 +56,113 @@ export default function Message({ message }) {
       }
     }
 
-    fetchInitialStatus();
-    const fetchInterval = setInterval(fetchInitialStatus, 30000); // Refresh every 30 seconds
+    // Set up real-time subscription for reply count
+    const setupReplyCountSubscription = () => {
+      subscription = supabase
+        .channel(`message:${message.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'messages',
+            filter: `parent_id=eq.${message.id}`
+          },
+          () => {
+            fetchReplyCount()
+          }
+        )
+        .subscribe()
+    }
 
-    // Fetch reply count when message loads
+    // Fetch reply count
     const fetchReplyCount = async () => {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('id', { count: 'exact' })
-        .eq('parent_id', message.id)
+      if (!message.id || isThread) return;
+      
+      try {
+        const { count, error } = await supabase
+          .from('messages')
+          .select('id', { count: 'exact' })
+          .eq('parent_id', message.id)
 
-      if (!error && data) {
-        setReplyCount(data.length)
+        if (error) throw error;
+        if (isSubscribed) setReplyCount(count || 0);
+      } catch (error) {
+        console.error('Error fetching reply count:', error);
       }
     }
 
-    fetchReplyCount()
-
-    // Subscribe to changes in replies
-    const threadSubscription = supabase
-      .channel(`thread-count-${message.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: `parent_id=eq.${message.id}`
-        },
-        () => {
-          fetchReplyCount()
-        }
-      )
-      .subscribe()
-
-    // Subscribe to user status changes
-    const statusSubscription = supabase
-      .channel(`user-status-${message.user?.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'users',
-          filter: `id=eq.${message.user?.id}`
-        },
-        (payload) => {
-          if (!isSubscribed) return;
-          
-          const lastUpdate = payload.new.updated_at ? new Date(payload.new.updated_at) : null;
-          const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-          
-          setUserStatus(
-            payload.new.status === 'ONLINE' && lastUpdate && lastUpdate > twoMinutesAgo 
-              ? 'ONLINE' 
-              : 'OFFLINE'
-          );
-        }
-      )
-      .subscribe()
+    fetchInitialStatus();
+    if (!isThread) {
+      fetchReplyCount();
+      setupReplyCountSubscription();
+    }
+    
+    const statusInterval = setInterval(fetchInitialStatus, 30000);
 
     return () => {
       isSubscribed = false;
-      clearInterval(fetchInterval);
-      threadSubscription.unsubscribe();
-      statusSubscription.unsubscribe();
+      clearInterval(statusInterval);
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
     }
-  }, [message.id, message.user?.id])
-
-  const isCurrentUser = message.user?.id === user?.id || message.sender?.id === user?.id
-  
-  const timestamp = message.inserted_at
-  const formattedTimestamp = timestamp
-    ? formatDistanceToNow(new Date(timestamp), { addSuffix: true })
-    : 'Just now'
-
-  const displayName =
-    message.user?.username ||
-    message.sender?.username ||
-    'Unknown User'
+  }, [message.id, message.user?.id, isThread]);
 
   return (
-    <>
-      <div className={`flex items-start gap-3 max-w-2xl px-4 ${isCurrentUser ? 'ml-auto flex-row-reverse' : ''}`} id={`message-${message.id}`}>
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center relative">
-          {(message.user?.avatar_url || message.sender?.avatar_url) ? (
-            <img
-              src={message.user?.avatar_url || message.sender?.avatar_url}
-              alt={displayName}
-              className="w-10 h-10 rounded-full"
-            />
-          ) : (
-            <span className="text-lg text-yellow-400">
-              {displayName.charAt(0).toUpperCase()}
-            </span>
-          )}
-          <div className="absolute bottom-0 right-0 transform translate-x-1/4 translate-y-1/4">
-            <UserStatusDot status={userStatus} />
+    <div style={messageStyles} className="group">
+      <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden mr-3">
+        {message.user?.avatar_url ? (
+          <img
+            src={message.user.avatar_url}
+            alt={message.user.username}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-700 flex items-center justify-center text-yellow-400">
+            {message.user?.username?.[0]?.toUpperCase() || '?'}
           </div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-medium text-yellow-400 font-orbitron">
+            {message.user?.username || 'Unknown user'}
+          </span>
+          <UserStatusDot status={userStatus} />
+          <span className="text-xs text-gray-500">
+            {formatDistanceToNow(new Date(message.inserted_at), { addSuffix: true })}
+          </span>
         </div>
-        <div className={`flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}`}>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-yellow-400 font-orbitron">{displayName}</span>
-            <span className="text-xs text-gray-500">{formattedTimestamp}</span>
-          </div>
-          <div className={`mt-1 px-4 py-2 rounded-lg ${
-            isCurrentUser 
-              ? 'bg-yellow-500 text-black' 
-              : 'bg-gray-700 text-white'
-          }`}>
-            {message.message}
-          </div>
-          <MessageReactions messageId={message.id} />
-          {/* Thread Button */}
-          <div className="text-xs mt-1">
+
+        <div className="text-gray-100 whitespace-pre-wrap break-words">
+          {message.message}
+        </div>
+
+        <div className="flex items-center gap-4 mt-2">
+          <MessageReactions message={message} />
+          
+          {!isThread && (
             <button
-              className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
               onClick={() => setShowThread(true)}
+              className="text-xs text-yellow-400/70 hover:text-yellow-400 flex items-center gap-1 transition-colors duration-150"
             >
-              {replyCount > 0 ? (
-                <>
-                  <span>{replyCount} repl{replyCount === 1 ? 'y' : 'ies'}</span>
-                </>
-              ) : (
-                'Start thread'
-              )}
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              {replyCount > 0 ? `${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}
             </button>
-          </div>
+          )}
         </div>
       </div>
+
       {showThread && (
         <ThreadPanel
           parentMessageId={message.id}
           onClose={() => setShowThread(false)}
         />
       )}
-    </>
+    </div>
   )
 }

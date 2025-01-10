@@ -8,38 +8,16 @@ export default function DirectMessage({ recipientId, recipient }) {
   const { messages, isLoading } = useDirectMessages({ recipientId })
   const messagesEndRef = useRef(null)
 
-  // Log initial props and state
+  // Scroll to bottom when messages change or when component mounts
   useEffect(() => {
-    console.log('🔄 DirectMessage mounted/updated:', {
-      recipientId,
-      recipient,
-      hasMessages: messages?.length > 0,
-      isLoading
-    })
-  }, [recipientId, recipient, messages, isLoading])
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    console.log('📜 Messages updated in DirectMessage:', {
-      count: messages?.length,
-      messages: messages
-    })
     if (messages?.length > 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages])
 
   if (isLoading) {
-    console.log('⏳ DirectMessage showing loading screen')
     return <LoadingScreen message="Loading conversation..." />
   }
-
-  console.log('🎨 DirectMessage rendering:', {
-    recipientId,
-    recipientName: recipient?.username,
-    messagesCount: messages?.length,
-    isLoading
-  })
 
   const displayName = recipient?.username || recipient?.email?.split('@')[0] || 'Unknown User'
 
@@ -60,27 +38,20 @@ export default function DirectMessage({ recipientId, recipient }) {
               No messages yet. Start the conversation!
             </div>
           ) : (
-            messages?.map((message) => {
-              console.log('📝 Rendering message in DirectMessage:', {
-                messageId: message.id,
-                senderId: message.sender?.id,
-                recipientId: message.recipient?.id,
-                content: message.content
-              })
-              return (
-                <Message 
-                  key={`${message.id}-${message.inserted_at}`}
-                  message={{
-                    ...message,
-                    message: message.content,
-                    user: message.sender,
-                    isDirect: true
-                  }}
-                />
-              )
-            })
+            messages?.map((message) => (
+              <Message 
+                key={`${message.id}-${message.inserted_at}`}
+                message={{
+                  id: message.id,
+                  message: message.content,
+                  user: message.sender,
+                  isDirect: true,
+                  inserted_at: message.inserted_at
+                }}
+              />
+            ))
           )}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} data-messages-end className="h-1" />
         </div>
       </div>
       <MessageInput recipient_id={recipientId} isDirect={true} />

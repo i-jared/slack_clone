@@ -18,41 +18,319 @@ body,
 }
 
 /* Animated Stars Background */
-.stars {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  background: url(http://www.script-tutorials.com/demos/360/images/stars.png) repeat top center;
-  z-index: 0;
-  animation: move-twinkle-back 200s linear infinite;
-}
-
-.twinkling {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  background: url(http://www.script-tutorials.com/demos/360/images/twinkling.png) repeat top center;
+.stars-small {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  background: transparent;
+  box-shadow: var(--stars-small);
+  animation: animateStarsInfinite 600s linear infinite;
   z-index: 1;
-  animation: move-twinkle-back 150s linear infinite;
+  will-change: transform;
+  transform-origin: center;
 }
 
-@keyframes move-twinkle-back {
-  from {
-    background-position: 0 0;
+.stars-small:nth-child(2) {
+  animation: animateStarsInfiniteAlt 550s linear infinite;
+  opacity: 0.8;
+}
+
+.stars-small:nth-child(3) {
+  animation: animateStarsInfiniteReverse 650s linear infinite;
+  opacity: 0.6;
+}
+
+.stars-small:nth-child(4) {
+  animation: animateStarsInfiniteAltReverse 580s linear infinite;
+  opacity: 0.4;
+}
+
+.stars-medium {
+  position: fixed;
+  width: 2px;
+  height: 2px;
+  background: transparent;
+  box-shadow: var(--stars-medium);
+  animation: animateStarsDiagonalInfinite 700s linear infinite;
+  z-index: 1;
+  will-change: transform;
+  transform-origin: center;
+}
+
+.stars-medium:nth-child(2) {
+  animation: animateStarsDiagonalInfiniteAlt 650s linear infinite;
+  opacity: 0.9;
+}
+
+.stars-medium:nth-child(3) {
+  animation: animateStarsSpiral 750s linear infinite;
+  opacity: 0.7;
+}
+
+.stars-large {
+  position: fixed;
+  width: 3px;
+  height: 3px;
+  background: transparent;
+  box-shadow: var(--stars-large);
+  animation: animateStarsWaveInfinite 800s linear infinite;
+  z-index: 1;
+  will-change: transform;
+  transform-origin: center;
+}
+
+.stars-large:nth-child(2) {
+  animation: animateStarsWaveInfiniteAlt 750s linear infinite;
+  opacity: 0.8;
+}
+
+/* Static stars */
+.stars-static {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  box-shadow: var(--stars-static);
+  z-index: 1;
+}
+
+.stars-twinkle {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  box-shadow: var(--stars-twinkle);
+  animation: twinkle 4s ease-in-out infinite alternate;
+  z-index: 1;
+}
+
+/* Nebula effects */
+.nebula-layer {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  box-shadow: var(--nebula);
+  opacity: 0.6;
+  animation: nebulaFloat 200s linear infinite;
+  z-index: 0;
+  will-change: transform;
+  mix-blend-mode: screen;
+}
+
+.nebula-layer-2 {
+  composes: nebula-layer;
+  animation: nebulaFloatAlt 250s linear infinite reverse;
+  opacity: 0.4;
+  filter: blur(2px);
+  mix-blend-mode: screen;
+}
+
+/* Shooting stars */
+.shooting-stars {
+  position: fixed;
+  width: 150px;
+  height: 2px;
+  transform: rotate(-45deg);
+  background: linear-gradient(90deg, 
+    rgba(255,255,255,1) 0%, 
+    rgba(255,247,220,0.8) 20%,
+    rgba(255,255,255,0.4) 40%,
+    rgba(255,255,255,0) 100%
+  );
+  animation: shootingStars 3s ease-in infinite;
+  z-index: 2;
+  filter: blur(0.5px);
+}
+
+.shooting-stars::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: inherit;
+  filter: blur(2px);
+}
+
+/* Animation keyframes for infinite seamless movement */
+@keyframes animateStarsInfinite {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
   }
-  to {
-    background-position: -10000px 5000px;
+  100% {
+    transform: translate3d(-16000px, -12000px, 0) scale(0.8);
   }
+}
+
+@keyframes animateStarsInfiniteAlt {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.8);
+  }
+  100% {
+    transform: translate3d(16000px, -12000px, 0) scale(1);
+  }
+}
+
+@keyframes animateStarsInfiniteReverse {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(-12000px, 16000px, 0) scale(0.9);
+  }
+}
+
+@keyframes animateStarsInfiniteAltReverse {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.9);
+  }
+  100% {
+    transform: translate3d(12000px, 16000px, 0) scale(1);
+  }
+}
+
+@keyframes animateStarsDiagonalInfinite {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  100% {
+    transform: translate3d(-16000px, 16000px, 0) rotate(45deg) scale(0.8);
+  }
+}
+
+@keyframes animateStarsDiagonalInfiniteAlt {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(0.8);
+  }
+  100% {
+    transform: translate3d(16000px, -16000px, 0) rotate(-45deg) scale(1);
+  }
+}
+
+@keyframes animateStarsSpiral {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate3d(-8000px, 8000px, 0) rotate(180deg) scale(0.9);
+  }
+  100% {
+    transform: translate3d(-16000px, 0, 0) rotate(360deg) scale(0.8);
+  }
+}
+
+@keyframes animateStarsWaveInfinite {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  25% {
+    transform: translate3d(-4000px, 4000px, 0) scale(0.9);
+  }
+  50% {
+    transform: translate3d(-8000px, 0, 0) scale(0.8);
+  }
+  75% {
+    transform: translate3d(-12000px, -4000px, 0) scale(0.9);
+  }
+  100% {
+    transform: translate3d(-16000px, 0, 0) scale(1);
+  }
+}
+
+@keyframes animateStarsWaveInfiniteAlt {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.8);
+  }
+  25% {
+    transform: translate3d(4000px, -4000px, 0) scale(0.9);
+  }
+  50% {
+    transform: translate3d(8000px, 0, 0) scale(1);
+  }
+  75% {
+    transform: translate3d(12000px, 4000px, 0) scale(0.9);
+  }
+  100% {
+    transform: translate3d(16000px, 0, 0) scale(0.8);
+  }
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1) rotate(180deg);
+  }
+}
+
+@keyframes nebulaFloat {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  25% {
+    transform: translate3d(4%, 3%, 0) scale(1.05) rotate(1deg);
+  }
+  50% {
+    transform: translate3d(0, 6%, 0) scale(1) rotate(0deg);
+  }
+  75% {
+    transform: translate3d(-4%, 3%, 0) scale(0.95) rotate(-1deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes nebulaFloatAlt {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  25% {
+    transform: translate3d(-3%, 4%, 0) scale(1.1) rotate(-1deg);
+  }
+  50% {
+    transform: translate3d(-6%, 0, 0) scale(1.05) rotate(0deg);
+  }
+  75% {
+    transform: translate3d(-3%, -4%, 0) scale(1) rotate(1deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(0.95) rotate(0deg);
+  }
+}
+
+@keyframes shootingStars {
+  0% {
+    transform: rotate(-45deg) translateX(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0;
+  }
+  100% {
+    transform: rotate(-45deg) translateX(2000%);
+    opacity: 0;
+  }
+}
+
+:root {
+  --stars-small: ${generateStars(40000, 1)};
+  --stars-medium: ${generateStars(30000, 2)};
+  --stars-large: ${generateStars(20000, 3)};
+  --stars-static: ${generateStaticStars(20000)};
+  --stars-twinkle: ${generateStaticStars(10000)};
+  --nebula: ${generateNebula(40)};
 }
 
 .channel-list {

@@ -7,6 +7,7 @@ import MessageInput from '~/components/MessageInput'
 import LoadingScreen from '~/components/LoadingScreen'
 import { useContext } from 'react'
 import UserContext from '~/lib/UserContext'
+import UserStatusDot from '~/components/UserStatusDot'
 
 const DirectMessagePage = () => {
   const router = useRouter()
@@ -14,19 +15,55 @@ const DirectMessagePage = () => {
   const { user } = useContext(UserContext)
   const [recipient, setRecipient] = useState(null)
   const [isLoadingRecipient, setIsLoadingRecipient] = useState(true)
-  const { messages: directMessages, isLoading: isLoadingMessages } = useDirectMessages({ recipientId: id })
+  const { messages: directMessages, isLoading: isLoadingMessages, retryMessage } = useDirectMessages({ recipientId: id })
   const messagesEndRef = useRef(null)
+  const shouldAutoScroll = useRef(true)
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  // Improved scroll to bottom function
+  const scrollToBottom = (behavior = 'smooth') => {
+    const messagesContainer = document.querySelector('.messages-container')
+    const endElement = messagesEndRef.current
+    
+    if (messagesContainer && endElement) {
+      // Calculate if we're already near bottom
+      const containerHeight = messagesContainer.clientHeight
+      const scrollPosition = messagesContainer.scrollTop
+      const scrollHeight = messagesContainer.scrollHeight
+      const isNearBottom = (scrollHeight - (scrollPosition + containerHeight)) < 100
+
+      // Update auto-scroll preference based on user's scroll position
+      shouldAutoScroll.current = isNearBottom
+
+      // Only scroll if we should auto-scroll
+      if (shouldAutoScroll.current) {
+        setTimeout(() => {
+          endElement.scrollIntoView({ behavior, block: 'end' })
+        }, 100)
+      }
+    }
   }
 
-  // Scroll to bottom when messages change
+  // Handle scroll events to determine if user has scrolled up
+  const handleScroll = (e) => {
+    const container = e.target
+    const isNearBottom = (container.scrollHeight - (container.scrollTop + container.clientHeight)) < 100
+    shouldAutoScroll.current = isNearBottom
+  }
+
+  // Scroll to bottom on initial load
   useEffect(() => {
     if (!isLoadingMessages && directMessages?.length > 0) {
-      scrollToBottom()
+      scrollToBottom('auto')
     }
   }, [directMessages, isLoadingMessages])
+
+  // Scroll when new messages arrive
+  useEffect(() => {
+    const lastMessage = directMessages?.[directMessages.length - 1]
+    if (lastMessage && !isLoadingMessages) {
+      scrollToBottom()
+    }
+  }, [directMessages?.length, isLoadingMessages])
 
   // Fetch recipient user data
   useEffect(() => {
@@ -103,44 +140,55 @@ const DirectMessagePage = () => {
 
   return (
     <Layout>
-      <div className="relative h-screen flex flex-col">
-        <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
-          <h2 className="text-2xl font-orbitron text-yellow-400">
-            {recipient.username || recipient.email?.split('@')[0] || 'Unknown User'}
-          </h2>
-          <p className="text-sm text-gray-400 font-orbitron">
-            Private conversation
-          </p>
+      <div className="flex flex-col h-full">
+        {/* DM Header */}
+        <div className="px-6 py-4 border-b border-gray-700 bg-gray-800/90 mt-16">
+          <div className="flex items-center space-x-2">
+            <h1 className="text-2xl font-orbitron text-yellow-400">
+              {recipient ? recipient.username : 'Loading...'}
+            </h1>
+            <UserStatusDot status={recipient?.status || 'OFFLINE'} />
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-          {isLoadingMessages ? (
-            <div className="flex items-center justify-center h-full">
-              <LoadingScreen message="Loading messages..." />
-            </div>
-          ) : directMessages?.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-400">
-              No messages yet. Start the conversation!
-            </div>
-          ) : (
-            <div className="py-4 space-y-2">
-              {directMessages?.map((message) => (
-                <Message 
-                  key={`${message.id}-${message.inserted_at}`} 
-                  message={{
-                    ...message,
-                    user: message.sender,
-                    isDirect: true
-                  }} 
-                />
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="max-w-4xl mx-auto space-y-4">
+            {isLoadingMessages ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-yellow-400">Loading messages...</div>
+              </div>
+            ) : directMessages?.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="text-yellow-400 text-4xl mb-4">👋</div>
+                <h3 className="text-2xl font-semibold text-yellow-400 mb-2">
+                  Start a conversation
+                </h3>
+                <p className="text-gray-400">
+                  Send a message to begin chatting!
+                </p>
+              </div>
+            ) : (
+              <>
+                {directMessages.map((message) => (
+                  <Message
+                    key={message.id}
+                    message={message}
+                    isDirect={true}
+                  />
+                ))}
+                <div ref={messagesEndRef} />
+              </>
+            )}
+          </div>
         </div>
-        <MessageInput 
-          recipient_id={id}
-          isDirect={true}
-        />
+
+        {/* Message Input */}
+        <div className="p-4 bg-gray-900/75 backdrop-blur-sm border-t border-gray-800">
+          <div className="max-w-4xl mx-auto">
+            <MessageInput recipient_id={parseInt(id)} isDirect={true} />
+          </div>
+        </div>
       </div>
     </Layout>
   )

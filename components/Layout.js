@@ -262,18 +262,80 @@ const Layout = ({ children, hideSidebar = false }) => {
     }
   }
 
+  // Update search bar container styles
+  const searchBarContainerStyles = {
+    position: 'fixed',
+    top: '0',
+    left: '260px',
+    right: isThreadOpen ? '400px' : '0',
+    height: '64px',
+    backgroundColor: '#1E1F22',
+    borderBottom: '1px solid rgba(45, 45, 46, 0.5)',
+    zIndex: 30,
+    transition: 'all 0.3s ease-in-out',
+    backdropFilter: 'blur(8px)',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '0 24px'
+  }
+
+  // Update sidebar styles
+  const sidebarStyles = {
+    width: '260px',
+    height: '100vh',
+    backgroundColor: '#1E1F22',
+    borderRight: '1px solid rgba(45, 45, 46, 0.8)',
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'fixed',
+    left: '0',
+    top: '0',
+    bottom: '0',
+    zIndex: 20
+  }
+
+  // Update content wrapper styles
+  const contentWrapperStyles = {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative',
+    backgroundColor: '#1E1F22'
+  }
+
+  // Update main content styles for smooth sliding
+  const mainContentStyles = {
+    transition: 'all 0.3s ease-in-out',
+    marginLeft: '260px',
+    width: isThreadOpen ? 'calc(100% - 660px)' : 'calc(100% - 260px)',
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative',
+    backgroundColor: '#1E1F22',
+    overflow: 'hidden'
+  }
+
+  // Add styles for the main scroll area
+  const mainScrollAreaStyles = {
+    flex: 1,
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    paddingTop: '64px' // Height of search bar
+  }
+
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-100">
-      {/* Sidebar - conditionally rendered */}
+    <div className="flex h-screen bg-[#1E1F22] overflow-hidden">
       {!hideSidebar && (
-        <div className="w-64 flex flex-col bg-gradient-to-b from-gray-900 to-gray-800 border-r border-gray-800">
+        <div style={sidebarStyles}>
           {/* App Header */}
-          <div className="p-4 border-b border-gray-800">
+          <div className="p-4 border-b border-gray-800/50">
             <h1 className="text-2xl font-orbitron text-yellow-400 tracking-wider">Talk2D2</h1>
           </div>
 
           {/* Channels & DMs */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
             {/* Channels Section */}
             <div className="p-4">
               <h2 className="text-sm font-bold text-yellow-400 tracking-wide mb-2">CHANNELS</h2>
@@ -285,7 +347,7 @@ const Layout = ({ children, hideSidebar = false }) => {
                     className={`flex items-center px-2 py-1.5 text-sm rounded-md transition-colors duration-150
                       ${channel.id === parseInt(router.query.id) 
                         ? 'bg-yellow-500/10 text-yellow-400' 
-                        : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`}
+                        : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200'}`}
                   >
                     <span className="text-gray-500 mr-1.5">#</span>
                     {channel.name || channel.slug}
@@ -301,7 +363,7 @@ const Layout = ({ children, hideSidebar = false }) => {
                 {users.map((otherUser) => (
                   <div
                     key={otherUser.id}
-                    className="flex items-center px-2 py-1.5 text-sm text-gray-400 rounded-md hover:bg-gray-800 hover:text-gray-200 cursor-pointer"
+                    className="flex items-center px-2 py-1.5 text-sm text-gray-400 rounded-md hover:bg-gray-800/50 hover:text-gray-200 cursor-pointer"
                     onClick={() => router.push(`/dms/${otherUser.id}`)}
                   >
                     <span
@@ -317,12 +379,12 @@ const Layout = ({ children, hideSidebar = false }) => {
           </div>
 
           {/* User Profile Section */}
-          <div className="relative p-4 border-t border-gray-800 bg-gray-900/50 backdrop-blur-sm">
+          <div className="relative p-4 border-t border-gray-800/50 bg-[#1E1F22]">
             <div 
-              className="flex items-center space-x-3 cursor-pointer hover:bg-gray-800/50 p-2 rounded-lg transition-colors duration-150"
+              className="flex items-center space-x-3 cursor-pointer hover:bg-gray-800/30 p-2 rounded-lg transition-colors duration-150"
               onClick={() => setShowProfilePopup(!showProfilePopup)}
             >
-              <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden flex-shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gray-700/50 overflow-hidden flex-shrink-0">
                 {avatarUrl && (
                   <img 
                     src={avatarUrl} 
@@ -333,7 +395,7 @@ const Layout = ({ children, hideSidebar = false }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2">
-                  <span className="font-medium truncate">{username || user?.email}</span>
+                  <span className="font-medium text-gray-200 truncate">{username || user?.email}</span>
                   <UserStatusDot status={status} />
                 </div>
                 <div className="text-xs text-gray-400">Click to edit profile</div>
@@ -429,11 +491,10 @@ const Layout = ({ children, hideSidebar = false }) => {
           </div>
         </div>
       )}
-
-      {/* Main Content */}
-      <main className={`flex-1 flex flex-col bg-gray-800 transition-all duration-300 ${isThreadOpen ? 'mr-96' : ''}`}>
+      
+      <div style={mainContentStyles}>
         {/* Search Bar */}
-        <div className="relative bg-gray-900/75 p-3 border-b border-gray-800">
+        <div style={searchBarContainerStyles}>
           <input
             type="text"
             value={searchTerm}
@@ -442,16 +503,17 @@ const Layout = ({ children, hideSidebar = false }) => {
               handleSearch(e.target.value)
             }}
             placeholder="Search messages, channels, or users..."
-            className="w-full px-4 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-yellow-500"
+            className="w-full px-4 py-2 bg-gray-800/50 text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500/50 placeholder-gray-500"
           />
+          
           {/* Search Results Dropdown */}
           {searchResults.length > 0 && (
-            <div className="absolute mt-2 w-full bg-gray-800 border border-gray-700 rounded shadow-lg max-h-64 overflow-y-auto z-50">
+            <div className="absolute left-0 right-0 top-full mt-2 mx-4 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
               {searchResults.map((item, idx) => (
                 <div
                   key={idx}
                   onClick={() => goToResult(item)}
-                  className="px-4 py-2 hover:bg-gray-700 cursor-pointer"
+                  className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-200"
                 >
                   {item.type === 'channel' && (
                     <div>
@@ -459,13 +521,17 @@ const Layout = ({ children, hideSidebar = false }) => {
                     </div>
                   )}
                   {item.type === 'user' && (
-                    <div>
-                      <span className="text-blue-400">@</span> {item.data.username}
+                    <div className="flex items-center gap-2">
+                      <span className="text-yellow-400">@</span>
+                      <span>{item.data.username || item.data.email}</span>
                     </div>
                   )}
                   {item.type === 'message' && (
-                    <div>
-                      <span className="text-green-400">Msg:</span> {item.data.message.slice(0, 40)}...
+                    <div className="text-gray-300">
+                      <div className="text-xs text-gray-400 mb-1">
+                        in #{item.data.channel_name || 'channel'}
+                      </div>
+                      {item.data.message}
                     </div>
                   )}
                 </div>
@@ -473,8 +539,17 @@ const Layout = ({ children, hideSidebar = false }) => {
             </div>
           )}
         </div>
-        {children}
-      </main>
+        
+        {/* Main Content */}
+        <div style={contentWrapperStyles} className="flex-1 overflow-hidden">
+          <div 
+            style={mainScrollAreaStyles}
+            className="scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
+          >
+            {children}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

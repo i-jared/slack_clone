@@ -1,4 +1,4 @@
-import { useEffect, useRef, useContext } from 'react'
+import { useEffect, useRef, useContext, useState } from 'react'
 import { useRouter } from 'next/router'
 import { useStore } from '~/lib/Store'
 import { useChannelMessages } from '~/lib/useChannelMessages'
@@ -11,16 +11,30 @@ const ChannelPage = () => {
   const router = useRouter()
   const { id } = router.query
   const { user } = useContext(UserContext)
-  const scrollToMessageId = router.query.scrollToMessage
+  const messagesEndRef = useRef(null)
+  const shouldAutoScroll = useRef(true)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasMore, setHasMore] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   // This custom store hook loads channels
   const { channels } = useStore()
   // This hook handles messages with optimistic updates
-  const { messages, isLoading, retryMessage } = useChannelMessages({ 
+  const { messages, isLoading: messagesLoading, retryMessage } = useChannelMessages({ 
     channelId: id ? parseInt(id) : null 
   })
-  const messagesEndRef = useRef(null)
-  const shouldAutoScroll = useRef(true)
+
+  // Get current channel
+  const channel = channels?.find(c => c.id === parseInt(id))
+
+  // Scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (!router.isReady) return;
+    
+    if (messages?.length > 0 && !router.query.scrollToMessage) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages, router.isReady, router.query.scrollToMessage])
 
   useEffect(() => {
     if (!user) {
@@ -30,6 +44,9 @@ const ChannelPage = () => {
 
   // If scrollToMessageId is set, scroll to that message
   useEffect(() => {
+    if (!router.isReady) return;
+    
+    const scrollToMessageId = router.query.scrollToMessage;
     if (scrollToMessageId && messages?.length) {
       const timer = setTimeout(() => {
         const elem = document.getElementById(`message-${scrollToMessageId}`)
@@ -39,7 +56,7 @@ const ChannelPage = () => {
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [scrollToMessageId, messages])
+  }, [router.isReady, router.query.scrollToMessage, messages])
 
   // Improved scroll to bottom function
   const scrollToBottom = (behavior = 'smooth') => {
@@ -74,21 +91,22 @@ const ChannelPage = () => {
 
   // Scroll to bottom on initial load
   useEffect(() => {
-    if (!scrollToMessageId && messages?.length && !isLoading) {
+    if (!router.isReady) return;
+    
+    if (!router.query.scrollToMessage && messages?.length && !isLoading) {
       scrollToBottom('auto')
     }
-  }, [isLoading, messages?.length, scrollToMessageId])
+  }, [isLoading, messages?.length, router.isReady, router.query.scrollToMessage])
 
   // Scroll when new messages arrive
   useEffect(() => {
+    if (!router.isReady) return;
+    
     const lastMessage = messages?.[messages.length - 1]
-    if (lastMessage && !scrollToMessageId && !isLoading) {
+    if (lastMessage && !router.query.scrollToMessage && !isLoading) {
       scrollToBottom()
     }
-  }, [messages?.length, scrollToMessageId, isLoading])
-
-  // get the channel from the store
-  const channel = channels.find((c) => c.id === parseInt(id))
+  }, [messages?.length, router.isReady, router.query.scrollToMessage, isLoading])
 
   if (!user) {
     return <Layout />
@@ -96,27 +114,24 @@ const ChannelPage = () => {
 
   return (
     <Layout>
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col h-screen">
         {/* Channel Header */}
-        <header className="flex items-center h-16 px-6 bg-gray-900/75 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-10">
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-yellow-400 flex items-center">
-              <span className="text-gray-500 mr-2">#</span>
-              {channel?.slug || 'Loading...'}
-            </h2>
-            <p className="text-sm text-gray-400">
-              {channel ? `Welcome to #${channel.slug}` : 'Channel not found'}
-            </p>
-          </div>
-        </header>
+        <div className="sticky top-16 px-6 py-4 border-b border-gray-700 bg-gray-800/90 backdrop-blur-sm z-10">
+          <h1 className="text-2xl font-orbitron text-yellow-400">
+            {channel ? `#${channel.slug}` : 'Loading...'}
+          </h1>
+          {channel?.description && (
+            <p className="text-sm text-gray-400 mt-1">{channel.description}</p>
+          )}
+        </div>
 
         {/* Messages */}
         <div 
-          className="messages-container flex-1 overflow-y-auto px-6 py-4"
+          className="flex-1 overflow-y-auto px-6 py-4"
           onScroll={handleScroll}
         >
-          <div className="max-w-4xl mx-auto space-y-4">
-            {isLoading ? (
+          <div className="max-w-4xl mx-auto space-y-4 min-h-full">
+            {messagesLoading ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
                 <div className="text-yellow-400 text-4xl mb-4">⌛</div>
                 <h3 className="text-2xl font-semibold text-yellow-400 mb-2">
@@ -143,15 +158,15 @@ const ChannelPage = () => {
                     retryMessage={retryMessage}
                   />
                 ))}
-                <div ref={messagesEndRef} className="h-1" />
+                <div ref={messagesEndRef} data-messages-end className="h-1" />
               </>
             )}
           </div>
         </div>
 
         {/* Message Input */}
-        <div className="p-4 bg-gray-900/75 backdrop-blur-sm border-t border-gray-800">
-          <div className="max-w-4xl mx-auto">
+        <div className="sticky bottom-0 bg-gray-900/75 backdrop-blur-sm border-t border-gray-800">
+          <div className="max-w-4xl mx-auto p-4">
             <MessageInput channel_id={parseInt(id)} />
           </div>
         </div>
