@@ -7,7 +7,6 @@ import MessageInput from '~/components/MessageInput'
 import LoadingScreen from '~/components/LoadingScreen'
 import { useContext } from 'react'
 import UserContext from '~/lib/UserContext'
-import UserStatusDot from '~/components/UserStatusDot'
 
 const DirectMessagePage = () => {
   const router = useRouter()
@@ -140,55 +139,48 @@ const DirectMessagePage = () => {
 
   return (
     <Layout>
-      <div className="flex flex-col h-full">
-        {/* DM Header */}
-        <div className="px-6 py-4 border-b border-gray-700 bg-gray-800/90 mt-16">
-          <div className="flex items-center space-x-2">
-            <h1 className="text-2xl font-orbitron text-yellow-400">
-              {recipient ? recipient.username : 'Loading...'}
-            </h1>
-            <UserStatusDot status={recipient?.status || 'OFFLINE'} />
-          </div>
+      <div className="relative h-screen flex flex-col">
+        <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
+          <h2 className="text-2xl font-orbitron text-yellow-400">
+            {recipient.username || recipient.email?.split('@')[0] || 'Unknown User'}
+          </h2>
+          <p className="text-sm text-gray-400 font-orbitron">
+            Private conversation
+          </p>
         </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="max-w-4xl mx-auto space-y-4">
-            {isLoadingMessages ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-yellow-400">Loading messages...</div>
-              </div>
-            ) : directMessages?.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="text-yellow-400 text-4xl mb-4">👋</div>
-                <h3 className="text-2xl font-semibold text-yellow-400 mb-2">
-                  Start a conversation
-                </h3>
-                <p className="text-gray-400">
-                  Send a message to begin chatting!
-                </p>
-              </div>
-            ) : (
-              <>
-                {directMessages.map((message) => (
-                  <Message
-                    key={message.id}
-                    message={message}
-                    isDirect={true}
-                  />
-                ))}
-                <div ref={messagesEndRef} />
-              </>
-            )}
-          </div>
+        <div 
+          className="messages-container flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
+          onScroll={handleScroll}
+        >
+          {isLoadingMessages ? (
+            <div className="flex items-center justify-center h-full">
+              <LoadingScreen message="Loading messages..." />
+            </div>
+          ) : directMessages?.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              No messages yet. Start the conversation!
+            </div>
+          ) : (
+            <div className="py-4 space-y-2">
+              {directMessages?.map((message) => (
+                <Message 
+                  key={`${message.id}-${message.inserted_at}`} 
+                  message={{
+                    ...message,
+                    user: message.sender,
+                    isDirect: true
+                  }}
+                  retryMessage={retryMessage}
+                />
+              ))}
+              <div ref={messagesEndRef} className="h-1" />
+            </div>
+          )}
         </div>
-
-        {/* Message Input */}
-        <div className="p-4 bg-gray-900/75 backdrop-blur-sm border-t border-gray-800">
-          <div className="max-w-4xl mx-auto">
-            <MessageInput recipient_id={parseInt(id)} isDirect={true} />
-          </div>
-        </div>
+        <MessageInput 
+          recipient_id={id}
+          isDirect={true}
+        />
       </div>
     </Layout>
   )

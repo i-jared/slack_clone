@@ -264,19 +264,16 @@ const Layout = ({ children, hideSidebar = false }) => {
 
   // Update search bar container styles
   const searchBarContainerStyles = {
-    position: 'fixed',
+    transition: 'all 0.3s ease-in-out',
+    position: 'sticky',
     top: '0',
-    left: '260px',
-    right: isThreadOpen ? '400px' : '0',
-    height: '64px',
+    left: '0',
+    right: '0',
+    width: '100%',
+    zIndex: 5,
     backgroundColor: '#1E1F22',
     borderBottom: '1px solid rgba(45, 45, 46, 0.5)',
-    zIndex: 30,
-    transition: 'all 0.3s ease-in-out',
-    backdropFilter: 'blur(8px)',
-    display: 'flex',
-    alignItems: 'center',
-    padding: '0 24px'
+    height: '60px'
   }
 
   // Update sidebar styles
@@ -312,8 +309,7 @@ const Layout = ({ children, hideSidebar = false }) => {
     display: 'flex',
     flexDirection: 'column',
     position: 'relative',
-    backgroundColor: '#1E1F22',
-    overflow: 'hidden'
+    backgroundColor: '#1E1F22'
   }
 
   // Add styles for the main scroll area
@@ -322,11 +318,18 @@ const Layout = ({ children, hideSidebar = false }) => {
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    paddingTop: '64px' // Height of search bar
+    '::-webkit-scrollbar': {
+      width: '8px',
+      backgroundColor: 'transparent'
+    },
+    '::-webkit-scrollbar-thumb': {
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      borderRadius: '4px'
+    }
   }
 
   return (
-    <div className="flex h-screen bg-[#1E1F22] overflow-hidden">
+    <div className="flex h-screen bg-[#1E1F22]">
       {!hideSidebar && (
         <div style={sidebarStyles}>
           {/* App Header */}
@@ -495,56 +498,54 @@ const Layout = ({ children, hideSidebar = false }) => {
       <div style={mainContentStyles}>
         {/* Search Bar */}
         <div style={searchBarContainerStyles}>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value)
-              handleSearch(e.target.value)
-            }}
-            placeholder="Search messages, channels, or users..."
-            className="w-full px-4 py-2 bg-gray-800/50 text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500/50 placeholder-gray-500"
-          />
-          
-          {/* Search Results Dropdown */}
-          {searchResults.length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-2 mx-4 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
-              {searchResults.map((item, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => goToResult(item)}
-                  className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-200"
-                >
-                  {item.type === 'channel' && (
-                    <div>
-                      <span className="text-yellow-400">#</span> {item.data.name || item.data.slug}
-                    </div>
-                  )}
-                  {item.type === 'user' && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-yellow-400">@</span>
-                      <span>{item.data.username || item.data.email}</span>
-                    </div>
-                  )}
-                  {item.type === 'message' && (
-                    <div className="text-gray-300">
-                      <div className="text-xs text-gray-400 mb-1">
-                        in #{item.data.channel_name || 'channel'}
+          <div className="p-3">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                handleSearch(e.target.value)
+              }}
+              placeholder="Search messages, channels, or users..."
+              className="w-full px-4 py-2 bg-gray-800/50 text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500/50 placeholder-gray-500"
+            />
+            
+            {/* Search Results Dropdown */}
+            {searchResults.length > 0 && (
+              <div className="absolute mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
+                {searchResults.map((item, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => goToResult(item)}
+                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer"
+                  >
+                    {item.type === 'channel' && (
+                      <div>
+                        <span className="text-yellow-400">#</span> {item.data.name || item.data.slug}
                       </div>
-                      {item.data.message}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                    )}
+                    {item.type === 'user' && (
+                      <div>
+                        <span className="text-blue-400">@</span> {item.data.username}
+                      </div>
+                    )}
+                    {item.type === 'message' && (
+                      <div>
+                        <span className="text-green-400">Msg:</span> {item.data.message.slice(0, 40)}...
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Main Content */}
-        <div style={contentWrapperStyles} className="flex-1 overflow-hidden">
+        <div style={contentWrapperStyles}>
           <div 
             style={mainScrollAreaStyles}
-            className="scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
+            className="px-6 py-4"
           >
             {children}
           </div>

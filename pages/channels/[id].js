@@ -116,7 +116,7 @@ const ChannelPage = () => {
     <Layout>
       <div className="flex flex-col h-screen">
         {/* Channel Header */}
-        <div className="sticky top-16 px-6 py-4 border-b border-gray-700 bg-gray-800/90 backdrop-blur-sm z-10">
+        <div className="px-6 py-4 border-b border-gray-700 bg-gray-800/90">
           <h1 className="text-2xl font-orbitron text-yellow-400">
             {channel ? `#${channel.slug}` : 'Loading...'}
           </h1>
@@ -127,10 +127,10 @@ const ChannelPage = () => {
 
         {/* Messages */}
         <div 
-          className="flex-1 overflow-y-auto px-6 py-4"
+          className="messages-container flex-1 overflow-y-auto px-6 py-4"
           onScroll={handleScroll}
         >
-          <div className="max-w-4xl mx-auto space-y-4 min-h-full">
+          <div className="max-w-4xl mx-auto space-y-4">
             {messagesLoading ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
                 <div className="text-yellow-400 text-4xl mb-4">⌛</div>
@@ -165,8 +165,8 @@ const ChannelPage = () => {
         </div>
 
         {/* Message Input */}
-        <div className="sticky bottom-0 bg-gray-900/75 backdrop-blur-sm border-t border-gray-800">
-          <div className="max-w-4xl mx-auto p-4">
+        <div className="p-4 bg-gray-900/75 backdrop-blur-sm border-t border-gray-800">
+          <div className="max-w-4xl mx-auto">
             <MessageInput channel_id={parseInt(id)} />
           </div>
         </div>

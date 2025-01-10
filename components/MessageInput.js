@@ -16,20 +16,29 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
 
     setIsSending(true)
     setError(null)
-    
-    // Create a temporary ID for optimistic update
-    const tempId = 'temp-' + Date.now()
 
     try {
+      // Create a temporary ID for optimistic update
+      const tempId = 'temp-' + Date.now()
+      
       // Prepare the message data
       const messageData = {
         id: tempId,
         message: content.trim(),
         user_id: user.id,
         status: 'pending',
-        inserted_at: new Date().toISOString(),
-        ...(isDirect ? { recipient_id, is_direct: true } : { channel_id }),
-        ...(isThread && parentMessageId ? { parent_id: parentMessageId } : {})
+        inserted_at: new Date().toISOString()
+      }
+
+      if (isDirect) {
+        messageData.recipient_id = recipient_id
+        messageData.is_direct = true
+      } else {
+        messageData.channel_id = channel_id
+      }
+
+      if (isThread && parentMessageId) {
+        messageData.parent_id = parentMessageId
       }
 
       // Dispatch optimistic update event
@@ -59,13 +68,11 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
       // Clear the input
       setContent('')
 
-      // Only scroll to bottom if not in a thread
-      if (!isThread) {
-        setTimeout(() => {
-          const messagesEndRef = document.querySelector('[data-messages-end]')
-          messagesEndRef?.scrollIntoView({ behavior: 'smooth' })
-        }, 100)
-      }
+      // Trigger scroll to bottom after a short delay to ensure message is rendered
+      setTimeout(() => {
+        const messagesEndRef = document.querySelector('[data-messages-end]')
+        messagesEndRef?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
 
     } catch (error) {
       console.error('Error sending message:', error)
@@ -169,13 +176,6 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
     }
   }
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit(e)
-    }
-  }
-
   const messageInputStyles = {
     position: 'sticky',
     bottom: 0,
@@ -192,12 +192,12 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
 
   return (
     <div style={messageInputStyles}>
-      <div className="max-w-4xl mx-auto flex flex-col">
-        <div className="relative w-full">
+      <div className="max-w-screen-xl mx-auto">
+        <div className="relative">
           {/* File attachment button */}
           <button
             onClick={() => document.getElementById('file-input').click()}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-500 transition-colors duration-200"
+            className="absolute left-4 bottom-3 text-gray-400 hover:text-yellow-500 transition-colors duration-200"
             title="Attach file"
             disabled={isUploading}
           >
@@ -219,7 +219,6 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            onKeyDown={handleKeyDown}
             placeholder={`Message ${isDirect ? 'user' : '#channel'}`}
             className="w-full bg-gray-700 text-white rounded-lg pl-12 pr-20 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all duration-200 border border-transparent hover:border-gray-600"
             style={{ 
@@ -236,7 +235,7 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
           <button
             onClick={handleSubmit}
             disabled={(!content.trim() && !selectedFile) || isUploading || isSending}
-            className={`absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 rounded-md transition-all duration-200 font-medium ${
+            className={`absolute right-2 bottom-2 px-4 py-1.5 rounded-md transition-all duration-200 font-medium ${
               (content.trim() || selectedFile) && !isUploading && !isSending
                 ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900 shadow-sm hover:shadow'
                 : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-75'
@@ -255,7 +254,7 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
 
         {/* File preview */}
         {selectedFile && (
-          <div className="mt-2 p-3 bg-gray-700 rounded-md flex items-center justify-between border border-gray-600 w-full">
+          <div className="mt-2 p-3 bg-gray-700 rounded-md flex items-center justify-between border border-gray-600">
             <span className="text-sm text-gray-300">{selectedFile.name}</span>
             <button
               onClick={() => setSelectedFile(null)}

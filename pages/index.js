@@ -4,35 +4,23 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import UserContext from '~/lib/UserContext'
 import LoadingScreen from '~/components/LoadingScreen'
-import { generateStars, generateStaticStars, generateNebula } from '../lib/starUtils'
 
 export default function Home() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [type, setType] = useState(null)
-  const [isRedirecting, setIsRedirecting] = useState(false)
   const router = useRouter()
   const { user } = useContext(UserContext)
 
   // If user is already logged in, redirect to channels
   useEffect(() => {
-    if (user && !isRedirecting) {
+    console.log('Index page useEffect - User state:', user)
+    if (user) {
       console.log('User found, redirecting to channels...')
-      setIsRedirecting(true)
-      router.push('/channels/1').catch(console.error)
+      router.push('/channels/1')
     }
-  }, [user, router, isRedirecting])
-
-  // Show loading screen only during actual redirect
-  if (isRedirecting) {
-    return <LoadingScreen message="Preparing your galactic dashboard..." />
-  }
-
-  // If user exists but we haven't started redirecting, don't render anything
-  if (user) {
-    return null
-  }
+  }, [user])
 
   const handleLogin = async (type, username, password) => {
     try {
@@ -93,76 +81,28 @@ export default function Home() {
     }
   }
 
+  // If we're already logged in and waiting for redirect, show loading screen
+  if (user) {
+    return <LoadingScreen message="Preparing your galactic dashboard..." />
+  }
+
   return (
     <div className="flex min-h-screen bg-[#0A0C10] items-center justify-center relative overflow-hidden">
       <Head>
         <title>Talk2D2 - Your Galactic Chat Hub</title>
-        <style jsx global>{`
-          :root {
-            --stars-small: ${generateStars(40000, 1)};
-            --stars-medium: ${generateStars(30000, 2)};
-            --stars-large: ${generateStars(20000, 3)};
-            --stars-static: ${generateStaticStars(20000)};
-            --stars-twinkle: ${generateStaticStars(10000)};
-            --nebula: ${generateNebula(40)};
-          }
-        `}</style>
       </Head>
 
-      {/* Enhanced Star field background */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#0A0C10] via-[#0A0C10] to-black overflow-hidden">
-        {/* Deep space gradient for depth */}
-        <div className="absolute inset-0 bg-gradient-radial from-transparent via-blue-900/5 to-purple-900/10"></div>
-        
-        {/* Nebula layers - behind everything */}
-        <div className="nebula-layer"></div>
-        <div className="nebula-layer-2"></div>
-        
-        {/* Static star layers - create depth */}
-        <div className="stars-static"></div>
-        <div className="stars-static" style={{ opacity: 0.8, transform: 'scale(1.2)' }}></div>
-        <div className="stars-static" style={{ opacity: 0.6, transform: 'scale(1.4)' }}></div>
-        <div className="stars-static" style={{ opacity: 0.4, transform: 'scale(1.6)' }}></div>
-        <div className="stars-twinkle"></div>
-        <div className="stars-twinkle" style={{ opacity: 0.7, transform: 'scale(1.3)' }}></div>
-        <div className="stars-twinkle" style={{ opacity: 0.5, transform: 'scale(1.6)' }}></div>
-        <div className="stars-twinkle" style={{ opacity: 0.3, transform: 'scale(1.9)' }}></div>
-        
-        {/* Moving star layers - multiple instances for fuller coverage */}
+      {/* Star field background */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#0A0C10] via-[#0A0C10] to-black">
+        {/* Star layers */}
         <div className="stars-small"></div>
-        <div className="stars-small"></div>
-        <div className="stars-small"></div>
-        <div className="stars-small"></div>
-        <div className="stars-small" style={{ opacity: 0.7, transform: 'scale(1.2)' }}></div>
-        <div className="stars-small" style={{ opacity: 0.5, transform: 'scale(1.4)' }}></div>
-        
         <div className="stars-medium"></div>
-        <div className="stars-medium"></div>
-        <div className="stars-medium"></div>
-        <div className="stars-medium" style={{ opacity: 0.8, transform: 'scale(1.1)' }}></div>
-        <div className="stars-medium" style={{ opacity: 0.6, transform: 'scale(1.3)' }}></div>
-        
         <div className="stars-large"></div>
-        <div className="stars-large"></div>
-        <div className="stars-large" style={{ opacity: 0.8, transform: 'scale(1.2)' }}></div>
-        
-        {/* Shooting stars - on top */}
-        <div className="shooting-stars" style={{ left: '20%', top: '20%', width: '250px' }}></div>
-        <div className="shooting-stars" style={{ left: '60%', top: '35%', animationDelay: '1.5s', width: '200px' }}></div>
-        <div className="shooting-stars" style={{ left: '80%', top: '50%', animationDelay: '2.2s', width: '180px' }}></div>
-        <div className="shooting-stars" style={{ left: '30%', top: '70%', animationDelay: '3.5s', width: '220px' }}></div>
-        <div className="shooting-stars" style={{ left: '10%', top: '40%', animationDelay: '4.2s', width: '190px' }}></div>
-        <div className="shooting-stars" style={{ left: '70%', top: '25%', animationDelay: '5s', width: '230px' }}></div>
-        <div className="shooting-stars" style={{ left: '40%', top: '60%', animationDelay: '5.8s', width: '210px' }}></div>
-        <div className="shooting-stars" style={{ left: '90%', top: '15%', animationDelay: '6.5s', width: '170px' }}></div>
-        <div className="shooting-stars" style={{ left: '15%', top: '85%', animationDelay: '7.2s', width: '240px' }}></div>
-        <div className="shooting-stars" style={{ left: '85%', top: '45%', animationDelay: '8s', width: '200px' }}></div>
+        <div className="shooting-stars"></div>
         
         {/* Ambient glow effects */}
-        <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/5 via-transparent to-blue-500/5 mix-blend-screen"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/5 via-transparent to-purple-500/5 mix-blend-screen"></div>
-        <div className="absolute inset-0 bg-gradient-to-tl from-purple-500/5 via-transparent to-yellow-500/5 mix-blend-screen"></div>
-        <div className="absolute bottom-0 left-0 right-0 h-[40vh] bg-gradient-to-t from-yellow-500/10 via-yellow-500/5 to-transparent blur-3xl"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/5 via-transparent to-blue-500/5"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-[30vh] bg-gradient-to-t from-yellow-500/10 via-yellow-500/5 to-transparent blur-3xl"></div>
       </div>
 
       {/* Main content */}

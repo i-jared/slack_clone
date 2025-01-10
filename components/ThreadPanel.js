@@ -239,7 +239,7 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
 
       <div style={messagesContainerStyles} className="scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
         {/* Parent Message */}
-        {parentMessage && threadMessages.length > 0 && (
+        {parentMessage && (
           <div className="px-4 pt-4 pb-4 border-b border-gray-700/30">
             <Message
               message={parentMessage}
@@ -250,31 +250,33 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
         )}
 
         {/* Thread Messages */}
-        <div className="px-4 py-2 space-y-4">
+        <div className="flex-1 px-4 py-2">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-yellow-400">Loading replies...</div>
+            <div className="flex items-center justify-center h-32">
+              <div className="text-yellow-400">Loading messages...</div>
             </div>
-          ) : threadMessages.length > 0 ? (
-            threadMessages.map((message) => (
-              <Message
-                key={message.id}
-                message={message}
-                isThread={true}
-              />
-            ))
+          ) : threadMessages.length === 0 ? (
+            <div className="text-center text-gray-400 py-8">
+              No replies yet. Start the conversation!
+            </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full py-16 text-center">
-              <p className="text-gray-400 text-sm mb-2">No replies yet</p>
-              <p className="text-gray-500 text-xs">Be the first to reply to this message!</p>
-            </div>
+            <>
+              {threadMessages.map((message) => (
+                <div key={message.id} className="py-2">
+                  <Message
+                    message={message}
+                    isThread={true}
+                  />
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </>
           )}
-          <div ref={messagesEndRef} />
         </div>
       </div>
 
       {/* Message Input */}
-      <div className="p-4 border-t border-gray-700/30">
+      <div className="mt-auto border-t border-gray-700/30">
         <MessageInput
           channel_id={parentMessage?.channel_id}
           isThread={true}
