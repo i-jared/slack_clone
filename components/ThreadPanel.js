@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useContext } from 'react'
+import { useEffect, useState, useRef, useContext, useCallback } from 'react'
 import { supabase } from '~/lib/Store'
 import Message from './Message'
 import UserContext from '~/lib/UserContext'
@@ -18,7 +18,7 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
   const messagesEndRef = useRef(null)
 
   // Handle optimistic updates
-  const addMessage = (message) => {
+  const addMessage = useCallback((message) => {
     setThreadMessages(prev => {
       // Create new message with status
       const newMessage = {
@@ -32,14 +32,22 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
         setPendingMessages(prev => new Set(prev).add(message.id))
       }
 
+      // Check if message already exists to prevent duplicates
+      const exists = prev.some(m => 
+        m.id === newMessage.id || 
+        m.id === newMessage.messageId
+      )
+
+      if (exists) return prev
+
       return [...prev, newMessage].sort((a, b) => 
-        new Date(a.timestamp) - new Date(b.timestamp)
+        new Date(a.timestamp || a.inserted_at) - new Date(b.timestamp || b.inserted_at)
       )
     })
-  }
+  }, []) // Empty dependency array since we don't use any external values
 
   // Handle message confirmation
-  const confirmMessage = (tempId, confirmedMessage) => {
+  const confirmMessage = useCallback((tempId, confirmedMessage) => {
     setThreadMessages(prev => prev.map(msg => 
       msg.id === tempId ? { ...confirmedMessage, status: 'confirmed' } : msg
     ))
@@ -48,17 +56,17 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
       newSet.delete(tempId)
       return newSet
     })
-  }
+  }, []) // Empty dependency array since we don't use any external values
 
   // Handle message removal (for failed sends)
-  const removeMessage = (messageId) => {
+  const removeMessage = useCallback((messageId) => {
     setThreadMessages(prev => prev.filter(msg => msg.id !== messageId))
     setPendingMessages(prev => {
       const newSet = new Set(prev)
       newSet.delete(messageId)
       return newSet
     })
-  }
+  }, []) // Empty dependency array since we don't use any external values
 
   useEffect(() => {
     let isMounted = true
@@ -77,6 +85,8 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
       const { tempId, confirmedMessage } = event.detail
       if (pendingMessages.has(tempId)) {
         confirmMessage(tempId, confirmedMessage)
+        // Refresh messages after confirmation
+        fetchThreadMessages()
       }
     }
 
@@ -93,6 +103,8 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
     window.addEventListener('threadMessageFailed', handleMessageFailed)
 
     const fetchThreadMessages = async () => {
+      if (!isMounted) return // Early return if unmounted
+      
       try {
         setIsLoading(true)
         const { data: messages, error } = await supabase
@@ -129,9 +141,9 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
     }
 
     const setupSubscription = () => {
-      // Subscribe to message changes
-      const messageSubscription = supabase
-        .channel(`thread:${parentMessageId}`)
+      const channel = supabase.channel(`thread:${parentMessageId}`)
+      
+      channel
         .on(
           'postgres_changes',
           {
@@ -140,116 +152,29 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
             table: 'messages',
             filter: `parent_id=eq.${parentMessageId}`
           },
-          async (payload) => {
-            if (!isMounted) return
-
-            // Fetch the complete message with user data and reactions
-            const { data: message, error } = await supabase
-              .from('messages')
-              .select(`
-                id,
-                message,
-                inserted_at,
-                channel_id,
-                parent_id,
-                attachments,
-                reactions:message_reactions(*),
-                user:user_id (
-                  id,
-                  username,
-                  avatar_url
-                )
-              `)
-              .eq('id', payload.new.id)
-              .single()
-
-            if (error) {
-              console.error('Error fetching updated message:', error)
-              return
-            }
-
-            if (payload.eventType === 'DELETE') {
-              setThreadMessages(prev => prev.filter(m => m.id !== payload.old.id))
-            } else {
-              setThreadMessages(prev => {
-                const exists = prev.some(m => m.id === message.id)
-                if (exists) {
-                  return prev.map(m => m.id === message.id ? message : m)
-                } else {
-                  return [...prev, message].sort((a, b) => 
-                    new Date(a.inserted_at) - new Date(b.inserted_at)
-                  )
-                }
-              })
-            }
+          () => {
+            // Simply refresh messages when any change occurs
+            fetchThreadMessages()
           }
         )
         .subscribe()
 
-      // Subscribe to reaction changes
-      const reactionSubscription = supabase
-        .channel(`thread-reactions:${parentMessageId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'message_reactions'
-          },
-          async (payload) => {
-            if (!isMounted) return
-
-            // Fetch the updated message with reactions
-            const messageId = payload.new?.message_id || payload.old?.message_id
-            const { data: message, error } = await supabase
-              .from('messages')
-              .select(`
-                id,
-                message,
-                inserted_at,
-                channel_id,
-                parent_id,
-                attachments,
-                reactions:message_reactions(*),
-                user:user_id (
-                  id,
-                  username,
-                  avatar_url
-                )
-              `)
-              .eq('id', messageId)
-              .single()
-
-            if (error) {
-              console.error('Error fetching message after reaction change:', error)
-              return
-            }
-
-            setThreadMessages(prev => 
-              prev.map(m => m.id === messageId ? message : m)
-            )
-          }
-        )
-        .subscribe()
-
-      return () => {
-        messageSubscription.unsubscribe()
-        reactionSubscription.unsubscribe()
-      }
+      return channel
     }
 
     fetchThreadMessages()
-    const cleanup = setupSubscription()
+    subscription = setupSubscription()
 
     return () => {
       isMounted = false
-      if (cleanup) cleanup()
-      // Clean up event listeners
+      if (subscription) {
+        subscription.unsubscribe()
+      }
       window.removeEventListener('newThreadMessage', handleNewMessage)
       window.removeEventListener('threadMessageConfirmed', handleMessageConfirmed)
       window.removeEventListener('threadMessageFailed', handleMessageFailed)
     }
-  }, [parentMessageId])
+  }, [parentMessageId]) // Only depend on parentMessageId
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -285,12 +210,24 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
     
     try {
       setIsSending(true)
+
+      // First, get the parent message to get its channel_id
+      const { data: parentMessage, error: parentError } = await supabase
+        .from('messages')
+        .select('channel_id')
+        .eq('id', parentMessageId)
+        .single()
+
+      if (parentError) throw parentError
+
+      // Now post the reply with the parent's channel_id
       const { data: message, error } = await supabase
         .from('messages')
         .insert([{
           message: optimisticMessage.message,
           parent_id: parentMessageId,
-          user_id: user.id
+          user_id: user.id,
+          channel_id: parentMessage.channel_id
         }])
         .select(`
           id,
@@ -316,6 +253,31 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
           confirmedMessage: message
         }
       }))
+
+      // Refresh messages immediately after successful post
+      const { data: messages } = await supabase
+        .from('messages')
+        .select(`
+          id,
+          message,
+          inserted_at,
+          channel_id,
+          parent_id,
+          attachments,
+          reactions:message_reactions(*),
+          user:user_id (
+            id,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('parent_id', parentMessageId)
+        .order('inserted_at', { ascending: true })
+
+      if (messages) {
+        setThreadMessages(messages)
+      }
+
     } catch (error) {
       console.error('Error posting thread reply:', error)
       

@@ -18,12 +18,14 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
       return
     }
 
-    // Create temporary message
+    setIsSending(true)
+    setError(null)
+
+    // Create temporary message with proper structure
     const tempId = `temp-${Date.now()}`
     const optimisticMessage = {
       id: tempId,
       message: messageContent,
-      content: messageContent,
       sender_id: user.id,
       recipient_id: recipient_id,
       channel_id: channel_id,
@@ -32,7 +34,8 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
         id: user.id,
         username: user.email?.split('@')[0],
         avatar_url: user.user_metadata?.avatar_url
-      }
+      },
+      status: 'pending'
     }
 
     // Show optimistic update
@@ -51,28 +54,46 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
     
     try {
       console.log('🚀 Sending message in background...')
-      setIsSending(true)
-      setError(null)
       
       let confirmedMessage
       if (isDirect && recipient_id) {
         console.log('📨 Sending direct message to:', recipient_id)
         confirmedMessage = await sendDirectMessage(messageContent, recipient_id)
+        
+        // Ensure proper message structure for direct messages
+        const formattedMessage = {
+          ...confirmedMessage,
+          id: confirmedMessage.id || confirmedMessage.messageId,
+          message: messageContent,
+          inserted_at: confirmedMessage.timestamp || confirmedMessage.inserted_at,
+          sender: confirmedMessage.sender || {
+            id: user.id,
+            username: user.email?.split('@')[0],
+            avatar_url: user.user_metadata?.avatar_url
+          }
+        }
+
+        // Dispatch confirmation event for direct messages
+        window.dispatchEvent(new CustomEvent('messageConfirmed', {
+          detail: {
+            tempId,
+            confirmedMessage: formattedMessage
+          }
+        }))
       } else if (!isDirect && channel_id) {
         console.log('📢 Sending channel message to:', channel_id)
         confirmedMessage = await sendMessage(messageContent, channel_id)
+        
+        // Dispatch confirmation event for channel messages
+        window.dispatchEvent(new CustomEvent('channelMessageConfirmed', {
+          detail: {
+            tempId,
+            confirmedMessage
+          }
+        }))
       } else {
         throw new Error(isDirect ? 'Recipient not specified' : 'Channel not specified')
       }
-
-      // Dispatch confirmation event
-      const confirmEvent = new CustomEvent(isDirect ? 'messageConfirmed' : 'channelMessageConfirmed', {
-        detail: {
-          tempId,
-          confirmedMessage
-        }
-      })
-      window.dispatchEvent(confirmEvent)
 
       console.log('✅ Message sent and confirmed')
     } catch (error) {
@@ -171,41 +192,51 @@ export default function MessageInput({ channel_id, recipient_id, isDirect = fals
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 bg-gray-800/90">
-      {error && (
-        <div className="mb-2 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-      <div className="flex space-x-2">
+    <div className="sticky bottom-0 bg-gray-900 border-t border-gray-700 p-4">
+      <form onSubmit={handleSubmit} className="relative">
         <input
           type="text"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder={isDirect ? "Send a direct message..." : "Type your message..."}
-          className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          placeholder={`Message ${isDirect ? 'user' : 'channel'}...`}
+          className="w-full px-4 py-2 pr-20 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
           disabled={isSending || isUploading}
         />
-        <label className={`px-4 py-2 bg-gray-700 text-white rounded-lg cursor-pointer hover:bg-gray-600 
-          ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-          <input
-            type="file"
-            onChange={handleFileUpload}
-            className="hidden"
-            accept="image/jpeg,image/png,image/gif,application/pdf"
-            disabled={isSending || isUploading}
-          />
-          {isUploading ? '📤 Uploading...' : '📎'}
-        </label>
-        <button
-          type="submit"
-          disabled={isSending || isUploading || !content.trim()}
-          className={`px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg font-medium
-            ${(isSending || isUploading || !content.trim()) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-yellow-400'}`}
-        >
-          {isSending ? 'Sending...' : 'Send'}
-        </button>
-      </div>
-    </form>
+        
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+          {/* File upload button */}
+          <label className="cursor-pointer">
+            <input
+              type="file"
+              onChange={handleFileUpload}
+              className="hidden"
+              disabled={isSending || isUploading}
+            />
+            <div className={`p-2 rounded-full hover:bg-gray-700 transition-colors ${
+              isUploading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}>
+              📎
+            </div>
+          </label>
+
+          {/* Send button */}
+          <button
+            type="submit"
+            disabled={isSending || isUploading || !content.trim()}
+            className={`p-2 rounded-full hover:bg-gray-700 transition-colors ${
+              (isSending || isUploading || !content.trim()) ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            ➤
+          </button>
+        </div>
+
+        {error && (
+          <div className="absolute -top-8 left-0 right-0 bg-red-500/10 text-red-400 px-4 py-2 rounded text-sm">
+            {error}
+          </div>
+        )}
+      </form>
+    </div>
   )
 }

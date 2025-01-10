@@ -56,24 +56,26 @@ const ChannelPage = () => {
       // Double-check scroll position after a tiny delay
       setTimeout(() => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight
-      }, 100)
+      }, 50)
     }
   }
 
-  // Handle scroll events to determine if user has scrolled up
-  const handleScroll = (e) => {
-    const container = e.target
-    const isNearBottom = (container.scrollHeight - (container.scrollTop + container.clientHeight)) < 100
-    shouldAutoScroll.current = isNearBottom
-  }
-
-  // Scroll to bottom on initial load
+  // IMPORTANT: This effect ensures we always scroll to bottom on initial page load
+  // and when switching between channels
   useEffect(() => {
     if (!scrollToMessageId && messages?.length && !isLoading) {
-      // Use 'auto' for immediate scroll without animation on initial load
-      scrollToBottom('auto')
+      // Use multiple timeouts to ensure it works even with slow-loading content
+      const timeouts = [0, 100, 500].map(delay => 
+        setTimeout(() => {
+          const messagesContainer = document.querySelector('.messages-container')
+          if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight
+          }
+        }, delay)
+      )
+      return () => timeouts.forEach(clearTimeout)
     }
-  }, [messages?.length, isLoading, scrollToMessageId])
+  }, [messages?.length, isLoading, scrollToMessageId, id]) // Include 'id' to handle channel switches
 
   // Scroll when new messages arrive
   useEffect(() => {
@@ -85,6 +87,13 @@ const ChannelPage = () => {
       }
     }
   }, [messages?.length, scrollToMessageId, isLoading, user?.id])
+
+  // Handle scroll events to determine if user has scrolled up
+  const handleScroll = (e) => {
+    const container = e.target
+    const isNearBottom = (container.scrollHeight - (container.scrollTop + container.clientHeight)) < 100
+    shouldAutoScroll.current = isNearBottom
+  }
 
   // Add effect to listen for thread panel state changes
   useEffect(() => {
@@ -105,19 +114,6 @@ const ChannelPage = () => {
 
     return () => clearTimeout(timer)
   }, [])
-
-  // Remove all other scroll effects and keep just this one reliable scroll effect
-  useEffect(() => {
-    if (messages?.length > 0 && !scrollToMessageId) {
-      // Small delay to ensure rendering
-      setTimeout(() => {
-        const container = document.querySelector('.messages-container')
-        if (container) {
-          container.scrollTop = container.scrollHeight
-        }
-      }, 100)
-    }
-  }, [messages, id, scrollToMessageId]) // Run on messages or channel change
 
   // get the channel from the store
   const channel = channels.find((c) => c.id === parseInt(id))
@@ -141,7 +137,10 @@ const ChannelPage = () => {
         </div>
 
         {/* Messages Area */}
-        <div className={`messages-container flex-1 overflow-y-auto scrollbar-hide ${isThreadOpen ? 'mr-80' : ''}`}>
+        <div 
+          className={`messages-container flex-1 overflow-y-auto scrollbar-hide ${isThreadOpen ? 'mr-80' : ''}`}
+          onScroll={handleScroll}
+        >
           {isLoading && !forceHideLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-yellow-400 text-xl">Loading messages...</div>
@@ -151,7 +150,7 @@ const ChannelPage = () => {
               This is the start of the channel. Send a message to get the conversation going!
             </div>
           ) : (
-            <div className="py-4 space-y-2 px-4 w-full max-w-6xl mx-auto pb-16">
+            <div className="py-4 space-y-2 px-4 w-full max-w-6xl mx-auto mb-20">
               {messages.map((message, i) => (
                 <Message
                   key={message.id}
@@ -160,13 +159,13 @@ const ChannelPage = () => {
                   retryMessage={retryMessage}
                 />
               ))}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-4" />
             </div>
           )}
         </div>
 
         {/* Message Input */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 p-4">
+        <div className="absolute bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700">
           <MessageInput channel_id={parseInt(id)} />
         </div>
       </div>
