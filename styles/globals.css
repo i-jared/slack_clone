@@ -61,4 +61,186 @@
     @apply text-yellow-400 font-orbitron text-xl mt-4;
     text-shadow: 0 0 10px rgba(255, 232, 31, 0.3);
   }
+}
+
+/* Star field animations */
+@keyframes twinkle {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes shoot {
+  0% {
+    transform: translateX(0) translateY(0) rotate(-45deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(200px) translateY(200px) rotate(-45deg);
+    opacity: 0;
+  }
+}
+
+.stars-small,
+.stars-medium,
+.stars-large {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+}
+
+.stars-small::after,
+.stars-medium::after,
+.stars-large::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: transparent;
+  box-shadow: var(--star-shadow);
+}
+
+.stars-small::after {
+  --star-size: 1px;
+  --star-color: rgba(255, 255, 255, 0.3);
+  box-shadow: var(--star-small-shadow);
+}
+
+.stars-medium::after {
+  --star-size: 2px;
+  --star-color: rgba(255, 255, 255, 0.5);
+  box-shadow: var(--star-medium-shadow);
+}
+
+.stars-large::after {
+  --star-size: 3px;
+  --star-color: rgba(255, 255, 255, 0.7);
+  box-shadow: var(--star-large-shadow);
+}
+
+.shooting-stars {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+}
+
+.shooting-stars::after,
+.shooting-stars::before {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: linear-gradient(to right, white, transparent);
+  border-radius: 50%;
+  animation: shoot 5s infinite;
+  opacity: 0;
+}
+
+.shooting-stars::after {
+  top: 30%;
+  left: 70%;
+  animation-delay: 3s;
+}
+
+.shooting-stars::before {
+  top: 60%;
+  left: 30%;
+  animation-delay: 6s;
+}
+
+/* Generate star shadows */
+:root {
+  --star-small-shadow: 
+    45px 30px var(--star-color),
+    125px 150px var(--star-color),
+    250px 80px var(--star-color),
+    320px 200px var(--star-color),
+    450px 50px var(--star-color),
+    550px 180px var(--star-color),
+    680px 90px var(--star-color),
+    750px 220px var(--star-color),
+    880px 120px var(--star-color),
+    950px 250px var(--star-color),
+    1050px 150px var(--star-color),
+    1150px 280px var(--star-color),
+    1250px 180px var(--star-color),
+    1350px 300px var(--star-color),
+    1450px 200px var(--star-color),
+    1550px 320px var(--star-color),
+    1650px 220px var(--star-color),
+    1750px 340px var(--star-color),
+    1850px 240px var(--star-color),
+    1950px 360px var(--star-color);
+  
+  --star-medium-shadow:
+    120px 100px var(--star-color),
+    280px 220px var(--star-color),
+    420px 140px var(--star-color),
+    580px 260px var(--star-color),
+    700px 160px var(--star-color),
+    820px 280px var(--star-color),
+    980px 180px var(--star-color),
+    1100px 300px var(--star-color),
+    1220px 200px var(--star-color),
+    1380px 320px var(--star-color),
+    1500px 220px var(--star-color),
+    1620px 340px var(--star-color),
+    1780px 240px var(--star-color),
+    1900px 360px var(--star-color);
+  
+  --star-large-shadow:
+    200px 150px var(--star-color),
+    400px 250px var(--star-color),
+    600px 200px var(--star-color),
+    800px 300px var(--star-color),
+    1000px 250px var(--star-color),
+    1200px 350px var(--star-color),
+    1400px 300px var(--star-color),
+    1600px 400px var(--star-color),
+    1800px 350px var(--star-color);
+}
+
+/* Update star colors to be more yellow-tinted */
+.stars-small::after {
+  --star-color: rgba(255, 248, 220, 0.3);
+}
+
+.stars-medium::after {
+  --star-color: rgba(255, 248, 220, 0.5);
+}
+
+.stars-large::after {
+  --star-color: rgba(255, 248, 220, 0.7);
+}
+
+/* Add a subtle pulse animation to some stars */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.stars-large::after {
+  animation: twinkle 5s infinite, pulse 3s infinite;
+}
+
+/* Add twinkling animation to some stars */
+.stars-small::after {
+  animation: twinkle 3s infinite;
+}
+
+.stars-medium::after {
+  animation: twinkle 4s infinite;
+  animation-delay: 1s;
+}
+
+.stars-large::after {
+  animation: twinkle 5s infinite;
+  animation-delay: 2s;
 } 

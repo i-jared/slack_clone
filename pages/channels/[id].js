@@ -16,10 +16,11 @@ const ChannelPage = () => {
   // This custom store hook loads channels
   const { channels } = useStore()
   // This hook handles messages with optimistic updates
-  const { messages, isLoading } = useChannelMessages({ 
+  const { messages, isLoading, retryMessage } = useChannelMessages({ 
     channelId: id ? parseInt(id) : null 
   })
   const messagesEndRef = useRef(null)
+  const shouldAutoScroll = useRef(true)
 
   useEffect(() => {
     if (!user) {
@@ -40,28 +41,51 @@ const ChannelPage = () => {
     }
   }, [scrollToMessageId, messages])
 
-  // auto-scroll to bottom if no specific message
-  useEffect(() => {
-    if (!scrollToMessageId && messages?.length) {
-      console.log('📜 Scrolling to bottom of channel messages')
-      const timer = setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-      }, 100) // Small delay to ensure content is rendered
-      return () => clearTimeout(timer)
-    }
-  }, [messages, scrollToMessageId])
+  // Improved scroll to bottom function
+  const scrollToBottom = (behavior = 'smooth') => {
+    const messagesContainer = document.querySelector('.messages-container')
+    const endElement = messagesEndRef.current
+    
+    if (messagesContainer && endElement) {
+      // Calculate if we're already near bottom
+      const containerHeight = messagesContainer.clientHeight
+      const scrollPosition = messagesContainer.scrollTop
+      const scrollHeight = messagesContainer.scrollHeight
+      const isNearBottom = (scrollHeight - (scrollPosition + containerHeight)) < 100
 
-  // Also scroll when new messages are added
+      // Update auto-scroll preference based on user's scroll position
+      shouldAutoScroll.current = isNearBottom
+
+      // Only scroll if we should auto-scroll
+      if (shouldAutoScroll.current) {
+        setTimeout(() => {
+          endElement.scrollIntoView({ behavior, block: 'end' })
+        }, 100)
+      }
+    }
+  }
+
+  // Handle scroll events to determine if user has scrolled up
+  const handleScroll = (e) => {
+    const container = e.target
+    const isNearBottom = (container.scrollHeight - (container.scrollTop + container.clientHeight)) < 100
+    shouldAutoScroll.current = isNearBottom
+  }
+
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    if (!scrollToMessageId && messages?.length && !isLoading) {
+      scrollToBottom('auto')
+    }
+  }, [isLoading, messages?.length, scrollToMessageId])
+
+  // Scroll when new messages arrive
   useEffect(() => {
     const lastMessage = messages?.[messages.length - 1]
-    if (lastMessage && !scrollToMessageId) {
-      console.log('📜 New message detected, scrolling to bottom')
-      const timer = setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-      }, 100)
-      return () => clearTimeout(timer)
+    if (lastMessage && !scrollToMessageId && !isLoading) {
+      scrollToBottom()
     }
-  }, [messages?.length, scrollToMessageId])
+  }, [messages?.length, scrollToMessageId, isLoading])
 
   // get the channel from the store
   const channel = channels.find((c) => c.id === parseInt(id))
@@ -87,7 +111,10 @@ const ChannelPage = () => {
         </header>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div 
+          className="messages-container flex-1 overflow-y-auto px-6 py-4"
+          onScroll={handleScroll}
+        >
           <div className="max-w-4xl mx-auto space-y-4">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
@@ -108,10 +135,15 @@ const ChannelPage = () => {
               </div>
             ) : (
               <>
-                {messages.map((message) => (
-                  <Message key={message.id} message={message} />
+                {messages.map((message, i) => (
+                  <Message
+                    key={message.id}
+                    message={message}
+                    isLatest={i === messages.length - 1}
+                    retryMessage={retryMessage}
+                  />
                 ))}
-                <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} className="h-1" />
               </>
             )}
           </div>
