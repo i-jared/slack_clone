@@ -263,17 +263,17 @@ const Layout = ({ children, hideSidebar = false }) => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-900 text-gray-100">
+    <div className="flex h-screen bg-gray-900 text-gray-100">
       {/* Sidebar - conditionally rendered */}
       {!hideSidebar && (
-        <div className="w-64 flex flex-col bg-gradient-to-b from-gray-900 to-gray-800 border-r border-gray-800 h-screen">
+        <div className="w-64 flex flex-col bg-gradient-to-b from-gray-900 to-gray-800 border-r border-gray-800">
           {/* App Header */}
-          <div className="p-4 border-b border-gray-800">
+          <div className="shrink-0 p-4 border-b border-gray-800">
             <h1 className="text-2xl font-orbitron text-yellow-400 tracking-wider">Talk2D2</h1>
           </div>
 
           {/* Channels & DMs */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide">
+          <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0">
             {/* Channels Section */}
             <div className="p-4">
               <h2 className="text-sm font-bold text-yellow-400 tracking-wide mb-2">CHANNELS</h2>
@@ -297,7 +297,7 @@ const Layout = ({ children, hideSidebar = false }) => {
             {/* Direct Messages Section */}
             <div className="p-4">
               <h2 className="text-sm font-bold text-yellow-400 tracking-wide mb-2">DIRECT MESSAGES</h2>
-              <nav className="space-y-1 overflow-y-auto scrollbar-hide">
+              <nav className="space-y-1">
                 {users.map((otherUser) => (
                   <div
                     key={otherUser.id}
@@ -317,7 +317,7 @@ const Layout = ({ children, hideSidebar = false }) => {
           </div>
 
           {/* User Profile Section */}
-          <div className="relative p-4 border-t border-gray-800 bg-gray-900/50 backdrop-blur-sm">
+          <div className="shrink-0 p-4 border-t border-gray-800 bg-gray-900/50 backdrop-blur-sm">
             <div 
               className="flex items-center space-x-3 cursor-pointer hover:bg-gray-800/50 p-2 rounded-lg transition-colors duration-150"
               onClick={() => setShowProfilePopup(!showProfilePopup)}
@@ -431,9 +431,9 @@ const Layout = ({ children, hideSidebar = false }) => {
       )}
 
       {/* Main Content */}
-      <main className={`flex-1 flex flex-col bg-gray-800 transition-all duration-300 ${isThreadOpen ? 'mr-96' : ''}`}>
+      <main className={`flex-1 flex flex-col h-screen overflow-hidden bg-gray-800 transition-all duration-300 ${isThreadOpen ? 'mr-96' : ''}`}>
         {/* Search Bar */}
-        <div className="relative bg-gray-900/75 p-3 border-b border-gray-800">
+        <div className="sticky top-0 z-50 bg-gray-900/95 backdrop-blur-sm p-3 border-b border-gray-800 shadow-lg">
           <input
             type="text"
             value={searchTerm}
@@ -473,7 +473,10 @@ const Layout = ({ children, hideSidebar = false }) => {
             </div>
           )}
         </div>
-        {children}
+        {/* Messages Container */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {children}
+        </div>
       </main>
     </div>
   )
