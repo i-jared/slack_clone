@@ -74,6 +74,12 @@ export default function App({ Component, pageProps }) {
         return
       }
 
+      // First update local state
+      setUser(prev => prev ? {
+        ...prev,
+        dbUser: { ...prev.dbUser, status: newStatus }
+      } : null)
+
       const { error } = await supabase
         .from('users')
         .update({ 
@@ -84,6 +90,11 @@ export default function App({ Component, pageProps }) {
 
       if (error) {
         console.error('Status update error:', error)
+        // Revert local state on error
+        setUser(prev => prev ? {
+          ...prev,
+          dbUser: { ...prev.dbUser, status: prev.dbUser.status }
+        } : null)
       }
     } catch (err) {
       console.error('Failed to update user status:', err.message)
@@ -163,26 +174,33 @@ export default function App({ Component, pageProps }) {
       if (event.data.type === 'visibility_change') {
         if (event.data.state === 'visible') {
           visibleTabsCount++
+          if (visibleTabsCount === 1) {
+            updateStatus(user.id, 'ONLINE')
+          }
         } else {
           visibleTabsCount--
+          if (visibleTabsCount <= 0) {
+            updateStatus(user.id, 'OFFLINE')
+          }
         }
       }
     }
 
-    const handleVisibilityChange = async () => {
+    const handleVisibilityChange = () => {
       const isVisible = document.visibilityState === 'visible'
       
       // Broadcast visibility change to other tabs
       statusChannel.postMessage({
         type: 'visibility_change',
-        state: isVisible ? 'visible' : 'hidden'
+        state: isVisible ? 'visible' : 'hidden',
+        userId: user.id
       })
 
-      // Only update status if all tabs are hidden
+      // Update status based on visibility
       if (isVisible) {
-        await updateStatus(user.id, 'ONLINE')
+        updateStatus(user.id, 'ONLINE')
       } else if (visibleTabsCount <= 0) {
-        await updateStatus(user.id, 'OFFLINE')
+        updateStatus(user.id, 'OFFLINE')
       }
     }
 
@@ -190,34 +208,28 @@ export default function App({ Component, pageProps }) {
       // Only set offline if this is the last tab
       if (visibleTabsCount <= 1) {
         const timestamp = new Date().toISOString()
-        const headers = {
-          'Content-Type': 'application/json',
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${supabase.auth.getSession()?.data?.session?.access_token}`
-        }
-        const blob = new Blob([
+        navigator.sendBeacon(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`,
           JSON.stringify({ 
             status: 'OFFLINE',
             last_seen: timestamp
-          })
-        ], { type: 'application/json' })
-        
-        navigator.sendBeacon(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`,
-          blob,
-          headers
+          }),
+          {
+            'Content-Type': 'application/json',
+            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${supabase.auth.getSession()?.data?.session?.access_token}`
+          }
         )
       }
     }
 
-    // Set up event listeners
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('beforeunload', handleBeforeUnload)
 
-    // Set initial online status without blocking
-    if (navigator.onLine) {
+    // Set initial status
+    if (document.visibilityState === 'visible') {
       updateStatus(user.id, 'ONLINE')
     }
 
@@ -227,10 +239,6 @@ export default function App({ Component, pageProps }) {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('beforeunload', handleBeforeUnload)
       statusChannel.close()
-      // Only set offline if this is the last tab
-      if (visibleTabsCount <= 1) {
-        updateStatus(user.id, 'OFFLINE')
-      }
     }
   }, [user?.id])
 

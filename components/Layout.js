@@ -4,6 +4,7 @@ import UserContext from '~/lib/UserContext'
 import { supabase, useStore } from '~/lib/Store'
 import Link from 'next/link'
 import LoadingScreen from '~/components/LoadingScreen'
+import UserStatusDot from '~/components/UserStatusDot'
 
 const Layout = ({ children, hideSidebar = false }) => {
   const { user, signOut } = useContext(UserContext)
@@ -15,10 +16,12 @@ const Layout = ({ children, hideSidebar = false }) => {
   const [username, setUsername] = useState(user?.dbUser?.username || '')
   const [avatarUrl, setAvatarUrl] = useState(user?.dbUser?.avatar_url || '')
   const [uploading, setUploading] = useState(false)
+  const [status, setStatus] = useState(user?.dbUser?.status || 'OFFLINE')
   const { channels } = useStore()  // Get channels from the store
 
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState([])
+  const [isThreadOpen, setIsThreadOpen] = useState(false)
 
   useEffect(() => {
     const initialize = async () => {
@@ -31,6 +34,39 @@ const Layout = ({ children, hideSidebar = false }) => {
     }
     initialize()
   }, [])
+
+  // Subscribe to user status changes
+  useEffect(() => {
+    if (!user) return
+
+    // Subscribe to status changes for all users
+    const subscription = supabase
+      .channel('user_status_changes')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'users',
+        filter: 'status IS NOT NULL'
+      }, (payload) => {
+        // Update the users list with the new status
+        setUsers(prevUsers => prevUsers.map(u => {
+          if (u.id === payload.new.id) {
+            return { ...u, status: payload.new.status }
+          }
+          return u
+        }))
+
+        // If this is the current user, update their status in the profile popup
+        if (payload.new.id === user.id) {
+          setStatus(payload.new.status)
+        }
+      })
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [user])
 
   // Add router change event handlers
   useEffect(() => {
@@ -82,6 +118,17 @@ const Layout = ({ children, hideSidebar = false }) => {
       }
     }
   }, [router, isNavigating])
+
+  // Add effect to listen for thread panel state changes
+  useEffect(() => {
+    const handleThreadState = (e) => {
+      if (e.detail?.isOpen !== undefined) {
+        setIsThreadOpen(e.detail.isOpen)
+      }
+    }
+    window.addEventListener('threadPanelState', handleThreadState)
+    return () => window.removeEventListener('threadPanelState', handleThreadState)
+  }, [])
 
   // Show loading screen during navigation
   if (isNavigating) {
@@ -204,6 +251,7 @@ const Layout = ({ children, hideSidebar = false }) => {
         .update({
           username: username,
           avatar_url: avatarUrl,
+          status: status,
         })
         .eq('id', user.id)
 
@@ -284,7 +332,10 @@ const Layout = ({ children, hideSidebar = false }) => {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{username || user?.email}</div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium truncate">{username || user?.email}</span>
+                  <UserStatusDot status={status} />
+                </div>
                 <div className="text-xs text-gray-400">Click to edit profile</div>
               </div>
             </div>
@@ -333,16 +384,41 @@ const Layout = ({ children, hideSidebar = false }) => {
                       </label>
                     </div>
                   </div>
-                  <div className="flex justify-between pt-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Status
+                    </label>
+                    <div className="flex items-center space-x-3 bg-gray-700 p-3 rounded-md">
+                      <div className="flex items-center space-x-2">
+                        <UserStatusDot status={status} />
+                        <span className="text-white">{status}</span>
+                      </div>
+                      <button
+                        onClick={() => setStatus(status === 'ONLINE' ? 'OFFLINE' : 'ONLINE')}
+                        className="ml-auto px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-500 transition-colors"
+                      >
+                        Toggle Status
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-2 pt-4 border-t border-gray-700">
+                    <button
+                      onClick={() => setShowProfilePopup(false)}
+                      className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600"
+                    >
+                      Cancel
+                    </button>
                     <button
                       onClick={updateProfile}
-                      className="px-4 py-2 bg-yellow-500 text-gray-900 rounded-md font-medium hover:bg-yellow-400 transition-colors duration-150"
+                      className="px-4 py-2 bg-yellow-500 text-black rounded hover:bg-yellow-400"
                     >
                       Save Changes
                     </button>
+                  </div>
+                  <div className="pt-4 border-t border-gray-700 mt-4">
                     <button
                       onClick={signOut}
-                      className="px-4 py-2 bg-red-500/10 text-red-500 rounded-md font-medium hover:bg-red-500/20 transition-colors duration-150"
+                      className="w-full px-4 py-2 bg-red-500/10 text-red-400 rounded hover:bg-red-500/20 transition-colors"
                     >
                       Sign Out
                     </button>
@@ -355,7 +431,7 @@ const Layout = ({ children, hideSidebar = false }) => {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col bg-gray-800">
+      <main className={`flex-1 flex flex-col bg-gray-800 transition-all duration-300 ${isThreadOpen ? 'mr-96' : ''}`}>
         {/* Search Bar */}
         <div className="relative bg-gray-900/75 p-3 border-b border-gray-800">
           <input
