@@ -1,4 +1,4 @@
-import { useEffect, useRef, useContext } from 'react'
+import { useEffect, useRef, useContext, useState } from 'react'
 import { useRouter } from 'next/router'
 import { useStore } from '~/lib/Store'
 import { useChannelMessages } from '~/lib/useChannelMessages'
@@ -12,6 +12,8 @@ const ChannelPage = () => {
   const { id } = router.query
   const { user } = useContext(UserContext)
   const scrollToMessageId = router.query.scrollToMessage
+  const [isThreadOpen, setIsThreadOpen] = useState(false)
+  const [forceHideLoading, setForceHideLoading] = useState(false)
 
   // This custom store hook loads channels
   const { channels } = useStore()
@@ -47,11 +49,14 @@ const ChannelPage = () => {
     const endElement = messagesEndRef.current
     
     if (messagesContainer && endElement) {
+      // First scroll using scrollIntoView
       endElement.scrollIntoView({ behavior, block: 'end' })
-      // Force a second scroll after a tiny delay to ensure it works
+      // Then force scroll to bottom directly
+      messagesContainer.scrollTop = messagesContainer.scrollHeight
+      // Double-check scroll position after a tiny delay
       setTimeout(() => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight
-      }, 50)
+      }, 100)
     }
   }
 
@@ -65,21 +70,54 @@ const ChannelPage = () => {
   // Scroll to bottom on initial load
   useEffect(() => {
     if (!scrollToMessageId && messages?.length && !isLoading) {
-      // Use 'auto' for immediate scroll without animation on load
+      // Use 'auto' for immediate scroll without animation on initial load
       scrollToBottom('auto')
     }
-  }, [messages, isLoading, scrollToMessageId])
+  }, [messages?.length, isLoading, scrollToMessageId])
 
   // Scroll when new messages arrive
   useEffect(() => {
     const lastMessage = messages?.[messages.length - 1]
     if (lastMessage && !scrollToMessageId && !isLoading) {
-      // Always scroll if the message is from the current user
+      // Always scroll if the message is from the current user or we're near bottom
       if (lastMessage.user_id === user?.id || shouldAutoScroll.current) {
-        scrollToBottom()
+        scrollToBottom('smooth')
       }
     }
-  }, [messages, scrollToMessageId, isLoading, user?.id])
+  }, [messages?.length, scrollToMessageId, isLoading, user?.id])
+
+  // Add effect to listen for thread panel state changes
+  useEffect(() => {
+    const handleThreadState = (e) => {
+      if (e.detail?.isOpen !== undefined) {
+        setIsThreadOpen(e.detail.isOpen)
+      }
+    }
+    window.addEventListener('threadPanelState', handleThreadState)
+    return () => window.removeEventListener('threadPanelState', handleThreadState)
+  }, [])
+
+  // Add loading timeout
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setForceHideLoading(true)
+    }, 5000) // Force hide after 5 seconds
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Remove all other scroll effects and keep just this one reliable scroll effect
+  useEffect(() => {
+    if (messages?.length > 0 && !scrollToMessageId) {
+      // Small delay to ensure rendering
+      setTimeout(() => {
+        const container = document.querySelector('.messages-container')
+        if (container) {
+          container.scrollTop = container.scrollHeight
+        }
+      }, 100)
+    }
+  }, [messages, id, scrollToMessageId]) // Run on messages or channel change
 
   // get the channel from the store
   const channel = channels.find((c) => c.id === parseInt(id))
@@ -90,64 +128,46 @@ const ChannelPage = () => {
 
   return (
     <Layout>
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="relative h-screen flex flex-col">
         {/* Channel Header */}
-        <header className="flex items-center h-16 px-6 bg-gray-900/75 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-10">
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-yellow-400 flex items-center">
-              <span className="text-gray-500 mr-2">#</span>
-              {channel?.slug || 'Loading...'}
-            </h2>
-            <p className="text-sm text-gray-400">
-              {channel ? `Welcome to #${channel.slug}` : 'Channel not found'}
-            </p>
-          </div>
-        </header>
+        <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
+          <h2 className="text-2xl font-orbitron text-yellow-400 flex items-center">
+            <span className="text-gray-500 mr-2">#</span>
+            {channel?.slug || 'Loading...'}
+          </h2>
+          <p className="text-sm text-gray-400 font-orbitron">
+            {channel ? `Welcome to #${channel.slug}` : 'Channel not found'}
+          </p>
+        </div>
 
-        {/* Messages */}
-        <div 
-          className="messages-container flex-1 overflow-y-auto px-6 py-4"
-          onScroll={handleScroll}
-        >
-          <div className="max-w-4xl mx-auto space-y-4">
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                <div className="text-yellow-400 text-4xl mb-4">⌛</div>
-                <h3 className="text-2xl font-semibold text-yellow-400 mb-2">
-                  Loading messages...
-                </h3>
-              </div>
-            ) : messages?.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                <div className="text-yellow-400 text-4xl mb-4">👋</div>
-                <h3 className="text-2xl font-semibold text-yellow-400 mb-2">
-                  {channel ? `Welcome to #${channel.slug}!` : 'No channel loaded'}
-                </h3>
-                <p className="text-gray-400">
-                  This is the start of the channel. Send a message to get the conversation going!
-                </p>
-              </div>
-            ) : (
-              <>
-                {messages.map((message, i) => (
-                  <Message
-                    key={message.id}
-                    message={message}
-                    isLatest={i === messages.length - 1}
-                    retryMessage={retryMessage}
-                  />
-                ))}
-                <div ref={messagesEndRef} className="h-1" />
-              </>
-            )}
-          </div>
+        {/* Messages Area - Add messages-container class here */}
+        <div className={`messages-container flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent ${isThreadOpen ? 'mr-96' : ''}`}>
+          {isLoading && !forceHideLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-yellow-400 text-xl">Loading messages...</div>
+            </div>
+          ) : messages?.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              This is the start of the channel. Send a message to get the conversation going!
+            </div>
+          ) : (
+            <div className="py-4 space-y-2 px-4">
+              {messages.map((message, i) => (
+                <Message
+                  key={message.id}
+                  message={message}
+                  isLatest={i === messages.length - 1}
+                  retryMessage={retryMessage}
+                />
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
         </div>
 
         {/* Message Input */}
-        <div className="p-4 bg-gray-900/75 backdrop-blur-sm border-t border-gray-800">
-          <div className="max-w-4xl mx-auto">
-            <MessageInput channel_id={parseInt(id)} />
-          </div>
+        <div className="sticky bottom-0 bg-gray-900 border-t border-gray-700 p-4">
+          <MessageInput channel_id={parseInt(id)} />
         </div>
       </div>
     </Layout>

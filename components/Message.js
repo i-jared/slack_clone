@@ -6,7 +6,7 @@ import MessageReactions from './MessageReactions'
 import ThreadPanel from './ThreadPanel'
 import UserStatusDot from './UserStatusDot'
 
-export default function Message({ message }) {
+export default function Message({ message, isThread = false }) {
   const { user } = useContext(UserContext)
   const [showThread, setShowThread] = useState(false)
   const [replyCount, setReplyCount] = useState(0)
@@ -157,27 +157,37 @@ export default function Message({ message }) {
             {message.message}
           </div>
           <MessageReactions messageId={message.id} />
-          {/* Thread Button */}
-          <div className="text-xs mt-1">
-            <button
-              className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
-              onClick={() => setShowThread(true)}
-            >
-              {replyCount > 0 ? (
-                <>
-                  <span>{replyCount} repl{replyCount === 1 ? 'y' : 'ies'}</span>
-                </>
-              ) : (
-                'Start thread'
-              )}
-            </button>
-          </div>
+          {/* Thread Button - Only show in main channel, not in threads */}
+          {!isThread && (
+            <div className="text-xs mt-1">
+              <button
+                className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                onClick={() => {
+                  setShowThread(true)
+                  // Dispatch event to notify layout about thread panel state
+                  window.dispatchEvent(new CustomEvent('threadPanelState', { detail: { isOpen: true } }))
+                }}
+              >
+                {replyCount > 0 ? (
+                  <>
+                    <span>{replyCount} repl{replyCount === 1 ? 'y' : 'ies'}</span>
+                  </>
+                ) : (
+                  'Start thread'
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
       {showThread && (
         <ThreadPanel
           parentMessageId={message.id}
-          onClose={() => setShowThread(false)}
+          onClose={() => {
+            setShowThread(false)
+            // Dispatch event to notify layout about thread panel state
+            window.dispatchEvent(new CustomEvent('threadPanelState', { detail: { isOpen: false } }))
+          }}
         />
       )}
     </>

@@ -104,6 +104,7 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
             channel_id,
             parent_id,
             attachments,
+            reactions:message_reactions(*),
             user:user_id (
               id,
               username,
@@ -128,7 +129,8 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
     }
 
     const setupSubscription = () => {
-      subscription = supabase
+      // Subscribe to message changes
+      const messageSubscription = supabase
         .channel(`thread:${parentMessageId}`)
         .on(
           'postgres_changes',
@@ -141,7 +143,7 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
           async (payload) => {
             if (!isMounted) return
 
-            // Fetch the complete message with user data
+            // Fetch the complete message with user data and reactions
             const { data: message, error } = await supabase
               .from('messages')
               .select(`
@@ -151,6 +153,7 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
                 channel_id,
                 parent_id,
                 attachments,
+                reactions:message_reactions(*),
                 user:user_id (
                   id,
                   username,
@@ -182,16 +185,65 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
           }
         )
         .subscribe()
+
+      // Subscribe to reaction changes
+      const reactionSubscription = supabase
+        .channel(`thread-reactions:${parentMessageId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'message_reactions'
+          },
+          async (payload) => {
+            if (!isMounted) return
+
+            // Fetch the updated message with reactions
+            const messageId = payload.new?.message_id || payload.old?.message_id
+            const { data: message, error } = await supabase
+              .from('messages')
+              .select(`
+                id,
+                message,
+                inserted_at,
+                channel_id,
+                parent_id,
+                attachments,
+                reactions:message_reactions(*),
+                user:user_id (
+                  id,
+                  username,
+                  avatar_url
+                )
+              `)
+              .eq('id', messageId)
+              .single()
+
+            if (error) {
+              console.error('Error fetching message after reaction change:', error)
+              return
+            }
+
+            setThreadMessages(prev => 
+              prev.map(m => m.id === messageId ? message : m)
+            )
+          }
+        )
+        .subscribe()
+
+      return () => {
+        messageSubscription.unsubscribe()
+        reactionSubscription.unsubscribe()
+      }
     }
 
     fetchThreadMessages()
-    setupSubscription()
+    const cleanup = setupSubscription()
 
     return () => {
       isMounted = false
-      if (subscription) {
-        supabase.removeChannel(subscription)
-      }
+      if (cleanup) cleanup()
       // Clean up event listeners
       window.removeEventListener('newThreadMessage', handleNewMessage)
       window.removeEventListener('threadMessageConfirmed', handleMessageConfirmed)
@@ -284,56 +336,58 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
   }, [threadMessages])
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="bg-gray-900 w-full max-w-2xl h-[80vh] rounded-lg shadow-xl flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h3 className="text-lg font-semibold text-yellow-400">Thread</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white"
-          >
-            ✕
-          </button>
-        </div>
+    <div className={`fixed top-0 right-0 h-screen w-96 bg-gray-900 shadow-xl transform transition-transform duration-300 ease-in-out border-l border-gray-800 z-30`}>
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-800">
+        <h3 className="text-lg font-semibold text-yellow-400">Thread</h3>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-white"
+        >
+          ✕
+        </button>
+      </div>
 
-        {/* Thread Messages */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {isLoading ? (
-            <div className="text-gray-400">Loading thread...</div>
-          ) : threadMessages.length === 0 ? (
-            <div className="text-gray-500">No replies yet.</div>
-          ) : (
-            <div className="space-y-4">
-              {threadMessages.map((msg) => (
-                <Message key={msg.id} message={msg} />
-              ))}
-              <div ref={messagesEndRef} /> {/* Scroll anchor */}
-            </div>
-          )}
-        </div>
+      {/* Thread Messages */}
+      <div className="flex-1 overflow-y-auto p-4 h-[calc(100vh-8rem)]">
+        {isLoading ? (
+          <div className="text-gray-400">Loading thread...</div>
+        ) : threadMessages.length === 0 ? (
+          <div className="text-gray-500">No replies yet.</div>
+        ) : (
+          <div className="space-y-4">
+            {threadMessages.map((msg) => (
+              <Message 
+                key={msg.id} 
+                message={msg}
+                isThread={true}
+              />
+            ))}
+            <div ref={messagesEndRef} /> {/* Scroll anchor */}
+          </div>
+        )}
+      </div>
 
-        {/* Reply Input */}
-        <div className="sticky bottom-0 bg-[#1a1d21] border-t border-gray-700 p-4">
-          <textarea
-            value={newReply}
-            onChange={(e) => setNewReply(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="w-full bg-gray-700 text-white rounded p-2 mb-2 resize-none focus:outline-none focus:ring-1 focus:ring-yellow-400"
-            rows={3}
-            placeholder="Reply to thread..."
-            disabled={isSending}
-          />
-          <button
-            onClick={postReply}
-            disabled={isSending || !newReply.trim()}
-            className={`px-4 py-2 bg-yellow-500 text-gray-900 rounded hover:bg-yellow-400 transition ${
-              isSending || !newReply.trim() ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            {isSending ? 'Sending...' : 'Send'}
-          </button>
-        </div>
+      {/* Reply Input */}
+      <div className="absolute bottom-0 left-0 right-0 bg-[#1a1d21] border-t border-gray-700 p-4">
+        <textarea
+          value={newReply}
+          onChange={(e) => setNewReply(e.target.value)}
+          onKeyPress={handleKeyPress}
+          className="w-full bg-gray-700 text-white rounded p-2 mb-2 resize-none focus:outline-none focus:ring-1 focus:ring-yellow-400"
+          rows={3}
+          placeholder="Reply to thread..."
+          disabled={isSending}
+        />
+        <button
+          onClick={postReply}
+          disabled={isSending || !newReply.trim()}
+          className={`px-4 py-2 bg-yellow-500 text-gray-900 rounded hover:bg-yellow-400 transition ${
+            isSending || !newReply.trim() ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+        >
+          {isSending ? 'Sending...' : 'Send'}
+        </button>
       </div>
     </div>
   )
