@@ -140,8 +140,8 @@ const ChannelPage = () => {
           </p>
         </div>
 
-        {/* Messages Area - Add messages-container class here */}
-        <div className={`messages-container flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent ${isThreadOpen ? 'mr-96' : ''}`}>
+        {/* Messages Area */}
+        <div className={`messages-container flex-1 overflow-y-auto scrollbar-hide ${isThreadOpen ? 'mr-80' : ''}`}>
           {isLoading && !forceHideLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-yellow-400 text-xl">Loading messages...</div>
@@ -151,7 +151,7 @@ const ChannelPage = () => {
               This is the start of the channel. Send a message to get the conversation going!
             </div>
           ) : (
-            <div className="py-4 space-y-2 px-4">
+            <div className="py-4 space-y-2 px-4 w-full max-w-6xl mx-auto pb-16">
               {messages.map((message, i) => (
                 <Message
                   key={message.id}
@@ -166,7 +166,7 @@ const ChannelPage = () => {
         </div>
 
         {/* Message Input */}
-        <div className="sticky bottom-0 bg-gray-900 border-t border-gray-700 p-4">
+        <div className="absolute bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 p-4">
           <MessageInput channel_id={parseInt(id)} />
         </div>
       </div>

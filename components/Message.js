@@ -125,71 +125,84 @@ export default function Message({ message, isThread = false }) {
     message.sender?.username ||
     'Unknown User'
 
+  const handleThreadClick = () => {
+    // First, dispatch an event to close any open thread
+    window.dispatchEvent(new CustomEvent('threadPanelState', { 
+      detail: { isOpen: false }
+    }))
+
+    // Small delay to allow the previous thread to close
+    setTimeout(() => {
+      setShowThread(true)
+      // Then dispatch event to show this thread
+      window.dispatchEvent(new CustomEvent('threadPanelState', { 
+        detail: { isOpen: true }
+      }))
+    }, 100)
+  }
+
   return (
-    <>
-      <div className={`flex items-start gap-3 max-w-2xl px-4 ${isCurrentUser ? 'ml-auto flex-row-reverse' : ''}`} id={`message-${message.id}`}>
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center relative">
-          {(message.user?.avatar_url || message.sender?.avatar_url) ? (
-            <img
-              src={message.user?.avatar_url || message.sender?.avatar_url}
-              alt={displayName}
-              className="w-10 h-10 rounded-full"
+    <div 
+      id={`message-${message.id}`}
+      className={`group flex space-x-3 px-2 py-1 hover:bg-gray-800/50 rounded-lg transition-colors duration-150 ${
+        message.status === 'pending' ? 'opacity-50' : ''
+      }`}
+    >
+      {/* User Avatar */}
+      <div className="relative flex-shrink-0">
+        <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden">
+          {message.user?.avatar_url && (
+            <img 
+              src={message.user.avatar_url} 
+              alt={message.user?.username || 'User'} 
+              className="w-full h-full object-cover"
             />
-          ) : (
-            <span className="text-lg text-yellow-400">
-              {displayName.charAt(0).toUpperCase()}
-            </span>
-          )}
-          <div className="absolute bottom-0 right-0 transform translate-x-1/4 translate-y-1/4">
-            <UserStatusDot status={userStatus} />
-          </div>
-        </div>
-        <div className={`flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}`}>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-yellow-400 font-orbitron">{displayName}</span>
-            <span className="text-xs text-gray-500">{formattedTimestamp}</span>
-          </div>
-          <div className={`mt-1 px-4 py-2 rounded-lg ${
-            isCurrentUser 
-              ? 'bg-yellow-500 text-black' 
-              : 'bg-gray-700 text-white'
-          }`}>
-            {message.message}
-          </div>
-          <MessageReactions messageId={message.id} />
-          {/* Thread Button - Only show in main channel, not in threads */}
-          {!isThread && (
-            <div className="text-xs mt-1">
-              <button
-                className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                onClick={() => {
-                  setShowThread(true)
-                  // Dispatch event to notify layout about thread panel state
-                  window.dispatchEvent(new CustomEvent('threadPanelState', { detail: { isOpen: true } }))
-                }}
-              >
-                {replyCount > 0 ? (
-                  <>
-                    <span>{replyCount} repl{replyCount === 1 ? 'y' : 'ies'}</span>
-                  </>
-                ) : (
-                  'Start thread'
-                )}
-              </button>
-            </div>
           )}
         </div>
+        <UserStatusDot status={userStatus} className="absolute bottom-0 right-0" />
       </div>
-      {showThread && (
-        <ThreadPanel
-          parentMessageId={message.id}
-          onClose={() => {
-            setShowThread(false)
-            // Dispatch event to notify layout about thread panel state
-            window.dispatchEvent(new CustomEvent('threadPanelState', { detail: { isOpen: false } }))
-          }}
-        />
-      )}
-    </>
+
+      {/* Message Content */}
+      <div className="flex-1 min-w-0">
+        {/* Message Header */}
+        <div className="flex items-center space-x-2">
+          <span className="font-medium text-yellow-400">
+            {message.user?.username || 'Unknown User'}
+          </span>
+          <span className="text-xs text-gray-400">
+            {formatDistanceToNow(new Date(message.inserted_at), { addSuffix: true })}
+          </span>
+          {!isThread && (
+            <button
+              onClick={handleThreadClick}
+              className="text-xs text-gray-400 hover:text-yellow-400 transition-colors"
+            >
+              {replyCount > 0 ? `${replyCount} replies` : 'Start thread'}
+            </button>
+          )}
+        </div>
+
+        {/* Message Text */}
+        <div className="text-gray-100 whitespace-pre-wrap break-words">
+          {message.message}
+        </div>
+
+        {/* Message Reactions */}
+        <MessageReactions messageId={message.id} />
+
+        {/* Thread Panel */}
+        {showThread && (
+          <ThreadPanel
+            parentMessageId={message.id}
+            onClose={() => {
+              setShowThread(false)
+              window.dispatchEvent(new CustomEvent('threadPanelState', { 
+                detail: { isOpen: false }
+              }))
+            }}
+          />
+        )}
+      </div>
+    </div>
   )
 }

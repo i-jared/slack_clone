@@ -349,7 +349,7 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
       </div>
 
       {/* Thread Messages */}
-      <div className="flex-1 overflow-y-auto p-4 h-[calc(100vh-8rem)]">
+      <div className="flex-1 overflow-y-auto scrollbar-hide p-4 h-[calc(100vh-8rem)]">
         {isLoading ? (
           <div className="text-gray-400">Loading thread...</div>
         ) : threadMessages.length === 0 ? (

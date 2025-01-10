@@ -263,17 +263,17 @@ const Layout = ({ children, hideSidebar = false }) => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-100">
+    <div className="flex h-screen overflow-hidden bg-gray-900 text-gray-100">
       {/* Sidebar - conditionally rendered */}
       {!hideSidebar && (
-        <div className="w-64 flex flex-col bg-gradient-to-b from-gray-900 to-gray-800 border-r border-gray-800">
+        <div className="w-64 flex flex-col bg-gradient-to-b from-gray-900 to-gray-800 border-r border-gray-800 h-screen">
           {/* App Header */}
           <div className="p-4 border-b border-gray-800">
             <h1 className="text-2xl font-orbitron text-yellow-400 tracking-wider">Talk2D2</h1>
           </div>
 
           {/* Channels & DMs */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto scrollbar-hide">
             {/* Channels Section */}
             <div className="p-4">
               <h2 className="text-sm font-bold text-yellow-400 tracking-wide mb-2">CHANNELS</h2>
@@ -297,7 +297,7 @@ const Layout = ({ children, hideSidebar = false }) => {
             {/* Direct Messages Section */}
             <div className="p-4">
               <h2 className="text-sm font-bold text-yellow-400 tracking-wide mb-2">DIRECT MESSAGES</h2>
-              <nav className="space-y-1">
+              <nav className="space-y-1 overflow-y-auto scrollbar-hide">
                 {users.map((otherUser) => (
                   <div
                     key={otherUser.id}
