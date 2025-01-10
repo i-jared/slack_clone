@@ -14,31 +14,20 @@ const DirectMessagePage = () => {
   const { user } = useContext(UserContext)
   const [recipient, setRecipient] = useState(null)
   const [isLoadingRecipient, setIsLoadingRecipient] = useState(true)
-  const { messages: directMessages, isLoading: isLoadingMessages, retryMessage } = useDirectMessages({ recipientId: id })
+  const { messages: directMessages, isLoading: isLoadingMessages } = useDirectMessages({ recipientId: id })
   const messagesEndRef = useRef(null)
   const shouldAutoScroll = useRef(true)
 
-  // Improved scroll to bottom function
   const scrollToBottom = (behavior = 'smooth') => {
     const messagesContainer = document.querySelector('.messages-container')
     const endElement = messagesEndRef.current
     
     if (messagesContainer && endElement) {
-      // Calculate if we're already near bottom
-      const containerHeight = messagesContainer.clientHeight
-      const scrollPosition = messagesContainer.scrollTop
-      const scrollHeight = messagesContainer.scrollHeight
-      const isNearBottom = (scrollHeight - (scrollPosition + containerHeight)) < 100
-
-      // Update auto-scroll preference based on user's scroll position
-      shouldAutoScroll.current = isNearBottom
-
-      // Only scroll if we should auto-scroll
-      if (shouldAutoScroll.current) {
-        setTimeout(() => {
-          endElement.scrollIntoView({ behavior, block: 'end' })
-        }, 100)
-      }
+      endElement.scrollIntoView({ behavior, block: 'end' })
+      // Force a second scroll after a tiny delay to ensure it works
+      setTimeout(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight
+      }, 50)
     }
   }
 
@@ -60,9 +49,12 @@ const DirectMessagePage = () => {
   useEffect(() => {
     const lastMessage = directMessages?.[directMessages.length - 1]
     if (lastMessage && !isLoadingMessages) {
-      scrollToBottom()
+      // Always scroll if the message is from the current user
+      if (lastMessage.sender_id === user?.id || shouldAutoScroll.current) {
+        scrollToBottom()
+      }
     }
-  }, [directMessages?.length, isLoadingMessages])
+  }, [directMessages, isLoadingMessages, user?.id])
 
   // Fetch recipient user data
   useEffect(() => {
@@ -148,10 +140,7 @@ const DirectMessagePage = () => {
             Private conversation
           </p>
         </div>
-        <div 
-          className="messages-container flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
-          onScroll={handleScroll}
-        >
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           {isLoadingMessages ? (
             <div className="flex items-center justify-center h-full">
               <LoadingScreen message="Loading messages..." />
@@ -169,11 +158,10 @@ const DirectMessagePage = () => {
                     ...message,
                     user: message.sender,
                     isDirect: true
-                  }}
-                  retryMessage={retryMessage}
+                  }} 
                 />
               ))}
-              <div ref={messagesEndRef} className="h-1" />
+              <div ref={messagesEndRef} />
             </div>
           )}
         </div>

@@ -2,96 +2,95 @@ import { useEffect, useState, useRef, useContext } from 'react'
 import { supabase } from '~/lib/Store'
 import Message from './Message'
 import UserContext from '~/lib/UserContext'
-import MessageInput from './MessageInput'
 
+/**
+ * This component fetches and displays thread messages associated with a "parent" message.
+ * For simplicity, we assume we've added a "parent_id" column to "messages" table or
+ * some approach for threading. Adjust queries as needed.
+ */
 export default function ThreadPanel({ parentMessageId, onClose }) {
   const { user } = useContext(UserContext)
   const [threadMessages, setThreadMessages] = useState([])
   const [isLoading, setIsLoading] = useState(true)
-  const [parentMessage, setParentMessage] = useState(null)
+  const [newReply, setNewReply] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const [pendingMessages, setPendingMessages] = useState(new Set())
   const messagesEndRef = useRef(null)
 
-  // Update thread panel styles to match screenshot
-  const threadPanelStyles = {
-    position: 'fixed',
-    top: '0',
-    right: '0',
-    width: '400px',
-    height: '100vh',
-    backgroundColor: '#1E1F22',
-    borderLeft: '1px solid rgba(45, 45, 46, 0.8)',
-    transform: parentMessageId ? 'translateX(0)' : 'translateX(100%)',
-    transition: 'transform 0.3s ease-in-out, opacity 0.3s ease-in-out',
-    opacity: parentMessageId ? '1' : '0',
-    zIndex: 15,
-    display: 'flex',
-    flexDirection: 'column'
+  // Handle optimistic updates
+  const addMessage = (message) => {
+    setThreadMessages(prev => {
+      // Create new message with status
+      const newMessage = {
+        ...message,
+        status: message.id.startsWith('temp-') ? 'pending' : 'confirmed',
+        timestamp: message.inserted_at || new Date().toISOString()
+      }
+      
+      // Add to pending if temporary
+      if (newMessage.status === 'pending') {
+        setPendingMessages(prev => new Set(prev).add(message.id))
+      }
+
+      return [...prev, newMessage].sort((a, b) => 
+        new Date(a.timestamp) - new Date(b.timestamp)
+      )
+    })
   }
 
-  // Update header styles to match screenshot
-  const headerStyles = {
-    padding: '12px 16px',
-    borderBottom: '1px solid rgba(45, 45, 46, 0.8)',
-    backgroundColor: '#1E1F22',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    height: '60px'
+  // Handle message confirmation
+  const confirmMessage = (tempId, confirmedMessage) => {
+    setThreadMessages(prev => prev.map(msg => 
+      msg.id === tempId ? { ...confirmedMessage, status: 'confirmed' } : msg
+    ))
+    setPendingMessages(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(tempId)
+      return newSet
+    })
   }
 
-  // Update messages container styles
-  const messagesContainerStyles = {
-    flex: 1,
-    overflowY: 'auto',
-    backgroundColor: '#1E1F22',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px'
-  }
-
-  // Update close button styles
-  const closeButtonStyles = {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    color: '#9B9B9B',
-    padding: '8px',
-    borderRadius: '4px',
-    display: 'flex',
-    alignItems: 'center',
-    transition: 'all 0.2s'
+  // Handle message removal (for failed sends)
+  const removeMessage = (messageId) => {
+    setThreadMessages(prev => prev.filter(msg => msg.id !== messageId))
+    setPendingMessages(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(messageId)
+      return newSet
+    })
   }
 
   useEffect(() => {
     let isMounted = true
     let subscription
 
-    const fetchParentMessage = async () => {
-      try {
-        const { data: message, error } = await supabase
-          .from('messages')
-          .select(`
-            id,
-            message,
-            inserted_at,
-            channel_id,
-            user:user_id (
-              id,
-              username,
-              avatar_url
-            )
-          `)
-          .eq('id', parentMessageId)
-          .single()
-
-        if (error) throw error
-        if (isMounted) {
-          setParentMessage(message)
-        }
-      } catch (error) {
-        console.error('Error fetching parent message:', error)
+    // Handle optimistic updates
+    const handleNewMessage = (event) => {
+      const message = event.detail
+      // Only add if it's for this thread
+      if (message.parent_id === parentMessageId) {
+        addMessage(message)
       }
     }
+
+    const handleMessageConfirmed = (event) => {
+      const { tempId, confirmedMessage } = event.detail
+      if (pendingMessages.has(tempId)) {
+        confirmMessage(tempId, confirmedMessage)
+      }
+    }
+
+    const handleMessageFailed = (event) => {
+      const { messageId } = event.detail
+      if (pendingMessages.has(messageId)) {
+        removeMessage(messageId)
+      }
+    }
+
+    // Listen for optimistic updates
+    window.addEventListener('newThreadMessage', handleNewMessage)
+    window.addEventListener('threadMessageConfirmed', handleMessageConfirmed)
+    window.addEventListener('threadMessageFailed', handleMessageFailed)
 
     const fetchThreadMessages = async () => {
       try {
@@ -104,6 +103,7 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
             inserted_at,
             channel_id,
             parent_id,
+            attachments,
             user:user_id (
               id,
               username,
@@ -150,6 +150,7 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
                 inserted_at,
                 channel_id,
                 parent_id,
+                attachments,
                 user:user_id (
                   id,
                   username,
@@ -164,22 +165,25 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
               return
             }
 
-            setThreadMessages(prev => {
-              const exists = prev.some(m => m.id === message.id)
-              if (exists) {
-                return prev.map(m => m.id === message.id ? message : m)
-              } else {
-                return [...prev, message].sort((a, b) => 
-                  new Date(a.inserted_at) - new Date(b.inserted_at)
-                )
-              }
-            })
+            if (payload.eventType === 'DELETE') {
+              setThreadMessages(prev => prev.filter(m => m.id !== payload.old.id))
+            } else {
+              setThreadMessages(prev => {
+                const exists = prev.some(m => m.id === message.id)
+                if (exists) {
+                  return prev.map(m => m.id === message.id ? message : m)
+                } else {
+                  return [...prev, message].sort((a, b) => 
+                    new Date(a.inserted_at) - new Date(b.inserted_at)
+                  )
+                }
+              })
+            }
           }
         )
         .subscribe()
     }
 
-    fetchParentMessage()
     fetchThreadMessages()
     setupSubscription()
 
@@ -188,100 +192,148 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
       if (subscription) {
         supabase.removeChannel(subscription)
       }
+      // Clean up event listeners
+      window.removeEventListener('newThreadMessage', handleNewMessage)
+      window.removeEventListener('threadMessageConfirmed', handleMessageConfirmed)
+      window.removeEventListener('threadMessageFailed', handleMessageFailed)
     }
   }, [parentMessageId])
 
-  // Scroll to bottom when new messages arrive
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      postReply()
+    }
+  }
+
+  const postReply = async () => {
+    if (!newReply.trim() || isSending) return
+
+    // Create temporary message
+    const tempId = `temp-${Date.now()}`
+    const optimisticMessage = {
+      id: tempId,
+      message: newReply.trim(),
+      parent_id: parentMessageId,
+      inserted_at: new Date().toISOString(),
+      user: {
+        id: user.id,
+        username: user.email?.split('@')[0],
+        avatar_url: user.user_metadata?.avatar_url
+      }
+    }
+
+    // Show optimistic update
+    window.dispatchEvent(new CustomEvent('newThreadMessage', { 
+      detail: optimisticMessage 
+    }))
+
+    // Clear input immediately
+    setNewReply('')
+    
+    try {
+      setIsSending(true)
+      const { data: message, error } = await supabase
+        .from('messages')
+        .insert([{
+          message: optimisticMessage.message,
+          parent_id: parentMessageId,
+          user_id: user.id
+        }])
+        .select(`
+          id,
+          message,
+          inserted_at,
+          channel_id,
+          parent_id,
+          attachments,
+          user:user_id (
+            id,
+            username,
+            avatar_url
+          )
+        `)
+        .single()
+
+      if (error) throw error
+
+      // Dispatch confirmation event
+      window.dispatchEvent(new CustomEvent('threadMessageConfirmed', {
+        detail: {
+          tempId,
+          confirmedMessage: message
+        }
+      }))
+    } catch (error) {
+      console.error('Error posting thread reply:', error)
+      
+      // Dispatch failure event
+      window.dispatchEvent(new CustomEvent('threadMessageFailed', {
+        detail: { messageId: tempId }
+      }))
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (threadMessages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [threadMessages])
 
-  // Notify parent components about thread state changes
-  useEffect(() => {
-    // Dispatch event to notify about thread panel state
-    window.dispatchEvent(
-      new CustomEvent('threadPanelState', {
-        detail: { isOpen: Boolean(parentMessageId) }
-      })
-    )
-
-    return () => {
-      // Clean up by notifying thread panel is closed
-      window.dispatchEvent(
-        new CustomEvent('threadPanelState', {
-          detail: { isOpen: false }
-        })
-      )
-    }
-  }, [parentMessageId])
-
   return (
-    <div style={threadPanelStyles}>
-      <div style={headerStyles}>
-        <div className="flex items-center gap-3">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="bg-gray-900 w-full max-w-2xl h-[80vh] rounded-lg shadow-xl flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <h3 className="text-lg font-semibold text-yellow-400">Thread</h3>
-          {parentMessage && (
-            <span className="text-sm text-gray-400">
-              in #{parentMessage.channel?.name || 'channel'}
-            </span>
-          )}
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white"
+          >
+            ✕
+          </button>
         </div>
-        <button 
-          onClick={onClose}
-          className="p-2 text-gray-400 hover:bg-gray-800/50 rounded-md transition-colors"
-          aria-label="Close thread"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <div style={messagesContainerStyles} className="scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
-        {/* Parent Message */}
-        {parentMessage && (
-          <div className="px-4 pt-4 pb-4 border-b border-gray-700/30">
-            <Message
-              message={parentMessage}
-              isThread={true}
-              isParentMessage={true}
-            />
-          </div>
-        )}
 
         {/* Thread Messages */}
-        <div className="flex-1 px-4 py-2">
+        <div className="flex-1 overflow-y-auto p-4">
           {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="text-yellow-400">Loading messages...</div>
-            </div>
+            <div className="text-gray-400">Loading thread...</div>
           ) : threadMessages.length === 0 ? (
-            <div className="text-center text-gray-400 py-8">
-              No replies yet. Start the conversation!
-            </div>
+            <div className="text-gray-500">No replies yet.</div>
           ) : (
-            <>
-              {threadMessages.map((message) => (
-                <div key={message.id} className="py-2">
-                  <Message
-                    message={message}
-                    isThread={true}
-                  />
-                </div>
+            <div className="space-y-4">
+              {threadMessages.map((msg) => (
+                <Message key={msg.id} message={msg} />
               ))}
-              <div ref={messagesEndRef} />
-            </>
+              <div ref={messagesEndRef} /> {/* Scroll anchor */}
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Message Input */}
-      <div className="mt-auto border-t border-gray-700/30">
-        <MessageInput
-          channel_id={parentMessage?.channel_id}
-          isThread={true}
-          parentMessageId={parentMessageId}
-        />
+        {/* Reply Input */}
+        <div className="sticky bottom-0 bg-[#1a1d21] border-t border-gray-700 p-4">
+          <textarea
+            value={newReply}
+            onChange={(e) => setNewReply(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="w-full bg-gray-700 text-white rounded p-2 mb-2 resize-none focus:outline-none focus:ring-1 focus:ring-yellow-400"
+            rows={3}
+            placeholder="Reply to thread..."
+            disabled={isSending}
+          />
+          <button
+            onClick={postReply}
+            disabled={isSending || !newReply.trim()}
+            className={`px-4 py-2 bg-yellow-500 text-gray-900 rounded hover:bg-yellow-400 transition ${
+              isSending || !newReply.trim() ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {isSending ? 'Sending...' : 'Send'}
+          </button>
+        </div>
       </div>
     </div>
   )
