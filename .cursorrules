@@ -1,249 +1,237 @@
-# Cursor Rules Document
-
-## 1. Project Instructions
-
-- **Adherence to Specifications:** Follow all provided specifications and guidelines meticulously throughout the development process.
-- **Comprehensive Coding:** Ensure that every step of the application is fully coded without taking shortcuts to maintain quality and functionality.
-- **Completion Focus:** Strive to completely finish each requested feature or component, avoiding partial implementations.
-- **Context Utilization:** Make use of designated context tags within the codebase to better understand the overall project structure and requirements.
-
-## 2. Overview
-
-- **Purpose:** This application provides a real-time messaging platform built on Supabase, supporting features such as channels, direct messaging, file attachments, and user roles.
-- **Scope:** Focus on implementing and maintaining the messaging, file storage, authentication, and user management features. Exclude any enterprise-level billing integrations or advanced analytics unless specifically requested.
-
-## 3. Tech Stack
-
-- **Frontend Technologies:**  
-  - Next.js (React framework) for server-side rendering and client-side interactions.  
-  - React for building UI components.  
-  - TypeScript to enable static typing and improved developer experience.  
-  - (Optional) Tailwind CSS or a similar styling approach if you are using a utility-first CSS framework.
-
-- **Backend Technologies:**  
-  - Supabase for database management, authentication, and storage.  
-  - PostgreSQL (provided by Supabase) for persistent data storage.  
-  - Supabase Edge Functions (if needed) for custom backend logic.
-
-- **Authentication:**  
-  - Supabase’s email-based authentication is used for user sign-ups, logins, and password resets.  
-  - Additional configuration is possible via providers or custom hooks defined in the “authentication” section if required.
-
-- **Payments:**  
-  - Currently no built-in payment processing in this scope. Could be integrated later if a paid subscription or premium features are introduced.
-
-- **Analytics:**  
-  - Basic monitoring and logging through Supabase’s logs and potential third-party integrations.  
-  - No dedicated analytics platform configured at present.
-
-- **Deployment:**  
-  - Supabase handles the database and authentication hosting.  
-  - Next.js is typically deployed on platforms like Vercel or a similar provider, though any Node-capable environment is possible.
-
-## 4. Project Structure
-
-- **Organization:**  
-  - “app/” directory (Next.js App Router) for core pages and components.  
-  - “serverActions/” or “actions/” for implementing server-side logic using Next.js Server Actions.  
-  - “components/” for reusable UI elements (client or server).  
-  - “schemas/” or “db/” for database-related definitions and references to Supabase schemas.  
-  - “lib/” or “utils/” for utility/helper functions.  
-  - “public/” or “static/” for images and static assets.  
-  - “types/” for TypeScript type definitions.
-
-- **Modularity:**  
-  - Separate concerns by domain (e.g., channels, direct_messages, users) to promote maintainability and scalability.
-
-## 5. Development Rules
-
-### General Rules
-
-- **Import Conventions:**  
-  - Use named imports for clarity where possible and default imports only for primary export modules.
-
-- **Naming Conventions:**  
-  - Use PascalCase for React components (e.g., MyComponent).  
-  - Use kebab-case or snake_case for filenames if preferred, ensuring consistency project-wide.
-
-- **Component Management:**  
-  - For shared components, update them carefully and check other areas of the application that depend on them.
-
-### Environment Variable Rules
-
-- **Updating Variables:**  
-  - If .env.local is updated, replicate changes in .env.example for documentation.
-
-- **Storage Location:**  
-  - All sensitive variables (e.g., API keys, JWT secrets) must remain in server-only environment files and never exposed to client code.
-
-- **Security:**  
-  - Ensure no secrets appear in public Git repos or client-exposed builds.
-
-- **Prefixing:**  
-  - Use NEXT_PUBLIC_ prefix only for environment variables that must be accessible client-side.
-
-- **Accessing Variables:**  
-  - Use process.env for server-side variables.  
-  - Use next/config or direct environment references for client-facing variables with NEXT_PUBLIC_.
-
-### Type Rules
-
-- **Type Imports:**  
-  - Import from “types/” directory or relevant library modules where possible to keep the codebase organized.
-
-- **File Naming:**  
-  - Use a .d.ts extension for pure type definition files.  
-  - Combine type definitions logically within domain-related files as needed.
-
-- **Centralized Types:**  
-  - Include a “types/index.d.ts” (or similar) for common, global types.
-
-- **Exporting Types:**  
-  - Export from a single index file in each “types/” subdirectory if multiple type files are used.
-
-- **Type Preferences:**  
-  - Prefer interfaces over type aliases for object shapes, especially when extending other objects.
-
-- **Database Types:**  
-  - Keep all Supabase table definitions in a file or auto-generate TypeScript definitions to ensure consistency.
-
-## 6. Frontend Development Rules
-
-### General Rules
-
-- **Icon Usage:**  
-  - Use a consistent icon library (e.g., Heroicons, Material UI icons) or an SVG approach for a uniform look.
-
-- **HTML Structure:**  
-  - Favor semantic HTML5 elements whenever possible (e.g., <section>, <header>, <main>, <footer>).
-
-- **Component Tagging:**  
-  - Clearly mark components as “use client” or remain server-side if relying on Next.js server component features.
-
-### Components
-
-- **Naming Convention:**  
-  - Use consistent naming patterns (e.g., Button, Card, Modal) in PascalCase.
-
-- **Component Placement:**  
-  - One-off pages in “app/”.  
-  - Reusable components in “components/”.
-
-### Data Fetching
-
-- **Server Components:**  
-  - Handle sensitive or data-heavy operations in server components.  
-  - Pass fetched results as props to child client components.
-
-- **Server Actions:**  
-  - Use Next.js Server Actions for performing secure, server-side updates or insertions into the database.
-
-### Server Components
-
-- **Declaration:**  
-  - Omit “use client” at the top, letting Next.js treat them as server by default.
-
-- **Asynchronous Handling:**  
-  - Leverage built-in React async/await patterns when fetching data from Supabase.
-
-- **Import Restrictions:**  
-  - Avoid direct imports into client components to prevent bundling server-only code.
-
-### Client Components
-
-- **Declaration:**  
-  - Add “use client” at the first line of the file if the component depends on browser APIs or state hooks.
-
-- **Data Reliance:**  
-  - Accept props from server components, only fetch new data if it’s user interaction–dependent and secure to do so on the client.
-
-## 7. Backend Development Rules
-
-### General Rules
-
-- **Migration Handling:**  
-  - Rely on Supabase auto-generated migrations or manually manage them with supabase CLI to keep the database in sync.
-
-### Organization
-
-- **Consistent Structure:**  
-  - Keep SQL or migration scripts (if any) and Supabase config in a “supabase/” folder or references for clarity.
-
-### Schemas
-
-- **Schema Imports:**  
-  - Reference Supabase’s “public,” “auth,” and “storage” schemas for table definitions.
-
-- **File Naming:**  
-  - Maintain descriptive names like channels.schema.json, messages.schema.json if storing offline references.
-
-- **Centralized Schemas:**  
-  - Supabase is the single source of truth. If you have local definitions, store them in one location for clarity.
-
-- **Exporting Schemas:**  
-  - If using code-gen tools, export typed definitions for each table from a dedicated index.
-
-- **Schema Integration:**  
-  - PDF or code-based representation of these schemas should be referenced for clarity but remain consistent with the live Supabase instance.
-
-- **User Identification:**  
-  - Use the standard “auth.uid()” from Supabase for row-level security and user ownership checks.
-
-- **Timestamp Columns:**  
-  - Rely on default “inserted_at,” “updated_at” columns provided in each table.
-
-- **Cascade Deletion:**  
-  - Retain or refine existing foreign key constraints (e.g., message attachments, channel ownership) as indicated in the schema.
-
-- **Enum Usage:**  
-  - For columns like user status, keep single-source enumerations to maintain data consistency.
-
-### Server Actions
-
-- **Action Imports:**  
-  - Organize within a dedicated folder (“serverActions/” or “actions/”) and import with absolute paths if configured.
-
-- **Action Organization:**  
-  - Separate actions by domain (e.g., channelActions, userActions, messageActions).
-
-- **File Naming:**  
-  - match the pattern <domain>.actions.ts or <domain>Actions.ts.
-
-- **Action Scope:**  
-  - Only create actions for essential DB interactions or business logic.
-
-- **Action Responses:**  
-  - Return structured response objects, e.g., { success: boolean, data, error }.
-
-- **Function Naming:**  
-  - Use descriptive names, e.g., createChannelAction, updateUserAction.
-
-- **Promise Returns:**  
-  - Always return promises from server actions (Next.js automatically handles them, but keep them typed well).
-
-- **CRUD Order:**  
-  - Create, Read, Update, Delete in that order if multiple actions in the same file.
-
-- **Undefined Data:**  
-  - Return null or a clear error object if no data is found or no data is needed.
-
-## 8. Authentication Rules
-
-- **Authentication Integration:**  
-  - All auth flows rely on Supabase’s “auth” schema and role-based policies (authenticated, admin, etc.).
-
-- **Auth Helper Usage:**  
-  - Use Supabase’s client or server-side methods (e.g., createClient, auth helpers) within server actions or in client components as needed.
-
-## 9. Payments Rules
-
-- **Payment Processing:**  
-  - This project does not currently implement payment processing. Future expansions can integrate Stripe or other providers if needed.
-
-## 10. Analytics Rules
-
-- **Analytics Integration:**  
-  - Limited to monitoring using Supabase logs, third-party solutions like Vercel’s analytics, or potential custom event logging.  
-  - Expand with a dedicated analytics platform only if required.
-
---- 
+```plaintext
+# .cursorrules
+
+#####################################################################
+# IMPORTANT: READ THIS FIRST
+#####################################################################
+- Before writing any new code, you MUST review the `Documentation/` folder 
+  to understand the project’s structure, features, and architecture.
+- Do NOT break or modify anything listed in the `dont_break.md` file, 
+  which contains critical dependencies that must remain intact.
+- Adhere strictly to these guidelines to maintain project consistency 
+  and stability across the entire codebase.
+
+---------------------------------------------------------------------
+1. PROJECT OVERVIEW AND PURPOSE
+---------------------------------------------------------------------
+- Provide high-performance, secure, and collaborative Slack-like 
+  messaging features for our “Talk2D2” application.
+- The focus is on real-time messaging, AI-assisted conversation, 
+  and seamless user experience, targeting both small teams and large 
+  enterprise clients.
+
+Example:
+```plaintext
+This project is a high-performance messaging platform using Next.js 
+and Supabase for real-time communications. Our target audience ranges 
+from small startups to enterprise-grade users requiring security and 
+scalability.
+```
+
+---------------------------------------------------------------------
+2. DATABASE DESIGN AND ACCESS GUIDELINES
+---------------------------------------------------------------------
+- Use Supabase (PostgreSQL-based) for our primary relational data needs.
+- Queries should be secure, follow parameterized practices, and leverage 
+  Supabase or an ORM approach for consistency.
+- Regularly consult the `Documentation/database_design.md` (or similar 
+  file) for schemas, relationships, and indexing guidelines.
+- Never break the schemas or stored procedures that are explicitly 
+  protected in `dont_break.md`.
+
+Example:
+```plaintext
+- Use parameterized queries to prevent SQL injection.
+- Reference the 'Documentation/database_design.md' for table structures.
+- Update only approved columns in 'dont_break.md' to avoid any breakage.
+- For advanced queries, create migrations and document them.
+```
+
+---------------------------------------------------------------------
+3. RESPONSE STYLE AND INTERACTION GUIDELINES
+---------------------------------------------------------------------
+- The AI assistant and all code reviews should maintain a clear, 
+  friendly, and professional tone.
+- Provide concise explanations, but add references to relevant docs 
+  in the `Documentation/` folder when needed.
+- Use Markdown for all code blocks and error messages to keep everything 
+  consistent and easy to read.
+
+Example:
+```plaintext
+- Respond in a courteous yet concise manner.
+- Always reference 'Documentation/' for deep dives or clarifications.
+- Ask for clarification rather than guessing if the requirement is unclear.
+```
+
+---------------------------------------------------------------------
+4. API DESIGN AND INTEGRATION RULES
+---------------------------------------------------------------------
+- We primarily use REST-based endpoints for public integration, and 
+  potential GraphQL endpoints for advanced queries or internal usage.
+- When adding new endpoints, do NOT disrupt existing endpoints or 
+  functionalities that are listed under `dont_break.md`.
+- Document all endpoints in the `Documentation/api_reference.md`.
+
+Example:
+```plaintext
+- Return JSON in a standardized format:
+  {
+    "status": "success|error",
+    "data": {...},
+    "error": {"code": 400, "message": "Some error"}
+  }
+- Keep backward compatibility in mind. If an endpoint must change, 
+  version it accordingly (e.g., /v2/...).
+- Use OpenAPI (Swagger) for official documentation.
+```
+
+---------------------------------------------------------------------
+5. SECURITY BEST PRACTICES
+---------------------------------------------------------------------
+- Use secure environment variable management for sensitive data 
+  (e.g., `.env` files or a secret vault).
+- Reference the `Documentation/security.md` for encryption standards, 
+  authentication flow, and session management requirements.
+- Respect all dependencies and security logic outlined in `dont_break.md`. 
+
+Example:
+```plaintext
+- Enforce HTTPS across all deployments.
+- Store API keys in environment variables only.
+- Hash passwords with bcrypt (minimum cost factor of 12).
+- Use Supabase’s Row Level Security (RLS) for data access control.
+```
+
+---------------------------------------------------------------------
+6. DEPENDENCY MANAGEMENT
+---------------------------------------------------------------------
+- Use `npm` with a lockfile for consistent dependency resolution.
+- Never update or remove dependencies marked in `dont_break.md` 
+  without explicit approval.
+- Limit new packages. Always evaluate if built-in or existing 
+  libraries can handle the requirement.
+
+Example:
+```plaintext
+- Maintain version ranges like '^4.0.0' to avoid surprise breaks.
+- Document any newly added packages in 'Documentation/dependencies.md'.
+- Check for potential conflicts with existing libraries.
+```
+
+---------------------------------------------------------------------
+7. TESTING AND QA GUIDELINES
+---------------------------------------------------------------------
+- Use Jest for unit tests; consider Cypress or Playwright for 
+  end-to-end testing.
+- Maintain at least 85-90% coverage unless documented otherwise 
+  in `Documentation/testing.md`.
+- Ensure new code does not break existing tests, especially 
+  those outlined as critical in `dont_break.md`.
+
+Example:
+```plaintext
+- Write tests for all new features and edge cases.
+- If coverage dips, provide justification in the PR description.
+- Run `npm run test` before pushing any code for final review.
+```
+
+---------------------------------------------------------------------
+8. DEPLOYMENT AND CI/CD PIPELINES
+---------------------------------------------------------------------
+- We use GitHub Actions for automated building, testing, and deployment.
+- All merges to `main` branch must pass lint, test, and coverage gates.
+- Keep an eye on any specialized CI configurations detailed in 
+  `Documentation/ci_cd.md`.
+
+Example:
+```plaintext
+- Deploy to Vercel (front-end) and Supabase (back-end) automatically 
+  after successful merges.
+- Tag releases with semantic versioning (e.g., v1.0.0).
+- Ensure secrets are not exposed in build logs or artifact files.
+```
+
+---------------------------------------------------------------------
+9. DOCUMENTATION STANDARDS
+---------------------------------------------------------------------
+- Thoroughly document all new features in the `Documentation/` folder. 
+- Use JSDoc for in-code documentation of functions and classes.
+- Maintain a clear changelog for each release in `Documentation/changelog.md`.
+
+Example:
+```plaintext
+- For major new modules, add or update a dedicated doc file (e.g., 
+  'Documentation/new_module_name.md').
+- Use descriptive function names and doc comments that clarify usage.
+- Cross-reference related docs in your commits or PR descriptions.
+```
+
+---------------------------------------------------------------------
+10. PERFORMANCE AND SCALABILITY GUIDELINES
+---------------------------------------------------------------------
+- Target sub-200ms response times for the majority of requests.
+- Leverage caching strategies (e.g., CDN or in-memory caching) when 
+  feasible for large data sets.
+- Consult `Documentation/performance_tips.md` for specific indexing, 
+  data partitioning, or caching guidelines.
+
+Example:
+```plaintext
+- Optimize file sizes, images, and other assets before pushing 
+  to production.
+- Use lazy-loading for non-critical resources in front-end code.
+- Monitor performance metrics in logs and address hotspots quickly.
+```
+
+---------------------------------------------------------------------
+11. USER INTERFACE AND UX GUIDELINES
+---------------------------------------------------------------------
+- Use our custom React components within the established design system 
+  for Talk2D2 (see `Documentation/ui_ux.md`).
+- Ensure your components are accessible and mobile-responsive.
+- Adhere to color palettes, typography, and spacing guidelines 
+  documented in `Documentation/design_standards.md`.
+
+Example:
+```plaintext
+- Maintain consistent styling using Tailwind or shared UI components.
+- For new components, update 'Documentation/ui_components.md' with usage 
+  and props guidelines.
+- Follow basic ARIA guidelines for accessibility (WCAG 2.1).
+```
+
+---------------------------------------------------------------------
+12. PROJECT-SPECIFIC RULES
+---------------------------------------------------------------------
+- **Do NOT modify or break items explicitly listed in `dont_break.md`.** 
+  These dependencies and configurations are critical to the app’s core 
+  functionality and performance.
+- Use snake_case for database columns, but follow camelCase for 
+  variables and function names in code.
+- For new feature proposals, always add an ADR (Architectural Decision 
+  Record) in `Documentation/adr/`.
+
+Example:
+```plaintext
+- All user records must include a 'user_id' field as the primary key.
+- Interact with the Slack-like commands only through the designated 
+  command parser in `lib/commands/`.
+- If uncertain, consult the relevant doc in 'Documentation/' or 
+  escalate to a senior dev for clarification.
+```
+
+---------------------------------------------------------------------
+# END OF FILE
+---------------------------------------------------------------------
+```
+
+**Usage**:  
+- Every time a developer (junior or otherwise) begins implementing a feature,  
+  they must consult this `.cursorrules` file and the relevant items in  
+  the `Documentation/` folder.  
+- They must also verify that they have not altered any dependencies  
+  prohibited by `dont_break.md`.  
+
+By following these rules, we ensure consistency, maintainability, and a  
+unified development approach across the entire “Talk2D2” codebase.
