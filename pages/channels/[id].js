@@ -1,11 +1,11 @@
-import { useEffect, useRef, useContext, useState } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import { useRouter } from 'next/router'
-import { useStore } from '~/lib/Store'
-import { useChannelMessages } from '~/lib/useChannelMessages'
-import Message from '~/components/Message'
-import MessageInput from '~/components/MessageInput'
-import UserContext from '~/lib/UserContext'
-import Layout from '~/components/Layout'
+import { UserContext } from '../../lib/UserContext'
+import { supabase, useStore } from '../../lib/Store'
+import { useChannelMessages } from '../../lib/useChannelMessages'
+import Message from '../../components/Message'
+import MessageInput from '../../components/MessageInput'
+import Layout from '../../components/Layout'
 
 const ChannelPage = () => {
   const router = useRouter()

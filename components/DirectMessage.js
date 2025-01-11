@@ -4,19 +4,19 @@ import Message from './Message'
 import MessageInput from './MessageInput'
 import LoadingScreen from './LoadingScreen'
 
-export default function DirectMessage({ recipientId, recipient }) {
-  const { messages, isLoading } = useDirectMessages({ recipientId })
+export default function DirectMessage({ dmRoomId, recipient }) {
+  const { messages, isLoading } = useDirectMessages({ dmRoomId })
   const messagesEndRef = useRef(null)
 
   // Log initial props and state
   useEffect(() => {
     console.log('🔄 DirectMessage mounted/updated:', {
-      recipientId,
+      dmRoomId,
       recipient,
       hasMessages: messages?.length > 0,
       isLoading
     })
-  }, [recipientId, recipient, messages, isLoading])
+  }, [dmRoomId, recipient, messages, isLoading])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -35,7 +35,7 @@ export default function DirectMessage({ recipientId, recipient }) {
   }
 
   console.log('🎨 DirectMessage rendering:', {
-    recipientId,
+    dmRoomId,
     recipientName: recipient?.username,
     messagesCount: messages?.length,
     isLoading
@@ -64,15 +64,14 @@ export default function DirectMessage({ recipientId, recipient }) {
               console.log('📝 Rendering message in DirectMessage:', {
                 messageId: message.id,
                 senderId: message.sender?.id,
-                recipientId: message.recipient?.id,
-                content: message.content
+                content: message.message_text
               })
               return (
                 <Message 
                   key={`${message.id}-${message.inserted_at}`}
                   message={{
                     ...message,
-                    message: message.content,
+                    message_text: message.message_text,
                     user: message.sender,
                     isDirect: true
                   }}
@@ -83,7 +82,7 @@ export default function DirectMessage({ recipientId, recipient }) {
           <div ref={messagesEndRef} />
         </div>
       </div>
-      <MessageInput recipient_id={recipientId} isDirect={true} />
+      <MessageInput dm_room_id={dmRoomId} isDirect={true} />
     </div>
   )
 } 

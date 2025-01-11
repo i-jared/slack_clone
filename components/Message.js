@@ -1,7 +1,7 @@
-import { useContext, useEffect, useState } from 'react'
+import { useState, useContext } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { supabase } from '~/lib/Store'
-import UserContext from '~/lib/UserContext'
+import { UserContext } from '../lib/UserContext'
 import MessageReactions from './MessageReactions'
 import ThreadPanel from './ThreadPanel'
 
@@ -58,7 +58,9 @@ export default function Message({ message, isThread = false }) {
     : 'Just now'
 
   const displayName =
+    message.user?.display_name ||
     message.user?.username ||
+    message.sender?.display_name ||
     message.sender?.username ||
     'Unknown User'
 
@@ -103,7 +105,7 @@ export default function Message({ message, isThread = false }) {
         {/* Message Header */}
         <div className="flex items-center space-x-2">
           <span className="font-medium text-yellow-400">
-            {message.user?.username || 'Unknown User'}
+            {displayName}
           </span>
           <span className="text-xs text-gray-400">
             {formatDistanceToNow(new Date(message.inserted_at), { addSuffix: true })}
@@ -120,23 +122,23 @@ export default function Message({ message, isThread = false }) {
 
         {/* Message Text */}
         <div className="text-gray-100 whitespace-pre-wrap break-words">
-          {message.message.startsWith('[File:') ? (
+          {message.message_text.startsWith('[File:') ? (
             <div className="mt-2">
               <a 
-                href={message.message.match(/\((.*?)\)/)?.[1]} 
+                href={message.message_text.match(/\((.*?)\)/)?.[1]} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="inline-block hover:opacity-90 transition-opacity"
               >
                 <img 
-                  src={message.message.match(/\((.*?)\)/)?.[1]} 
-                  alt={message.message.match(/\[(File: .*?)\]/)?.[1]} 
+                  src={message.message_text.match(/\((.*?)\)/)?.[1]} 
+                  alt={message.message_text.match(/\[(File: .*?)\]/)?.[1]} 
                   className="max-w-md rounded-lg shadow-lg cursor-pointer"
                 />
               </a>
             </div>
           ) : (
-            message.message
+            message.message_text
           )}
         </div>
 

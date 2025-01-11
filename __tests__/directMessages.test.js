@@ -75,30 +75,58 @@ describe('Direct Messages', () => {
       expect(user).toHaveProperty('username')
     })
 
-    test('should handle non-existent recipient', async () => {
+    test('should handle non-existent room', async () => {
       const nonExistentId = '00000000-0000-0000-0000-000000000000'
       
       mockSupabase.from.mockImplementationOnce(() => ({
         ...mockSupabase,
         select: jest.fn().mockReturnValue({
-          or: jest.fn().mockReturnValue({
-            order: jest.fn().mockResolvedValue({
-              data: [],
-              error: null
-            })
+          eq: jest.fn().mockResolvedValue({
+            data: [],
+            error: null
           })
         })
       }))
 
       const { data: messages, error } = await mockSupabase
         .from('direct_messages')
-        .select('*')
-        .or(`and(sender_id.eq.${testUser.id},recipient_id.eq.${nonExistentId}),and(sender_id.eq.${nonExistentId},recipient_id.eq.${testUser.id})`)
-        .order('inserted_at', { ascending: true })
+        .select('id, dm_room_id, sender_id, message_text, attachments, mentions, metadata, created_at, updated_at')
+        .eq('dm_room_id', nonExistentId)
 
       expect(error).toBeNull()
       expect(Array.isArray(messages)).toBe(true)
       expect(messages.length).toBe(0)
+    })
+
+    test('should fetch messages for existing room', async () => {
+      const roomId = 'test-room-id'
+      const testMessage = {
+        id: 'msg-1',
+        dm_room_id: roomId,
+        sender_id: testUser.id,
+        message_text: 'Test message',
+        created_at: new Date().toISOString()
+      }
+
+      mockSupabase.from.mockImplementationOnce(() => ({
+        ...mockSupabase,
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({
+            data: [testMessage],
+            error: null
+          })
+        })
+      }))
+
+      const { data: messages, error } = await mockSupabase
+        .from('direct_messages')
+        .select('id, dm_room_id, sender_id, message_text, attachments, mentions, metadata, created_at, updated_at')
+        .eq('dm_room_id', roomId)
+
+      expect(error).toBeNull()
+      expect(messages).toHaveLength(1)
+      expect(messages[0].message_text).toBe('Test message')
+      expect(messages[0].dm_room_id).toBe(roomId)
     })
   })
 

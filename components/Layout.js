@@ -1,13 +1,14 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import UserContext from '~/lib/UserContext'
+import { UserContext } from '../lib/UserContext'
 import { supabase, useStore } from '~/lib/Store'
 import Link from 'next/link'
 import LoadingScreen from '~/components/LoadingScreen'
 import UserStatusDot from '~/components/UserStatusDot'
+import CreateChannelButton from './CreateChannelButton'
 
 const Layout = ({ children, hideSidebar = false }) => {
-  const { user, signOut } = useContext(UserContext)
+  const { user } = useContext(UserContext)
   const router = useRouter()
   const [isNavigating, setIsNavigating] = useState(false)
   const [users, setUsers] = useState([])
@@ -262,6 +263,17 @@ const Layout = ({ children, hideSidebar = false }) => {
     }
   }
 
+  // Handle sign out
+  const signOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      router.push('/')
+    } catch (error) {
+      console.error('Error signing out:', error.message)
+    }
+  }
+
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
       {/* Sidebar - conditionally rendered */}
@@ -276,7 +288,10 @@ const Layout = ({ children, hideSidebar = false }) => {
           <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0">
             {/* Channels Section */}
             <div className="p-4">
-              <h2 className="text-sm font-bold text-yellow-400 tracking-wide mb-2">CHANNELS</h2>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-semibold text-gray-200">Channels</h2>
+                <CreateChannelButton />
+              </div>
               <nav className="space-y-1">
                 {channels.map((channel) => (
                   <Link

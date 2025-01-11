@@ -68,7 +68,7 @@ const DirectMessagePage = () => {
         
         const { data: userData, error } = await supabase
           .from('users')
-          .select('*')
+          .select('id, email, username, display_name, avatar_url, status, created_at')
           .eq('id', id)
           .single()
 
@@ -134,7 +134,7 @@ const DirectMessagePage = () => {
       <div className="relative h-screen flex flex-col">
         <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
           <h2 className="text-2xl font-orbitron text-yellow-400">
-            {recipient.username || recipient.email?.split('@')[0] || 'Unknown User'}
+            {recipient.display_name || recipient.username || recipient.email?.split('@')[0] || 'Unknown User'}
           </h2>
           <p className="text-sm text-gray-400 font-orbitron">
             Private conversation
