@@ -1,163 +1,103 @@
-import { useState, useContext } from 'react'
+import { useState, useContext, useEffect } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { supabase } from '~/lib/Store'
 import { UserContext } from '../lib/UserContext'
 import MessageReactions from './MessageReactions'
 import ThreadPanel from './ThreadPanel'
+import classNames from 'classnames'
 
-export default function Message({ message, isThread = false }) {
+export default function Message({ message, showThread = false, onThreadClick }) {
   const { user } = useContext(UserContext)
-  const [showThread, setShowThread] = useState(false)
-  const [replyCount, setReplyCount] = useState(0)
-  
+  const [replyCount, setReplyCount] = useState(message.reply_count || 0)
+  const [isThreadVisible, setIsThreadVisible] = useState(false)
+
   useEffect(() => {
-    let isSubscribed = true;
-
-    // Fetch reply count when message loads
-    const fetchReplyCount = async () => {
-      const { data, error } = await supabase
+    if (message.read_by && !message.read_by.includes(user.id)) {
+      // Mark message as read
+      const newReadBy = [...(message.read_by || []), user.id]
+      supabase
         .from('messages')
-        .select('id', { count: 'exact' })
-        .eq('parent_id', message.id)
-
-      if (!error && data) {
-        setReplyCount(data.length)
-      }
+        .update({ read_by: newReadBy })
+        .eq('id', message.id)
+        .then(({ error }) => {
+          if (error) console.error('Error marking message as read:', error)
+        })
     }
+  }, [message.id, message.read_by, user.id])
 
-    fetchReplyCount()
-
-    // Subscribe to changes in replies
-    const threadSubscription = supabase
-      .channel(`thread-count-${message.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: `parent_id=eq.${message.id}`
-        },
-        () => {
-          fetchReplyCount()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      isSubscribed = false;
-      threadSubscription.unsubscribe();
+  const messageClasses = classNames(
+    'message-container',
+    {
+      'is-announcement': message.is_announcement,
+      'is-ai-generated': message.is_ai_generated,
+      'is-pinned': message.is_pinned,
+      'is-edited': message.edited_at,
+      'is-pending': message.delivery_status === 'pending',
+      'is-failed': message.delivery_status === 'failed'
     }
-  }, [message.id])
-
-  const isCurrentUser = message.user?.id === user?.id || message.sender?.id === user?.id
-  
-  const timestamp = message.inserted_at
-  const formattedTimestamp = timestamp
-    ? formatDistanceToNow(new Date(timestamp), { addSuffix: true })
-    : 'Just now'
-
-  const displayName =
-    message.user?.display_name ||
-    message.user?.username ||
-    message.sender?.display_name ||
-    message.sender?.username ||
-    'Unknown User'
-
-  const handleThreadClick = () => {
-    // First, dispatch an event to close any open thread
-    window.dispatchEvent(new CustomEvent('threadPanelState', { 
-      detail: { isOpen: false }
-    }))
-
-    // Small delay to allow the previous thread to close
-    setTimeout(() => {
-      setShowThread(true)
-      // Then dispatch event to show this thread
-      window.dispatchEvent(new CustomEvent('threadPanelState', { 
-        detail: { isOpen: true }
-      }))
-    }, 100)
-  }
+  )
 
   return (
-    <div 
-      id={`message-${message.id}`}
-      className={`group flex space-x-3 px-2 py-1 hover:bg-gray-800/50 rounded-lg transition-colors duration-150 ${
-        message.status === 'pending' ? 'opacity-50' : ''
-      }`}
-    >
-      {/* User Avatar */}
-      <div className="relative flex-shrink-0">
-        <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden">
-          {message.user?.avatar_url && (
-            <img 
-              src={message.user.avatar_url} 
-              alt={message.user?.username || 'User'} 
-              className="w-full h-full object-cover"
-            />
+    <div className={messageClasses}>
+      <div className="message-header">
+        <Avatar url={message.user?.avatar_url} />
+        <div className="message-meta">
+          <span className="username">{message.user?.display_name || message.user?.username || 'Unknown User'}</span>
+          <span className="timestamp">{formatDate(message.created_at)}</span>
+          {message.edited_at && (
+            <span className="edited-indicator">(edited)</span>
+          )}
+          {message.is_announcement && (
+            <span className="announcement-badge">Announcement</span>
+          )}
+          {message.is_pinned && (
+            <span className="pinned-badge">📌 Pinned</span>
           )}
         </div>
       </div>
-
-      {/* Message Content */}
-      <div className="flex-1 min-w-0">
-        {/* Message Header */}
-        <div className="flex items-center space-x-2">
-          <span className="font-medium text-yellow-400">
-            {displayName}
-          </span>
-          <span className="text-xs text-gray-400">
-            {formatDistanceToNow(new Date(message.inserted_at), { addSuffix: true })}
-          </span>
-          {!isThread && !message.parent_id && (
-            <button
-              onClick={handleThreadClick}
-              className="text-xs text-gray-400 hover:text-yellow-400 transition-colors"
-            >
-              {replyCount > 0 ? `${replyCount} replies` : 'Start thread'}
-            </button>
-          )}
-        </div>
-
-        {/* Message Text */}
-        <div className="text-gray-100 whitespace-pre-wrap break-words">
-          {message.message_text.startsWith('[File:') ? (
-            <div className="mt-2">
-              <a 
-                href={message.message_text.match(/\((.*?)\)/)?.[1]} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-block hover:opacity-90 transition-opacity"
-              >
-                <img 
-                  src={message.message_text.match(/\((.*?)\)/)?.[1]} 
-                  alt={message.message_text.match(/\[(File: .*?)\]/)?.[1]} 
-                  className="max-w-md rounded-lg shadow-lg cursor-pointer"
-                />
-              </a>
-            </div>
-          ) : (
-            message.message_text
-          )}
-        </div>
-
-        {/* Message Reactions */}
-        {!message.parent_id && <MessageReactions messageId={message.id} />}
-
-        {/* Thread Panel */}
-        {showThread && !message.parent_id && (
-          <ThreadPanel
-            parentMessageId={message.id}
-            onClose={() => {
-              setShowThread(false)
-              window.dispatchEvent(new CustomEvent('threadPanelState', { 
-                detail: { isOpen: false }
-              }))
-            }}
-          />
+      
+      <div className="message-content">
+        {message.is_ai_generated && (
+          <div className="ai-indicator">
+            🤖 Generated by {message.ai_model || 'AI'}
+          </div>
+        )}
+        <div className="message-text">{message.message_text}</div>
+        {message.attachments && Object.keys(message.attachments).length > 0 && (
+          <div className="attachments">
+            {/* Render attachments */}
+          </div>
+        )}
+        {message.mentions && Object.keys(message.mentions).length > 0 && (
+          <div className="mentions">
+            {/* Render mentions */}
+          </div>
         )}
       </div>
+
+      <div className="message-footer">
+        <MessageReactions message={message} />
+        {message.thread_id && (
+          <button 
+            className="thread-button"
+            onClick={() => {
+              setIsThreadVisible(!isThreadVisible)
+              if (onThreadClick) onThreadClick(message)
+            }}
+          >
+            {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+          </button>
+        )}
+        {message.delivery_status === 'failed' && (
+          <span className="error-message">Failed to send. Please try again.</span>
+        )}
+      </div>
+
+      {showThread && isThreadVisible && message.thread_id && (
+        <div className="thread-container">
+          {/* Thread component would go here */}
+        </div>
+      )}
     </div>
   )
 }

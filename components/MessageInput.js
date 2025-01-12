@@ -1,8 +1,8 @@
 import { useState, useContext } from 'react'
 import { UserContext } from '../lib/UserContext'
-import { sendMessage } from '../lib/Store'
+import { sendMessage, sendDirectMessage } from '../lib/Store'
 
-export default function MessageInput({ channel_id, isThread = false }) {
+export default function MessageInput({ channel_id, dm_room_id, isDirect = false, recipient_id }) {
   const { user } = useContext(UserContext)
   const [messageText, setMessageText] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -10,27 +10,35 @@ export default function MessageInput({ channel_id, isThread = false }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log('🔍 Debug: Starting handleSubmit')
-    
     if (!messageText.trim()) return
-    
+    if (!user) {
+      setError('Not authenticated')
+      return
+    }
+
     setIsSending(true)
     setError(null)
 
     try {
-      console.log('🚀 Sending message in background...')
-      console.log('📢 Sending channel message to:', channel_id)
-
-      await sendMessage({
-        message: messageText.trim(),
-        channel_id,
-        user_id: user.id
-      })
-
+      if (isDirect) {
+        if (!recipient_id && !dm_room_id) {
+          throw new Error('Need a recipient or dm_room_id for a direct message.')
+        }
+        await sendDirectMessage(messageText.trim(), recipient_id)
+      } else {
+        if (!channel_id) {
+          throw new Error('No channel_id provided.')
+        }
+        await sendMessage({
+          message: messageText.trim(),
+          channel_id,
+          user_id: user.id
+        })
+      }
       setMessageText('')
-    } catch (error) {
-      console.error('❌ Error sending message:', error)
-      setError(error.message)
+    } catch (err) {
+      console.error('❌ Error sending message:', err)
+      setError(err.message)
     } finally {
       setIsSending(false)
     }
@@ -40,7 +48,7 @@ export default function MessageInput({ channel_id, isThread = false }) {
     <form onSubmit={handleSubmit} className="flex items-center p-4 bg-gray-800">
       <input
         type="text"
-        placeholder={`Message ${isThread ? 'thread' : 'channel'}...`}
+        placeholder={`Message ${isDirect ? 'this user' : 'channel'}...`}
         value={messageText}
         onChange={(e) => setMessageText(e.target.value)}
         className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-l focus:outline-none focus:ring-2 focus:ring-yellow-500"

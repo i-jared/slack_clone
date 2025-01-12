@@ -10,11 +10,9 @@ create type public.user_status as enum ('ONLINE', 'OFFLINE');
 -- USERS
 create table public.users (
   id          uuid references auth.users not null primary key, -- UUID from auth.users
+  email       text,
   username    text,
-  status      user_status default 'OFFLINE'::public.user_status,
-  avatar_url  text,
-  last_seen   timestamptz,
-  created_at  timestamptz default timezone('utc'::text, now()) not null
+  status      user_status default 'OFFLINE'::public.user_status
 );
 comment on table public.users is 'Profile data for each user.';
 comment on column public.users.id is 'References the internal Supabase Auth user.';
@@ -104,8 +102,9 @@ create function public.handle_new_user()
 returns trigger as $$
 declare is_admin boolean;
 begin
-  insert into public.users (id, username)
-  values (new.id, new.email);
+  -- Now we insert email & username to match the new schema
+  insert into public.users (id, email, username)
+  values (new.id, new.email, new.email);
   
   select count(*) = 1 from auth.users into is_admin;
   
@@ -142,19 +141,63 @@ alter publication supabase_realtime add table public.channels;
 alter publication supabase_realtime add table public.messages;
 alter publication supabase_realtime add table public.users;
 
--- Enable RLS
-alter table public.channels enable row level security;
+/**
+ * AUTH HOOKS
+ * Create an auth hook to add a custom claim to the access token jwt.
+ */
 
--- Create policies
-create policy "Allow authenticated users to read channels"
-  on public.channels for select
-  to authenticated
-  using (true);
+create or replace function public.custom_access_token_hook(event jsonb)
+returns jsonb
+language plpgsql
+stable
+as $$
+  declare
+    claims jsonb;
+    user_role public.app_role;
+  begin
+    -- Check if the user is marked as admin in the profiles table
+    select role into user_role from public.user_roles where user_id = (event->>'user_id')::uuid;
 
-create policy "Allow users to create channels"
-  on public.channels for insert
-  to authenticated
-  with check (auth.uid() = created_by);
+    claims := event->'claims';
+
+    if user_role is not null then
+      -- Set the claim
+      claims := jsonb_set(claims, '{user_role}', to_jsonb(user_role));
+    else 
+      claims := jsonb_set(claims, '{user_role}', 'null');
+    end if;
+
+    -- Update the 'claims' object in the original event
+    event := jsonb_set(event, '{claims}', claims);
+
+    -- Return the modified or original event
+    return event;
+  end;
+$$;
+
+grant usage on schema public to supabase_auth_admin;
+
+grant execute
+  on function public.custom_access_token_hook
+  to supabase_auth_admin;
+
+revoke execute
+  on function public.custom_access_token_hook
+  from authenticated, anon, public;
+
+grant all
+  on table public.user_roles
+to supabase_auth_admin;
+
+revoke all
+  on table public.user_roles
+  from authenticated, anon, public;
+
+create policy "Allow auth admin to read user roles" ON public.user_roles
+as permissive for select
+to supabase_auth_admin
+using (true)
+
 
 /**
  * HELPER FUNCTIONS
@@ -178,4 +221,3 @@ begin
     return user_id;
 end;
 $$ language plpgsql;
-

@@ -9,9 +9,25 @@ create type public.user_status as enum ('ONLINE', 'OFFLINE');
 
 -- USERS
 create table public.users (
-  id          uuid references auth.users not null primary key, -- UUID from auth.users
-  username    text,
-  status      user_status default 'OFFLINE'::public.user_status
+  id uuid references auth.users not null primary key,
+  email text unique not null,
+  username text unique not null,
+  display_name text,
+  phone_number text,
+  avatar_url text,
+  description text,
+  status user_status default 'OFFLINE'::public.user_status,
+  faction text,
+  last_seen timestamp with time zone default timezone('utc'::text, now()),
+  is_bot boolean default false,
+  preferences jsonb default '{}'::jsonb,
+  ai_persona jsonb default '{}'::jsonb,
+  gamification jsonb default '{}'::jsonb,
+  metadata jsonb default '{}'::jsonb,
+  placeholder_col_1 text,
+  placeholder_col_2 jsonb default '{}'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 comment on table public.users is 'Profile data for each user.';
 comment on column public.users.id is 'References the internal Supabase Auth user.';
@@ -77,19 +93,30 @@ alter table public.channels enable row level security;
 alter table public.messages enable row level security;
 alter table public.user_roles enable row level security;
 alter table public.role_permissions enable row level security;
-create policy "Allow logged-in read access" on public.users for select using ( auth.role() = 'authenticated' );
-create policy "Allow individual insert access" on public.users for insert with check ( auth.uid() = id );
-create policy "Allow individual update access" on public.users for update using ( auth.uid() = id );
-create policy "Allow logged-in read access" on public.channels for select using ( auth.role() = 'authenticated' );
-create policy "Allow individual insert access" on public.channels for insert with check ( auth.uid() = created_by );
-create policy "Allow individual delete access" on public.channels for delete using ( auth.uid() = created_by );
-create policy "Allow authorized delete access" on public.channels for delete using ( authorize('channels.delete') );
-create policy "Allow logged-in read access" on public.messages for select using ( auth.role() = 'authenticated' );
-create policy "Allow individual insert access" on public.messages for insert with check ( auth.uid() = user_id );
-create policy "Allow individual update access" on public.messages for update using ( auth.uid() = user_id );
-create policy "Allow individual delete access" on public.messages for delete using ( auth.uid() = user_id );
-create policy "Allow authorized delete access" on public.messages for delete using ( authorize('messages.delete') );
-create policy "Allow individual read access" on public.user_roles for select using ( auth.uid() = user_id );
+
+-- Drop existing policies if they exist
+drop policy if exists "Allow logged-in read access" on public.users;
+drop policy if exists "Allow individual insert access" on public.users;
+drop policy if exists "Allow individual update access" on public.users;
+drop policy if exists "Allow trigger insert access" on public.users;
+
+-- Recreate policies with proper security definer context
+create policy "Allow logged-in read access" 
+on public.users for select 
+to authenticated 
+using (true);
+
+-- Allow inserts during signup
+create policy "Allow trigger insert access"
+on public.users for insert
+to anon, authenticated
+with check (true);
+
+-- Allow updates only to own profile
+create policy "Allow individual update access" 
+on public.users for update 
+to authenticated 
+using (auth.uid() = id);
 
 -- Send "previous data" on change 
 alter table public.users replica identity full; 
@@ -97,15 +124,74 @@ alter table public.channels replica identity full;
 alter table public.messages replica identity full;
 
 -- inserts a row into public.users and assigns roles
-create function public.handle_new_user() 
+create or replace function public.handle_new_user() 
 returns trigger as $$
-declare is_admin boolean;
+declare 
+  is_admin boolean;
+  base_username text;
+  final_username text;
+  counter int := 0;
 begin
-  insert into public.users (id, username)
-  values (new.id, new.email);
+  -- Get username from metadata or email
+  base_username := COALESCE(
+    new.raw_user_meta_data->>'username',
+    split_part(new.email, '@', 1)
+  );
+  final_username := base_username;
   
-  select count(*) = 1 from auth.users into is_admin;
+  -- Handle potential username conflicts
+  WHILE EXISTS (
+    SELECT 1 FROM public.users WHERE username = final_username
+  ) LOOP
+    counter := counter + 1;
+    final_username := base_username || counter::text;
+  END LOOP;
+
+  -- Insert with all fields
+  insert into public.users (
+    id,
+    email,
+    username,
+    display_name,
+    phone_number,
+    avatar_url,
+    description,
+    status,
+    faction,
+    last_seen,
+    is_bot,
+    preferences,
+    ai_persona,
+    gamification,
+    metadata,
+    placeholder_col_1,
+    placeholder_col_2,
+    created_at,
+    updated_at
+  )
+  values (
+    new.id,
+    new.email,
+    final_username,
+    COALESCE(new.raw_user_meta_data->>'display_name', final_username),
+    NULLIF(new.raw_user_meta_data->>'phone_number', ''),
+    NULLIF(new.raw_user_meta_data->>'avatar_url', ''),
+    NULLIF(new.raw_user_meta_data->>'description', ''),
+    COALESCE(new.raw_user_meta_data->>'status', 'OFFLINE')::public.user_status,
+    NULLIF(new.raw_user_meta_data->>'faction', ''),
+    COALESCE((new.raw_user_meta_data->>'last_seen')::timestamp with time zone, now()),
+    COALESCE((new.raw_user_meta_data->>'is_bot')::boolean, false),
+    COALESCE((new.raw_user_meta_data->>'preferences')::jsonb, '{"theme": "dark", "notifications": true, "language": "en"}'::jsonb),
+    COALESCE((new.raw_user_meta_data->>'ai_persona')::jsonb, '{"model": "default", "personality": "helpful", "settings": {}}'::jsonb),
+    COALESCE((new.raw_user_meta_data->>'gamification')::jsonb, '{"level": 1, "points": 0, "achievements": [], "badges": [], "last_reward": null}'::jsonb),
+    COALESCE((new.raw_user_meta_data->>'metadata')::jsonb, jsonb_build_object('signup_source', 'web', 'initial_signup', now())),
+    null,
+    null,
+    COALESCE((new.raw_user_meta_data->>'created_at')::timestamp with time zone, now()),
+    COALESCE((new.raw_user_meta_data->>'updated_at')::timestamp with time zone, now())
+  );
   
+  -- Handle roles
   if position('+supaadmin@' in new.email) > 0 then
     insert into public.user_roles (user_id, role) values (new.id, 'admin');
   elsif position('+supamod@' in new.email) > 0 then

@@ -1,0 +1,278 @@
+[1/11/2025, 4:21:44 PM] [LOG] [@rharding1123] [Fast Refresh] done in 249ms
+[1/11/2025, 4:22:14 PM] [LOG] [@rharding1123] [Fast Refresh] rebuilding
+[1/11/2025, 4:22:14 PM] [ERROR] [@rharding1123] The above error occurred in the <DirectMessagePage> component:
+
+    at DirectMessagePage (webpack-internal:///./pages/dms/[id].js:31:74)
+    at UserContextProvider (webpack-internal:///./lib/UserContext.js:18:76)
+    at MyApp (webpack-internal:///./pages/_app.js:14:11)
+    at PathnameContextProviderAdapter (webpack-internal:///./node_modules/next/dist/shared/lib/router/adapters.js:81:11)
+    at ErrorBoundary (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ErrorBoundary.js:41:9)
+    at ReactDevOverlay (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ReactDevOverlay.js:33:11)
+    at Container (webpack-internal:///./node_modules/next/dist/client/index.js:81:1)
+    at AppContainer (webpack-internal:///./node_modules/next/dist/client/index.js:189:11)
+    at Root (webpack-internal:///./node_modules/next/dist/client/index.js:418:11)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+[1/11/2025, 4:25:47 PM] [LOG] [@rharding1123] [Fast Refresh] rebuilding
+[1/11/2025, 4:25:48 PM] [LOG] [@rharding1123] [Fast Refresh] rebuilding
+[1/11/2025, 4:25:48 PM] [LOG] [@rharding1123] [Fast Refresh] done in 706ms
+[1/11/2025, 4:25:48 PM] [LOG] [@rharding1123] 🔍 Starting message fetch for channel: 1
+[1/11/2025, 4:25:53 PM] [LOG] [@rharding1123] 🔍 Starting message fetch for channel: 1
+[1/11/2025, 4:25:56 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 4:25:57 PM] [ERROR] [@rharding1123] ❌ Channel not found: 1
+[1/11/2025, 4:25:57 PM] [LOG] [@rharding1123] 💡 Available channel IDs: ["37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","7747d105-1bd6-46df-b59e-022895afb78f"]
+[1/11/2025, 4:25:57 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 4:25:58 PM] [ERROR] [@rharding1123] ❌ Channel not found: 1
+[1/11/2025, 4:25:58 PM] [LOG] [@rharding1123] 💡 Available channel IDs: ["37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","7747d105-1bd6-46df-b59e-022895afb78f"]
+[1/11/2025, 4:25:59 PM] [LOG] [@rharding1123] [Fast Refresh] rebuilding
+[1/11/2025, 4:25:59 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 4:25:59 PM] [LOG] [@rharding1123] 🚀 Starting ensureDefaultChannels for user: undefined
+[1/11/2025, 4:25:59 PM] [LOG] [@rharding1123] 🔍 Verifying user existence
+[1/11/2025, 4:26:02 PM] [ERROR] [@rharding1123] ❌ Error fetching user: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:26:03 PM] [ERROR] [@rharding1123] ❌ Error in ensureDefaultChannels: {"error":{"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""},"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:26:04 PM] [ERROR] [@rharding1123] Error initializing store: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:26:05 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 4:26:05 PM] [LOG] [@rharding1123] 🚀 Starting ensureDefaultChannels for user: undefined
+[1/11/2025, 4:26:05 PM] [LOG] [@rharding1123] 🔍 Verifying user existence
+[1/11/2025, 4:26:06 PM] [LOG] [@rharding1123] [Fast Refresh] rebuilding
+[1/11/2025, 4:26:07 PM] [ERROR] [@rharding1123] ❌ Error fetching user: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:26:07 PM] [ERROR] [@rharding1123] ❌ Error in ensureDefaultChannels: {"error":{"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""},"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:26:08 PM] [ERROR] [@rharding1123] Error initializing store: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:26:08 PM] [LOG] [@rharding1123] [Fast Refresh] rebuilding
+[1/11/2025, 4:26:08 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 4:26:09 PM] [LOG] [@rharding1123] 🚀 Starting ensureDefaultChannels for user: undefined
+[1/11/2025, 4:26:09 PM] [LOG] [@rharding1123] 🔍 Verifying user existence
+[1/11/2025, 4:26:10 PM] [ERROR] [@rharding1123] ❌ Error fetching user: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:26:10 PM] [ERROR] [@rharding1123] ❌ Error in ensureDefaultChannels: {"error":{"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""},"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:26:11 PM] [ERROR] [@rharding1123] Error initializing store: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:26:11 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 4:26:11 PM] [LOG] [@rharding1123] 🚀 Starting ensureDefaultChannels for user: undefined
+[1/11/2025, 4:26:11 PM] [LOG] [@rharding1123] 🔍 Verifying user existence
+[1/11/2025, 4:26:12 PM] [ERROR] [@rharding1123] ❌ Error fetching user: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:26:12 PM] [ERROR] [@rharding1123] ❌ Error in ensureDefaultChannels: {"error":{"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""},"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:26:13 PM] [ERROR] [@rharding1123] Error initializing store: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:30:43 PM] [LOG] [@rharding1123] 🔍 Starting message fetch for channel: 1
+[1/11/2025, 4:30:44 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 4:30:44 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 4:30:44 PM] [ERROR] [@rharding1123] ❌ Error fetching user: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:30:44 PM] [ERROR] [@rharding1123] ❌ Error fetching user: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:30:55 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 4:30:55 PM] [LOG] [@rharding1123] 🔍 Starting message fetch for channel: 1
+[1/11/2025, 4:30:56 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 4:30:56 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 4:30:56 PM] [ERROR] [@rharding1123] ❌ Error fetching user: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"undefined\""}
+[1/11/2025, 4:37:55 PM] [LOG] [@rharding1123] [Fast Refresh] rebuilding
+[1/11/2025, 4:37:59 PM] [LOG] [@rharding1123] [Fast Refresh] done in 3309ms
+[1/11/2025, 4:37:59 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 4:38:00 PM] [LOG] [@rharding1123] ✅ User verified: {"id":"f5392b1e-cafd-40a6-ba97-91376cb104e7","email":"rharding1123@gmail.com","username":"User #1","display_name":"rharding1123","phone_number":null,"avatar_url":"https://nrfpyypohsriixctvsvt.supabase.co/storage/v1/object/public/avatars/f5392b1e-cafd-40a6-ba97-91376cb104e7-0.7430186285938907.png","description":null,"status":"OFFLINE","faction":null,"last_seen":null,"is_bot":false,"preferences":null,"ai_persona":null,"gamification":null,"metadata":null,"placeholder_col_1":null,"placeholder_col_2":null,"created_at":"2025-01-11T22:27:24.4","updated_at":"2025-01-11T22:27:24.4"}
+[1/11/2025, 4:38:00 PM] [LOG] [@rharding1123] ✅ User verified: {"id":"f5392b1e-cafd-40a6-ba97-91376cb104e7","email":"rharding1123@gmail.com","username":"User #1","display_name":"rharding1123","phone_number":null,"avatar_url":"https://nrfpyypohsriixctvsvt.supabase.co/storage/v1/object/public/avatars/f5392b1e-cafd-40a6-ba97-91376cb104e7-0.7430186285938907.png","description":null,"status":"OFFLINE","faction":null,"last_seen":null,"is_bot":false,"preferences":null,"ai_persona":null,"gamification":null,"metadata":null,"placeholder_col_1":null,"placeholder_col_2":null,"created_at":"2025-01-11T22:27:24.4","updated_at":"2025-01-11T22:27:24.4"}
+[1/11/2025, 4:38:00 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:38:01 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:38:01 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:38:08 PM] [LOG] [@rharding1123] Available buckets: ["message_attachments","avatars","message-attachments"]
+[1/11/2025, 4:38:08 PM] [LOG] [@rharding1123] Available buckets: ["message_attachments","avatars","message-attachments"]
+[1/11/2025, 4:38:14 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 4:38:15 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 4:38:15 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 4:38:16 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:38:25 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 4:38:25 PM] [ERROR] [@rharding1123] ❌ Error fetching messages: {"code":"PGRST200","details":"Searched for a foreign key relationship between 'messages' and 'user_id' in the schema 'public', but no matches were found.","hint":null,"message":"Could not find a relationship between 'messages' and 'user_id' in the schema cache"}
+[1/11/2025, 4:38:31 PM] [LOG] [@rharding1123] 🔍 Debug: Starting handleSubmit
+[1/11/2025, 4:38:31 PM] [LOG] [@rharding1123] 📝 Generated message ID: be0db5bf-eb6e-4aa9-b20a-75fb79449b2f
+[1/11/2025, 4:38:32 PM] [ERROR] [@rharding1123] ❌ Database error: {"code":"PGRST200","details":"Searched for a foreign key relationship between 'messages' and 'users' using the hint 'messages_user_id_fkey' in the schema 'public', but no matches were found.","hint":null,"message":"Could not find a relationship between 'messages' and 'users' in the schema cache"}
+[1/11/2025, 4:38:55 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 4:38:55 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 4:38:56 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 4:38:56 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:38:56 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:39:09 PM] [LOG] [@rharding1123] 🔍 Debug: Starting handleSubmit
+[1/11/2025, 4:39:09 PM] [LOG] [@rharding1123] 📝 Generated message ID: 3d6b9a5f-625f-4fd4-837b-8f5c6e99a988
+[1/11/2025, 4:39:10 PM] [ERROR] [@rharding1123] ❌ Database error: {"code":"PGRST200","details":"Searched for a foreign key relationship between 'messages' and 'users' using the hint 'messages_user_id_fkey' in the schema 'public', but no matches were found.","hint":null,"message":"Could not find a relationship between 'messages' and 'users' in the schema cache"}
+[1/11/2025, 4:49:38 PM] [LOG] [@rharding1123] [Fast Refresh] rebuilding
+[1/11/2025, 4:49:39 PM] [WARN] [@rharding1123] Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key.
+[1/11/2025, 4:49:40 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 4:49:40 PM] [LOG] [@rharding1123] ✅ User verified: {"id":"f5392b1e-cafd-40a6-ba97-91376cb104e7","email":"rharding1123@gmail.com","username":"User #1","display_name":"rharding1123","phone_number":null,"avatar_url":"https://nrfpyypohsriixctvsvt.supabase.co/storage/v1/object/public/avatars/f5392b1e-cafd-40a6-ba97-91376cb104e7-0.7430186285938907.png","description":null,"status":"OFFLINE","faction":null,"last_seen":null,"is_bot":false,"preferences":null,"ai_persona":null,"gamification":null,"metadata":null,"placeholder_col_1":null,"placeholder_col_2":null,"created_at":"2025-01-11T22:27:24.4","updated_at":"2025-01-11T22:27:24.4"}
+[1/11/2025, 4:49:41 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:49:41 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:49:49 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 4:49:49 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 4:49:50 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 4:49:50 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:49:50 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:49:56 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 4:49:57 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 4:49:58 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 4:49:58 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:49:58 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 4:50:02 PM] [LOG] [@rharding1123] 🚀 Starting sendMessage: {"messageLength":2,"channel_id":"7747d105-1bd6-46df-b59e-022895afb78f","user_id":"f5392b1e-cafd-40a6-ba97-91376cb104e7","timestamp":"2025-01-11T23:50:02.650Z"}
+[1/11/2025, 4:50:03 PM] [LOG] [@rharding1123] 📝 Generated message ID: 7d6809d7-80db-4e78-a73b-85964392cfb5
+[1/11/2025, 4:50:03 PM] [LOG] [@rharding1123] ✅ Message sent successfully: {"messageId":"7d6809d7-80db-4e78-a73b-85964392cfb5","channel":"7747d105-1bd6-46df-b59e-022895afb78f","user_id":"f5392b1e-cafd-40a6-ba97-91376cb104e7","timestamp":"2025-01-11T23:50:02.92"}
+[1/11/2025, 4:53:12 PM] [LOG] [@rharding1123] 🚀 Starting sendMessage: {"messageLength":8,"channel_id":"7747d105-1bd6-46df-b59e-022895afb78f","user_id":"f5392b1e-cafd-40a6-ba97-91376cb104e7","timestamp":"2025-01-11T23:53:12.173Z"}
+[1/11/2025, 4:53:12 PM] [LOG] [@rharding1123] 📝 Generated message ID: 8c81344d-dc4e-4811-922b-a6a2feab7d7c
+[1/11/2025, 4:53:12 PM] [LOG] [@rharding1123] ✅ Message sent successfully: {"messageId":"8c81344d-dc4e-4811-922b-a6a2feab7d7c","channel":"7747d105-1bd6-46df-b59e-022895afb78f","user_id":"f5392b1e-cafd-40a6-ba97-91376cb104e7","timestamp":"2025-01-11T23:53:12.685"}
+[1/11/2025, 5:00:58 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 5:00:58 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 5:00:59 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 5:00:59 PM] [ERROR] [@rharding1123] The above error occurred in the <MessageReactions> component:
+
+    at MessageReactions (webpack-internal:///./components/MessageReactions.js:25:11)
+    at div
+    at div
+    at Message (webpack-internal:///./components/Message.js:23:11)
+    at div
+    at div
+    at div
+    at div
+    at main
+    at div
+    at Layout (webpack-internal:///./components/Layout.js:34:11)
+    at ChannelPage (webpack-internal:///./pages/channels/[id].js:29:74)
+    at UserContextProvider (webpack-internal:///./lib/UserContext.js:18:76)
+    at MyApp (webpack-internal:///./pages/_app.js:14:11)
+    at PathnameContextProviderAdapter (webpack-internal:///./node_modules/next/dist/shared/lib/router/adapters.js:81:11)
+    at ErrorBoundary (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ErrorBoundary.js:41:9)
+    at ReactDevOverlay (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ReactDevOverlay.js:33:11)
+    at Container (webpack-internal:///./node_modules/next/dist/client/index.js:81:1)
+    at AppContainer (webpack-internal:///./node_modules/next/dist/client/index.js:189:11)
+    at Root (webpack-internal:///./node_modules/next/dist/client/index.js:418:11)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+[1/11/2025, 5:00:59 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 5:01:14 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 5:01:15 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 5:01:16 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 5:01:16 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 5:01:16 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 5:02:13 PM] [LOG] [@rharding1123] [Fast Refresh] rebuilding
+[1/11/2025, 5:02:13 PM] [LOG] [@rharding1123] [Fast Refresh] done in 547ms
+[1/11/2025, 5:02:25 PM] [LOG] [@rharding1123] [Fast Refresh] rebuilding
+[1/11/2025, 5:02:25 PM] [LOG] [@rharding1123] [Fast Refresh] done in 400ms
+[1/11/2025, 5:03:42 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 5:03:42 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 5:03:43 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 5:03:43 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 5:03:52 PM] [LOG] [@rharding1123] 🚀 Starting sendMessage: {"messageLength":3,"channel_id":"7747d105-1bd6-46df-b59e-022895afb78f","user_id":"f5392b1e-cafd-40a6-ba97-91376cb104e7","timestamp":"2025-01-12T00:03:52.445Z"}
+[1/11/2025, 5:03:52 PM] [LOG] [@rharding1123] 📝 Generated message ID: 7b067a5b-b148-4b31-9bb2-3a03d5804e81
+[1/11/2025, 5:03:53 PM] [LOG] [@rharding1123] ✅ Message sent successfully: {"messageId":"7b067a5b-b148-4b31-9bb2-3a03d5804e81","channel":"7747d105-1bd6-46df-b59e-022895afb78f","user_id":"f5392b1e-cafd-40a6-ba97-91376cb104e7","timestamp":"2025-01-12T00:03:52.692"}
+[1/11/2025, 5:03:57 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 5:03:58 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 5:03:58 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 5:03:59 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 5:03:59 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 5:04:02 PM] [ERROR] [@rharding1123] Error adding reaction: {"code":"23502","details":null,"hint":null,"message":"null value in column \"id\" of relation \"message_reactions\" violates not-null constraint"}
+[1/11/2025, 5:04:06 PM] [ERROR] [@rharding1123] Error adding reaction: {"code":"23502","details":null,"hint":null,"message":"null value in column \"id\" of relation \"message_reactions\" violates not-null constraint"}
+[1/11/2025, 5:04:07 PM] [ERROR] [@rharding1123] The above error occurred in the <ThreadPanel> component:
+
+    at ThreadPanel (webpack-internal:///./components/ThreadPanel.js:23:11)
+    at div
+    at div
+    at Message (webpack-internal:///./components/Message.js:23:11)
+    at div
+    at div
+    at div
+    at div
+    at main
+    at div
+    at Layout (webpack-internal:///./components/Layout.js:34:11)
+    at ChannelPage (webpack-internal:///./pages/channels/[id].js:29:74)
+    at UserContextProvider (webpack-internal:///./lib/UserContext.js:18:76)
+    at MyApp (webpack-internal:///./pages/_app.js:14:11)
+    at PathnameContextProviderAdapter (webpack-internal:///./node_modules/next/dist/shared/lib/router/adapters.js:81:11)
+    at ErrorBoundary (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ErrorBoundary.js:41:9)
+    at ReactDevOverlay (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ReactDevOverlay.js:33:11)
+    at Container (webpack-internal:///./node_modules/next/dist/client/index.js:81:1)
+    at AppContainer (webpack-internal:///./node_modules/next/dist/client/index.js:189:11)
+    at Root (webpack-internal:///./node_modules/next/dist/client/index.js:418:11)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+[1/11/2025, 5:04:36 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 5:04:37 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 5:04:37 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 5:04:37 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 5:04:38 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 5:04:38 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 5:04:40 PM] [LOG] [@rharding1123] [Fast Refresh] rebuilding
+[1/11/2025, 5:04:40 PM] [ERROR] [@rharding1123] The above error occurred in the <DirectMessagePage> component:
+
+    at DirectMessagePage (webpack-internal:///./pages/dms/[id].js:31:74)
+    at UserContextProvider (webpack-internal:///./lib/UserContext.js:18:76)
+    at MyApp (webpack-internal:///./pages/_app.js:14:11)
+    at PathnameContextProviderAdapter (webpack-internal:///./node_modules/next/dist/shared/lib/router/adapters.js:81:11)
+    at ErrorBoundary (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ErrorBoundary.js:41:9)
+    at ReactDevOverlay (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ReactDevOverlay.js:33:11)
+    at Container (webpack-internal:///./node_modules/next/dist/client/index.js:81:1)
+    at AppContainer (webpack-internal:///./node_modules/next/dist/client/index.js:189:11)
+    at Root (webpack-internal:///./node_modules/next/dist/client/index.js:418:11)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+[1/11/2025, 5:05:07 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 5:05:07 PM] [ERROR] [@rharding1123] The above error occurred in the <DirectMessagePage> component:
+
+    at DirectMessagePage (webpack-internal:///./pages/dms/[id].js:31:74)
+    at UserContextProvider (webpack-internal:///./lib/UserContext.js:18:76)
+    at MyApp (webpack-internal:///./pages/_app.js:14:11)
+    at PathnameContextProviderAdapter (webpack-internal:///./node_modules/next/dist/shared/lib/router/adapters.js:81:11)
+    at ErrorBoundary (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ErrorBoundary.js:41:9)
+    at ReactDevOverlay (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ReactDevOverlay.js:33:11)
+    at Container (webpack-internal:///./node_modules/next/dist/client/index.js:81:1)
+    at AppContainer (webpack-internal:///./node_modules/next/dist/client/index.js:189:11)
+    at Root (webpack-internal:///./node_modules/next/dist/client/index.js:418:11)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+[1/11/2025, 5:05:15 PM] [LOG] [@rharding1123] [HMR] connected
+[1/11/2025, 5:05:15 PM] [ERROR] [@rharding1123] The above error occurred in the <DirectMessagePage> component:
+
+    at DirectMessagePage (webpack-internal:///./pages/dms/[id].js:31:74)
+    at UserContextProvider (webpack-internal:///./lib/UserContext.js:18:76)
+    at MyApp (webpack-internal:///./pages/_app.js:14:11)
+    at PathnameContextProviderAdapter (webpack-internal:///./node_modules/next/dist/shared/lib/router/adapters.js:81:11)
+    at ErrorBoundary (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ErrorBoundary.js:41:9)
+    at ReactDevOverlay (webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/ReactDevOverlay.js:33:11)
+    at Container (webpack-internal:///./node_modules/next/dist/client/index.js:81:1)
+    at AppContainer (webpack-internal:///./node_modules/next/dist/client/index.js:189:11)
+    at Root (webpack-internal:///./node_modules/next/dist/client/index.js:418:11)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+[1/11/2025, 5:05:31 PM] [LOG] [@rharding1123] ✅ User authenticated: f5392b1e-cafd-40a6-ba97-91376cb104e7
+[1/11/2025, 5:05:31 PM] [LOG] [@rharding1123] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 5:05:32 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 5:05:32 PM] [LOG] [@rharding1123] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 5:05:48 PM] [LOG] [@rharding1123a2aa7aa] [Fast Refresh] rebuilding
+[1/11/2025, 5:05:48 PM] [LOG] [@rharding1123a2aa7aa] 📊 Available channels: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","name":"General","slug":"general"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","name":"Random","slug":"random"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","name":"Announcements","slug":"announcements"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","name":"Jedi","slug":"jedi"}]
+[1/11/2025, 5:05:48 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 5:05:48 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 5:06:10 PM] [LOG] [system] Attempting signup
+[1/11/2025, 5:06:10 PM] [ERROR] [system] Signup error: [object Object]
+[1/11/2025, 5:17:31 PM] [LOG] [system] [Fast Refresh] rebuilding
+[1/11/2025, 5:17:33 PM] [WARN] [system] Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key.
+[1/11/2025, 5:17:33 PM] [LOG] [system] Refreshing page data due to server-side change
+[1/11/2025, 5:17:56 PM] [LOG] [system] Attempting signup
+[1/11/2025, 5:17:57 PM] [ERROR] [system] Signup error: [object Object]
+[1/11/2025, 6:22:19 PM] [LOG] [@rharding1123a2aa7aa] [HMR] connected
+[1/11/2025, 6:23:02 PM] [LOG] [@rharding1123a2aa7aa] [HMR] connected
+[1/11/2025, 6:23:04 PM] [LOG] [@rharding1123a2aa7aa] [HMR] connected
+[1/11/2025, 6:23:08 PM] [LOG] [@rharding1123a2aa7aa] ✅ User authenticated: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:23:08 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:23:08 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:23:08 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:24:11 PM] [LOG] [@rharding1123a2aa7aa] [Fast Refresh] rebuilding
+[1/11/2025, 6:24:11 PM] [LOG] [@rharding1123a2aa7aa] [Fast Refresh] done in 684ms
+[1/11/2025, 6:25:17 PM] [LOG] [@rharding1123a2aa7aa] [Fast Refresh] rebuilding
+[1/11/2025, 6:25:24 PM] [LOG] [@rharding1123a2aa7aa] [HMR] connected
+[1/11/2025, 6:25:24 PM] [LOG] [@rharding1123a2aa7aa] ✅ User authenticated: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:25:25 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:25:25 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:26:08 PM] [LOG] [@rharding1123a2aa7aa] [Fast Refresh] rebuilding
+[1/11/2025, 6:26:35 PM] [LOG] [@rharding1123a2aa7aa] [Fast Refresh] rebuilding
+[1/11/2025, 6:26:39 PM] [LOG] [@rharding1123a2aa7aa] [HMR] connected
+[1/11/2025, 6:26:40 PM] [LOG] [@rharding1123a2aa7aa] ✅ User authenticated: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:26:40 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:26:40 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:26:40 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:26:48 PM] [LOG] [@rharding1123a2aa7aa] [HMR] connected
+[1/11/2025, 6:26:51 PM] [LOG] [@rharding1123a2aa7aa] [HMR] connected
+[1/11/2025, 6:26:51 PM] [LOG] [@rharding1123a2aa7aa] ✅ User authenticated: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:26:52 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:26:52 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:26:52 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6
+[1/11/2025, 6:26:52 PM] [ERROR] [@rharding1123a2aa7aa] ❌ User not found: 76071b4e-168a-4de6-80c1-3a8e91140cc6

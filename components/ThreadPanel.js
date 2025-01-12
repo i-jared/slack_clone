@@ -2,164 +2,64 @@ import { useEffect, useState, useRef, useContext, useCallback } from 'react'
 import { supabase } from '~/lib/Store'
 import Message from './Message'
 import UserContext from '~/lib/UserContext'
+import { v4 as uuidv4 } from 'uuid'
 
-/**
- * This component fetches and displays thread messages associated with a "parent" message.
- * For simplicity, we assume we've added a "parent_id" column to "messages" table or
- * some approach for threading. Adjust queries as needed.
- */
 export default function ThreadPanel({ parentMessageId, onClose }) {
   const { user } = useContext(UserContext)
   const [threadMessages, setThreadMessages] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [newReply, setNewReply] = useState('')
   const [isSending, setIsSending] = useState(false)
-  const [pendingMessages, setPendingMessages] = useState(new Set())
   const messagesEndRef = useRef(null)
 
-  // Handle optimistic updates
-  const addMessage = useCallback((message) => {
-    setThreadMessages(prev => {
-      // Create new message with status
-      const newMessage = {
-        ...message,
-        status: message.id.startsWith('temp-') ? 'pending' : 'confirmed',
-        timestamp: message.inserted_at || new Date().toISOString()
-      }
-      
-      // Add to pending if temporary
-      if (newMessage.status === 'pending') {
-        setPendingMessages(prev => new Set(prev).add(message.id))
-      }
-
-      // Check if message already exists to prevent duplicates
-      const exists = prev.some(m => 
-        m.id === newMessage.id || 
-        m.id === newMessage.messageId
-      )
-
-      if (exists) return prev
-
-      return [...prev, newMessage].sort((a, b) => 
-        new Date(a.timestamp || a.inserted_at) - new Date(b.timestamp || b.inserted_at)
-      )
-    })
-  }, []) // Empty dependency array since we don't use any external values
-
-  // Handle message confirmation
-  const confirmMessage = useCallback((tempId, confirmedMessage) => {
-    setThreadMessages(prev => prev.map(msg => 
-      msg.id === tempId ? { ...confirmedMessage, status: 'confirmed' } : msg
-    ))
-    setPendingMessages(prev => {
-      const newSet = new Set(prev)
-      newSet.delete(tempId)
-      return newSet
-    })
-  }, []) // Empty dependency array since we don't use any external values
-
-  // Handle message removal (for failed sends)
-  const removeMessage = useCallback((messageId) => {
-    setThreadMessages(prev => prev.filter(msg => msg.id !== messageId))
-    setPendingMessages(prev => {
-      const newSet = new Set(prev)
-      newSet.delete(messageId)
-      return newSet
-    })
-  }, []) // Empty dependency array since we don't use any external values
-
   useEffect(() => {
-    let isMounted = true
     let subscription
-
-    // Handle optimistic updates
-    const handleNewMessage = (event) => {
-      const message = event.detail
-      // Only add if it's for this thread
-      if (message.parent_id === parentMessageId) {
-        addMessage(message)
-      }
-    }
-
-    const handleMessageConfirmed = (event) => {
-      const { tempId, confirmedMessage } = event.detail
-      if (pendingMessages.has(tempId)) {
-        confirmMessage(tempId, confirmedMessage)
-        // Refresh messages after confirmation
-        fetchThreadMessages()
-      }
-    }
-
-    const handleMessageFailed = (event) => {
-      const { messageId } = event.detail
-      if (pendingMessages.has(messageId)) {
-        removeMessage(messageId)
-      }
-    }
-
-    // Listen for optimistic updates
-    window.addEventListener('newThreadMessage', handleNewMessage)
-    window.addEventListener('threadMessageConfirmed', handleMessageConfirmed)
-    window.addEventListener('threadMessageFailed', handleMessageFailed)
+    let isMounted = true
 
     const fetchThreadMessages = async () => {
-      if (!isMounted) return // Early return if unmounted
-      
       try {
         setIsLoading(true)
-        const { data: messages, error } = await supabase
+        const { data: children, error } = await supabase
           .from('messages')
           .select(`
             id,
-            message,
-            inserted_at,
             channel_id,
+            user_id,
             parent_id,
+            message_text,
             attachments,
-            reactions:message_reactions(*),
-            user:user_id (
-              id,
-              username,
-              avatar_url
-            )
+            created_at,
+            updated_at
           `)
           .eq('parent_id', parentMessageId)
-          .order('inserted_at', { ascending: true })
+          .order('created_at', { ascending: true })
 
-        if (error) throw error
-
-        if (isMounted) {
-          setThreadMessages(messages || [])
+        if (error) {
+          console.error('Error fetching thread messages:', error)
           setIsLoading(false)
+          return
         }
-      } catch (error) {
-        console.error('Error fetching thread messages:', error)
-        if (isMounted) {
-          setIsLoading(false)
-        }
+        setThreadMessages(children || [])
+        setIsLoading(false)
+      } catch (err) {
+        console.error('Error loading thread:', err)
+        setIsLoading(false)
       }
     }
 
     const setupSubscription = () => {
-      const channel = supabase.channel(`thread:${parentMessageId}`)
-      
-      channel
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'messages',
-            filter: `parent_id=eq.${parentMessageId}`
-          },
-          () => {
-            // Simply refresh messages when any change occurs
-            fetchThreadMessages()
-          }
-        )
+      const sub = supabase
+        .channel(`thread:${parentMessageId}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `parent_id=eq.${parentMessageId}`
+        }, () => {
+          fetchThreadMessages()
+        })
         .subscribe()
-
-      return channel
+      return sub
     }
 
     fetchThreadMessages()
@@ -167,14 +67,9 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
 
     return () => {
       isMounted = false
-      if (subscription) {
-        subscription.unsubscribe()
-      }
-      window.removeEventListener('newThreadMessage', handleNewMessage)
-      window.removeEventListener('threadMessageConfirmed', handleMessageConfirmed)
-      window.removeEventListener('threadMessageFailed', handleMessageFailed)
+      if (subscription) subscription.unsubscribe()
     }
-  }, [parentMessageId]) // Only depend on parentMessageId
+  }, [parentMessageId])
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -185,121 +80,111 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
 
   const postReply = async () => {
     if (!newReply.trim() || isSending) return
-
-    // Create temporary message
-    const tempId = `temp-${Date.now()}`
-    const optimisticMessage = {
-      id: tempId,
-      message: newReply.trim(),
-      parent_id: parentMessageId,
-      inserted_at: new Date().toISOString(),
-      user: {
-        id: user.id,
-        username: user.email?.split('@')[0],
-        avatar_url: user.user_metadata?.avatar_url
-      }
+    if (!user) {
+      console.error('No user to post thread reply.')
+      return
     }
 
-    // Show optimistic update
-    window.dispatchEvent(new CustomEvent('newThreadMessage', { 
-      detail: optimisticMessage 
-    }))
+    setIsSending(true)
 
-    // Clear input immediately
-    setNewReply('')
-    
     try {
-      setIsSending(true)
-
-      // First, get the parent message to get its channel_id
-      const { data: parentMessage, error: parentError } = await supabase
+      // fetch parent message to find channel_id
+      const { data: parentMsg, error: parentErr } = await supabase
         .from('messages')
         .select('channel_id')
         .eq('id', parentMessageId)
         .single()
 
-      if (parentError) throw parentError
-
-      // Now post the reply with the parent's channel_id
-      const { data: message, error } = await supabase
-        .from('messages')
-        .insert([{
-          message: optimisticMessage.message,
-          parent_id: parentMessageId,
-          user_id: user.id,
-          channel_id: parentMessage.channel_id
-        }])
-        .select(`
-          id,
-          message,
-          inserted_at,
-          channel_id,
-          parent_id,
-          attachments,
-          user:user_id (
-            id,
-            username,
-            avatar_url
-          )
-        `)
-        .single()
-
-      if (error) throw error
-
-      // Dispatch confirmation event
-      window.dispatchEvent(new CustomEvent('threadMessageConfirmed', {
-        detail: {
-          tempId,
-          confirmedMessage: message
-        }
-      }))
-
-      // Refresh messages immediately after successful post
-      const { data: messages } = await supabase
-        .from('messages')
-        .select(`
-          id,
-          message,
-          inserted_at,
-          channel_id,
-          parent_id,
-          attachments,
-          reactions:message_reactions(*),
-          user:user_id (
-            id,
-            username,
-            avatar_url
-          )
-        `)
-        .eq('parent_id', parentMessageId)
-        .order('inserted_at', { ascending: true })
-
-      if (messages) {
-        setThreadMessages(messages)
+      if (parentErr || !parentMsg) {
+        console.error('Parent message not found or error:', parentErr)
+        setIsSending(false)
+        return
       }
 
-    } catch (error) {
-      console.error('Error posting thread reply:', error)
-      
-      // Dispatch failure event
-      window.dispatchEvent(new CustomEvent('threadMessageFailed', {
-        detail: { messageId: tempId }
-      }))
+      const newId = uuidv4()
+      const now = new Date().toISOString()
+      const payload = {
+        id: newId,
+        channel_id: parentMsg.channel_id,
+        user_id: user.id,
+        parent_id: parentMessageId,
+        message_text: newReply.trim(),
+        attachments: null,
+        mentions: null,
+        metadata: {},
+        created_at: now,
+        updated_at: now
+      }
+
+      // Insert
+      const { data: inserted, error: insertErr } = await supabase
+        .from('messages')
+        .insert([payload])
+        .select()
+        .single()
+
+      if (insertErr) {
+        console.error('Error inserting thread message:', insertErr)
+        setIsSending(false)
+        return
+      }
+
+      // Clear input
+      setNewReply('')
+    } catch (err) {
+      console.error('Error posting thread reply:', err)
     } finally {
       setIsSending(false)
     }
   }
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     if (threadMessages.length > 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [threadMessages])
 
+  const handleSend = async (content) => {
+    const tempId = `temp-${uuidv4()}`
+    const tempMessage = {
+      id: tempId,
+      channel_id: parentMessage.channel_id,
+      user_id: user.id,
+      parent_id: parentMessage.id,
+      message_text: content,
+      attachments: {},
+      mentions: {},
+      metadata: {},
+      placeholder_1: null,
+      placeholder_2: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+
+    addMessage(tempMessage)
+
+    try {
+      const { data: confirmedMessage, error } = await supabase
+        .from('messages')
+        .insert([tempMessage])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      window.dispatchEvent(new CustomEvent('channelMessageConfirmed', {
+        detail: { tempId, confirmedMessage }
+      }))
+    } catch (error) {
+      console.error('Error sending message:', error)
+      window.dispatchEvent(new CustomEvent('channelMessageFailed', {
+        detail: { messageId: tempId }
+      }))
+    }
+  }
+
   return (
-    <div className={`fixed top-0 right-0 h-screen w-96 bg-gray-900 shadow-xl transform transition-transform duration-300 ease-in-out border-l border-gray-800 z-30`}>
-      {/* Header */}
+    <div className="fixed top-0 right-0 h-screen w-96 bg-gray-900 shadow-xl border-l border-gray-800 z-30">
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
         <h3 className="text-lg font-semibold text-yellow-400">Thread</h3>
         <button
@@ -309,28 +194,24 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
           ✕
         </button>
       </div>
-
-      {/* Thread Messages */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide p-4 h-[calc(100vh-8rem)]">
+      <div className="flex-1 overflow-y-auto p-4 h-[calc(100vh-8rem)]">
         {isLoading ? (
           <div className="text-gray-400">Loading thread...</div>
         ) : threadMessages.length === 0 ? (
           <div className="text-gray-500">No replies yet.</div>
         ) : (
           <div className="space-y-4">
-            {threadMessages.map((msg) => (
-              <Message 
-                key={msg.id} 
+            {threadMessages.map(msg => (
+              <Message
+                key={msg.id}
                 message={msg}
-                isThread={true}
+                isThread
               />
             ))}
-            <div ref={messagesEndRef} /> {/* Scroll anchor */}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
-
-      {/* Reply Input */}
       <div className="absolute bottom-0 left-0 right-0 bg-[#1a1d21] border-t border-gray-700 p-4">
         <textarea
           value={newReply}

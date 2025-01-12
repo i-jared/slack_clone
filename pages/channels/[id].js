@@ -1,11 +1,12 @@
 import { useState, useEffect, useContext, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { UserContext } from '../../lib/UserContext'
-import { supabase, useStore } from '../../lib/Store'
+import { useStore } from '../../lib/Store'
 import { useChannelMessages } from '../../lib/useChannelMessages'
 import Message from '../../components/Message'
 import MessageInput from '../../components/MessageInput'
 import Layout from '../../components/Layout'
+import { v4 as uuidv4 } from 'uuid'
 
 const ChannelPage = () => {
   const router = useRouter()
@@ -15,18 +16,14 @@ const ChannelPage = () => {
   const [isThreadOpen, setIsThreadOpen] = useState(false)
   const [forceHideLoading, setForceHideLoading] = useState(false)
 
-  // This custom store hook loads channels
   const { channels } = useStore()
-  // This hook handles messages with optimistic updates
-  const { messages, isLoading, retryMessage } = useChannelMessages({ 
-    channelId: id ? parseInt(id) : null 
-  })
+  const { messages, isLoading } = useChannelMessages({ channelId: id })
   const messagesEndRef = useRef(null)
   const shouldAutoScroll = useRef(true)
 
   useEffect(() => {
     if (!user) {
-      router.push('/')
+      router.push('/auth')
     }
   }, [user, router])
 
@@ -47,55 +44,48 @@ const ChannelPage = () => {
   const scrollToBottom = (behavior = 'smooth') => {
     const messagesContainer = document.querySelector('.messages-container')
     const endElement = messagesEndRef.current
-    
     if (messagesContainer && endElement) {
-      // First scroll using scrollIntoView
       endElement.scrollIntoView({ behavior, block: 'end' })
-      // Then force scroll to bottom directly
       messagesContainer.scrollTop = messagesContainer.scrollHeight
-      // Double-check scroll position after a tiny delay
       setTimeout(() => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight
       }, 50)
     }
   }
 
-  // IMPORTANT: This effect ensures we always scroll to bottom on initial page load
-  // and when switching between channels
+  // Scroll to bottom on initial load if no scrollToMessage
   useEffect(() => {
     if (!scrollToMessageId && messages?.length && !isLoading) {
-      // Use multiple timeouts to ensure it works even with slow-loading content
       const timeouts = [0, 100, 500].map(delay => 
         setTimeout(() => {
-          const messagesContainer = document.querySelector('.messages-container')
-          if (messagesContainer) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight
+          const container = document.querySelector('.messages-container')
+          if (container) {
+            container.scrollTop = container.scrollHeight
           }
         }, delay)
       )
       return () => timeouts.forEach(clearTimeout)
     }
-  }, [messages?.length, isLoading, scrollToMessageId, id]) // Include 'id' to handle channel switches
+  }, [messages?.length, isLoading, scrollToMessageId, id])
 
   // Scroll when new messages arrive
   useEffect(() => {
     const lastMessage = messages?.[messages.length - 1]
     if (lastMessage && !scrollToMessageId && !isLoading) {
-      // Always scroll if the message is from the current user or we're near bottom
       if (lastMessage.user_id === user?.id || shouldAutoScroll.current) {
         scrollToBottom('smooth')
       }
     }
   }, [messages?.length, scrollToMessageId, isLoading, user?.id])
 
-  // Handle scroll events to determine if user has scrolled up
+  // Handle scroll events
   const handleScroll = (e) => {
     const container = e.target
     const isNearBottom = (container.scrollHeight - (container.scrollTop + container.clientHeight)) < 100
     shouldAutoScroll.current = isNearBottom
   }
 
-  // Add effect to listen for thread panel state changes
+  // Listen for thread panel state changes
   useEffect(() => {
     const handleThreadState = (e) => {
       if (e.detail?.isOpen !== undefined) {
@@ -110,16 +100,63 @@ const ChannelPage = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setForceHideLoading(true)
-    }, 5000) // Force hide after 5 seconds
-
+    }, 5000)
     return () => clearTimeout(timer)
   }, [])
 
-  // get the channel from the store
-  const channel = channels.find((c) => c.id === parseInt(id))
+  const channel = channels.find((c) => c.id === id)
+  const channelName = channel?.name || channel?.slug || 'Channel'
+
+  const handleSend = async (content) => {
+    const tempId = `temp-${uuidv4()}`
+    const tempMessage = {
+      id: tempId,
+      channel_id: id,
+      user_id: user.id,
+      message_text: content,
+      attachments: {},
+      mentions: {},
+      metadata: {},
+      placeholder_1: null,
+      placeholder_2: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+
+    addMessage(tempMessage)
+
+    try {
+      const confirmedMessage = await sendMessage({
+        message: content,
+        channel_id: id,
+        user_id: user.id
+      })
+
+      window.dispatchEvent(new CustomEvent('channelMessageConfirmed', {
+        detail: { tempId, confirmedMessage }
+      }))
+    } catch (error) {
+      console.error('Error sending message:', error)
+      window.dispatchEvent(new CustomEvent('channelMessageFailed', {
+        detail: { messageId: tempId }
+      }))
+    }
+  }
 
   if (!user) {
     return <Layout />
+  }
+
+  if (!channel) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <p className="text-gray-400">
+            Channel with ID <strong>{id}</strong> not found.
+          </p>
+        </div>
+      </Layout>
+    )
   }
 
   return (
@@ -129,10 +166,10 @@ const ChannelPage = () => {
         <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
           <h2 className="text-2xl font-orbitron text-yellow-400 flex items-center">
             <span className="text-gray-500 mr-2">#</span>
-            {channel?.slug || 'Loading...'}
+            {channelName}
           </h2>
           <p className="text-sm text-gray-400 font-orbitron">
-            {channel ? `Welcome to #${channel.slug}` : 'Channel not found'}
+            Welcome to #{channelName}
           </p>
         </div>
 
@@ -156,7 +193,6 @@ const ChannelPage = () => {
                   key={message.id}
                   message={message}
                   isLatest={i === messages.length - 1}
-                  retryMessage={retryMessage}
                 />
               ))}
               <div ref={messagesEndRef} className="h-4" />
@@ -166,7 +202,7 @@ const ChannelPage = () => {
 
         {/* Message Input */}
         <div className="absolute bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700">
-          <MessageInput channel_id={parseInt(id)} />
+          <MessageInput channel_id={id} />
         </div>
       </div>
     </Layout>

@@ -10,6 +10,9 @@
   which contains critical dependencies that must remain intact.
 - Adhere strictly to these guidelines to maintain project consistency 
   and stability across the entire codebase.
+  - Dont rewrite the code. Only fix errors. Use deep chain of thought reasoning to find root cause or errors and then fix them one by one. First analyze the code file, only fix errors in specific lines that are causing issues, don't regenerate complete code for that page. If you need clarification or have any questions, feel free to ask.
+  - we have a document called changes_made.md in the documentation fodler. Write down under a heading of what we're working on everything we do so we can look and not replicate the same mistakes. If the heading already exists, add to it.
+
 
 ---------------------------------------------------------------------
 1. PROJECT OVERVIEW AND PURPOSE
