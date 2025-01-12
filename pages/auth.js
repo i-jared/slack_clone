@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '~/lib/Store'
 import Link from 'next/link'
+import Head from 'next/head'
 
 // Test cases:
 // 1. Basic signup with email/password
@@ -16,9 +17,9 @@ import Link from 'next/link'
 
 export default function AuthPage() {
   const router = useRouter()
+  const [isLogin, setIsLogin] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -69,14 +70,9 @@ export default function AuthPage() {
         hasNumbers: /\d/.test(password),
         hasSpecialChars: /[!@#$%^&*(),.?":{}|<>]/.test(password)
       },
-      username: {
-        length: username?.length,
-        cleaned: username?.toLowerCase().replace(/[^a-z0-9]/g, ''),
-        original: username
-      },
       displayName: {
         length: displayName?.length,
-        value: displayName || username
+        value: displayName || email.split('@')[0]
       },
       timestamp: new Date().toISOString()
     })
@@ -211,8 +207,8 @@ export default function AuthPage() {
         password,
         options: {
           data: {
-            username: username.toLowerCase().replace(/[^a-z0-9]/g, ''),
-            display_name: displayName || username,
+            username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, ''),
+            display_name: displayName || email.split('@')[0],
             status: 'OFFLINE',
             updated_at: new Date().toISOString(),
             email: email
@@ -436,6 +432,27 @@ export default function AuthPage() {
     }
   }
 
+  const handleSignIn = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      if (error) throw error
+
+      router.push('/channels')
+    } catch (error) {
+      console.error('Error signing in:', error)
+      setError(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Helper function to check if a string is valid JSON
   const isValidJSON = (str) => {
     try {
@@ -512,97 +529,133 @@ export default function AuthPage() {
   }, [])
 
   return (
-    <div className="max-w-md mx-auto mt-20 p-4 bg-gray-800 text-white rounded">
-      <h1 className="text-2xl font-bold mb-4">Sign Up</h1>
-      <form onSubmit={handleSignUp} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm mb-1">Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            className="w-full p-2 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
-            required
-            spellCheck="false"
-          />
-        </div>
-        <div>
-          <label htmlFor="username" className="block text-sm mb-1">Username</label>
-          <input
-            id="username"
-            name="username"
-            type="text"
-            autoComplete="username"
-            className="w-full p-2 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            disabled={loading}
-            required
-            placeholder="Choose a unique username"
-            spellCheck="false"
-          />
-        </div>
-        <div>
-          <label htmlFor="displayName" className="block text-sm mb-1">Display Name</label>
-          <input
-            id="displayName"
-            name="displayName"
-            type="text"
-            autoComplete="name"
-            className="w-full p-2 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            disabled={loading}
-            placeholder="How you'll appear in the app"
-            spellCheck="false"
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="block text-sm mb-1">Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            className="w-full p-2 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={loading}
-            required
-          />
-        </div>
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-        <button
-          type="submit"
-          className="w-full bg-yellow-400 text-black rounded py-2 mt-2"
-          disabled={loading}
-        >
-          {loading ? 'Signing up...' : 'Sign Up'}
-        </button>
-      </form>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+      <Head>
+        <title>{isLogin ? 'Sign In' : 'Sign Up'} - Talk2D2</title>
+      </Head>
 
-      {/* Test Results */}
-      {testResults.length > 0 && (
-        <div className="mt-8 p-4 bg-gray-700 rounded">
-          <h2 className="text-lg font-bold mb-2">Test Results</h2>
-          <ul className="space-y-2">
-            {testResults.map((test, i) => (
-              <li key={i} className={`text-sm ${test.passed ? 'text-green-400' : 'text-red-400'}`}>
-                {test.name}: {test.passed ? '✅' : '❌'}
-                {test.error && <p className="text-xs text-gray-400">{test.error}</p>}
-              </li>
-            ))}
-          </ul>
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="flex items-center justify-center mb-8">
+          <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center transform rotate-45">
+            <span className="text-black text-xl font-bold transform -rotate-45">T2</span>
+          </div>
+          <h1 className="ml-4 text-3xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent">
+            Talk2D2
+          </h1>
         </div>
-      )}
 
-      <p className="mt-4 text-sm text-gray-400">
-        Already have an account? <Link href="/auth" className="text-yellow-400 underline">Log In</Link>
-      </p>
+        {/* Auth Form */}
+        <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-yellow-500/10">
+          <h2 className="text-2xl font-bold text-gray-100 mb-6">
+            {isLogin ? 'Welcome Back!' : 'Create Your Account'}
+          </h2>
+
+          <form onSubmit={isLogin ? handleSignIn : handleSignUp} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-xl text-gray-100
+                  focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50
+                  placeholder-gray-500 transition-all duration-200"
+                style={{
+                  WebkitTextFillColor: '#F3F4F6',
+                  boxShadow: '0 0 0 1000px rgb(17 24 39 / 0.5) inset',
+                  WebkitBoxShadow: '0 0 0 1000px rgb(17 24 39 / 0.5) inset'
+                }}
+              />
+            </div>
+
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                  Display Name
+                </label>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="How should we call you?"
+                  className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-xl text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50
+                    placeholder-gray-500 transition-all duration-200"
+                  style={{
+                    WebkitTextFillColor: '#F3F4F6',
+                    boxShadow: '0 0 0 1000px rgb(17 24 39 / 0.5) inset',
+                    WebkitBoxShadow: '0 0 0 1000px rgb(17 24 39 / 0.5) inset'
+                  }}
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-xl text-gray-100
+                  focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50
+                  placeholder-gray-500 transition-all duration-200"
+                style={{
+                  WebkitTextFillColor: '#F3F4F6',
+                  boxShadow: '0 0 0 1000px rgb(17 24 39 / 0.5) inset',
+                  WebkitBoxShadow: '0 0 0 1000px rgb(17 24 39 / 0.5) inset'
+                }}
+              />
+            </div>
+
+            {error && (
+              <div className="text-red-400 text-sm bg-red-500/10 px-4 py-2.5 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`
+                w-full py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-200
+                ${loading
+                  ? 'bg-yellow-500/50 cursor-not-allowed'
+                  : 'bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600'
+                }
+                text-gray-900
+              `}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {isLogin ? 'Signing in...' : 'Creating account...'}
+                </span>
+              ) : (
+                <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-sm text-gray-400 hover:text-yellow-400 transition-colors"
+            >
+              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

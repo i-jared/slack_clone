@@ -13,17 +13,23 @@ const logger = createLogger('Message')
 
 const formatDate = (date) => {
   try {
+    logger.debug('Formatting date:', { date })
     const messageDate = new Date(date)
     const now = new Date()
     const isToday = messageDate.toDateString() === now.toDateString()
     
-    if (isToday) {
-      return format(messageDate, 'h:mm a')
-    } else {
-      return format(messageDate, 'MMM d, h:mm a')
-    }
+    const formattedDate = isToday 
+      ? format(messageDate, 'h:mm a')
+      : format(messageDate, 'MMM d, h:mm a')
+    
+    logger.debug('Date formatted:', { 
+      original: date, 
+      formatted: formattedDate, 
+      isToday 
+    })
+    return formattedDate
   } catch (error) {
-    logger.error('Error formatting date:', error)
+    logger.error('Error formatting date:', error, { date })
     return 'Unknown time'
   }
 }
@@ -37,7 +43,7 @@ export default function Message({ message, showThread = false, onThreadClick }) 
   const [showActions, setShowActions] = useState(false)
   const [messageUser, setMessageUser] = useState(null)
 
-  logger.debug('Rendering message:', {
+  logger.debug('Message component mounted:', {
     messageId: message.id,
     userId: message.user?.id,
     username: message.user?.username,
@@ -48,35 +54,49 @@ export default function Message({ message, showThread = false, onThreadClick }) 
     isPinned: message.is_pinned,
     hasThread: !!message.thread_id,
     replyCount,
+    showThread,
+    deliveryStatus: message.delivery_status,
     fullMessage: message
   })
 
   useEffect(() => {
     const fetchMessageUser = async () => {
+      logger.debug('Fetching message user data...', {
+        messageUserId: message.user_id,
+        existingUser: message.user
+      })
+
       // First check if the user is in the users list from the store
       const storeUser = users.find(u => u.id === message.user_id)
       if (storeUser) {
-        setMessageUser(storeUser)
         logger.info('Found user in store:', storeUser)
+        setMessageUser(storeUser)
         return
       }
 
       // If not in store and no user data in message, fetch from database
       if (message.user_id && (!message.user || (!message.user.username && !message.user.display_name))) {
         try {
+          logger.debug('Fetching user from database:', { userId: message.user_id })
           const { data, error } = await supabase
             .from('users')
             .select('id, username, display_name, avatar_url, email')
             .eq('id', message.user_id)
             .single()
 
-          if (error) throw error
+          if (error) {
+            logger.error('Error fetching user:', error)
+            throw error
+          }
+          
           if (data) {
+            logger.info('Successfully fetched user:', data)
             setMessageUser(data)
-            logger.info('Fetched message user:', data)
+          } else {
+            logger.warn('No user found in database:', { userId: message.user_id })
           }
         } catch (error) {
-          logger.error('Error fetching message user:', error)
+          logger.error('Error in fetchMessageUser:', error)
         }
       }
     }
@@ -86,7 +106,12 @@ export default function Message({ message, showThread = false, onThreadClick }) 
 
   // Subscribe to user updates
   useEffect(() => {
-    if (!message.user_id) return
+    if (!message.user_id) {
+      logger.debug('No user_id for subscription')
+      return
+    }
+
+    logger.debug('Setting up user subscription:', { userId: message.user_id })
 
     const userSubscription = supabase
       .channel(`user-${message.user_id}`)
@@ -96,12 +121,16 @@ export default function Message({ message, showThread = false, onThreadClick }) 
         table: 'users',
         filter: `id=eq.${message.user_id}`
       }, (payload) => {
-        logger.info('User updated:', payload.new)
+        logger.info('User update received:', {
+          userId: message.user_id,
+          changes: payload.new
+        })
         setMessageUser(payload.new)
       })
       .subscribe()
 
     return () => {
+      logger.debug('Cleaning up user subscription:', { userId: message.user_id })
       supabase.removeChannel(userSubscription)
     }
   }, [message.user_id])
@@ -119,13 +148,14 @@ export default function Message({ message, showThread = false, onThreadClick }) 
         .from('messages')
         .update({ read_by: newReadBy })
         .eq('id', message.id)
-        .then(({ error }) => {
+        .then(({ data, error }) => {
           if (error) {
             logger.error('Error marking message as read:', error)
           } else {
-            logger.info('Message marked as read successfully', {
+            logger.info('Message marked as read successfully:', {
               messageId: message.id,
-              newReadBy
+              newReadBy,
+              response: data
             })
           }
         })
@@ -145,10 +175,11 @@ export default function Message({ message, showThread = false, onThreadClick }) 
   )
 
   const handleThreadClick = () => {
-    logger.debug('Thread button clicked', {
+    logger.debug('Thread button clicked:', {
       messageId: message.id,
       threadId: message.thread_id,
-      wasVisible: isThreadVisible
+      wasVisible: isThreadVisible,
+      replyCount
     })
     
     setIsThreadVisible(!isThreadVisible)
@@ -159,6 +190,15 @@ export default function Message({ message, showThread = false, onThreadClick }) 
 
   const displayUser = messageUser || message.user || users.find(u => u.id === message.user_id)
   const displayName = displayUser?.display_name || displayUser?.username || displayUser?.email || 'Unknown User'
+
+  logger.debug('Rendering message with:', {
+    displayUser,
+    displayName,
+    messageStatus: message.delivery_status,
+    isEdited: !!message.edited_at,
+    hasAttachments: !!message.attachments && Object.keys(message.attachments).length > 0,
+    hasMentions: !!message.mentions && Object.keys(message.mentions).length > 0
+  })
 
   return (
     <div 

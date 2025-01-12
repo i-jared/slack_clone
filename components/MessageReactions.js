@@ -1,16 +1,51 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import { supabase } from '../lib/Store'
 import { UserContext } from '../lib/UserContext'
-import { v4 as uuidv4 } from 'uuid'
+import data from '@emoji-mart/data'
+import Picker from '@emoji-mart/react'
+import { createLogger } from '~/lib/logger'
 
-const EMOJI_LIST = ['👍', '❤️', '😂', '🎉', '🚀', '👏']
+const logger = createLogger('MessageReactions')
+
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🚀', '👏']
 
 export default function MessageReactions({ message }) {
   const { user } = useContext(UserContext)
-  const [reactions, setReactions] = useState(message.reactions || {})
+  const [reactions, setReactions] = useState({})
   const [showPicker, setShowPicker] = useState(false)
+  const pickerRef = useRef(null)
 
+  logger.debug('Initializing MessageReactions', {
+    messageId: message.id,
+    userId: user?.id,
+    initialReactions: message.reactions
+  })
+
+  // Initialize reactions from message
   useEffect(() => {
+    if (message.reactions) {
+      logger.info('Setting initial reactions from message', message.reactions)
+      setReactions(message.reactions)
+    }
+  }, [message.reactions])
+
+  // Handle clicks outside emoji picker
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+        logger.debug('Clicked outside emoji picker, closing')
+        setShowPicker(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Subscribe to reaction changes
+  useEffect(() => {
+    logger.info('Setting up reaction subscription for message:', message.id)
+
     const subscription = supabase
       .channel(`message-reactions-${message.id}`)
       .on('postgres_changes', {
@@ -19,37 +54,40 @@ export default function MessageReactions({ message }) {
         table: 'message_reactions',
         filter: `message_id=eq.${message.id}`
       }, (payload) => {
+        logger.debug('Received reaction change', {
+          eventType: payload.eventType,
+          data: payload.new || payload.old
+        })
+
         if (payload.eventType === 'INSERT') {
-          const { reaction_type, user_id, skin_tone, reaction_score } = payload.new
+          const { emoji, user_id } = payload.new
+          logger.info('Adding new reaction', { emoji, userId: user_id })
+          
           setReactions(prev => {
-            const key = skin_tone ? `${reaction_type}:${skin_tone}` : reaction_type
-            const existing = prev[key] || { users: [], score: 0 }
+            const existing = prev[emoji] || { users: [] }
             return {
               ...prev,
-              [key]: {
-                users: [...existing.users, user_id],
-                score: existing.score + (reaction_score || 1)
+              [emoji]: {
+                users: [...existing.users, user_id]
               }
             }
           })
         } else if (payload.eventType === 'DELETE') {
-          const { reaction_type, user_id, skin_tone, reaction_score } = payload.old
+          const { emoji, user_id } = payload.old
+          logger.info('Removing reaction', { emoji, userId: user_id })
+          
           setReactions(prev => {
-            const key = skin_tone ? `${reaction_type}:${skin_tone}` : reaction_type
-            const existing = prev[key]
+            const existing = prev[emoji]
             if (!existing) return prev
             
             const newUsers = existing.users.filter(id => id !== user_id)
             if (newUsers.length === 0) {
-              const { [key]: _, ...rest } = prev
+              const { [emoji]: _, ...rest } = prev
               return rest
             }
             return {
               ...prev,
-              [key]: {
-                users: newUsers,
-                score: existing.score - (reaction_score || 1)
-              }
+              [emoji]: { users: newUsers }
             }
           })
         }
@@ -57,87 +95,114 @@ export default function MessageReactions({ message }) {
       .subscribe()
 
     return () => {
+      logger.info('Cleaning up reaction subscription')
       subscription.unsubscribe()
     }
   }, [message.id])
 
-  const toggleReaction = async (emoji, skinTone = null) => {
-    const key = skinTone ? `${emoji}:${skinTone}` : emoji
-    const existing = reactions[key]
+  const toggleReaction = async (emoji) => {
+    logger.debug('Toggling reaction', { emoji, userId: user.id })
+    
+    const existing = reactions[emoji]
     const hasReacted = existing?.users.includes(user.id)
 
     try {
       if (hasReacted) {
+        logger.info('Removing existing reaction', { emoji })
         await supabase
           .from('message_reactions')
           .delete()
           .match({
             message_id: message.id,
             user_id: user.id,
-            reaction_type: emoji,
-            skin_tone: skinTone
+            emoji
           })
       } else {
+        logger.info('Adding new reaction', { emoji })
         await supabase
           .from('message_reactions')
           .insert([{
+            id: crypto.randomUUID(),
             message_id: message.id,
             user_id: user.id,
-            reaction_type: emoji,
-            skin_tone: skinTone,
-            reaction_score: 1,
-            is_ai_generated: false
+            emoji,
+            message_type: 'channel',
+            metadata: {
+              client: 'web',
+              timestamp: new Date().toISOString()
+            }
           }])
       }
     } catch (error) {
+      logger.error('Error toggling reaction:', error)
       console.error('Error toggling reaction:', error)
     }
   }
 
-  const getReactionCount = (emoji, skinTone = null) => {
-    const key = skinTone ? `${emoji}:${skinTone}` : emoji
-    return reactions[key]?.users.length || 0
+  const onEmojiSelect = (emoji) => {
+    logger.debug('Emoji selected from picker', emoji)
+    toggleReaction(emoji.native)
+    setShowPicker(false)
   }
 
-  const getReactionScore = (emoji, skinTone = null) => {
-    const key = skinTone ? `${emoji}:${skinTone}` : emoji
-    return reactions[key]?.score || 0
-  }
-
-  const hasUserReacted = (emoji, skinTone = null) => {
-    const key = skinTone ? `${emoji}:${skinTone}` : emoji
-    return reactions[key]?.users.includes(user.id) || false
+  const hasUserReacted = (emoji) => {
+    return reactions[emoji]?.users.includes(user.id) || false
   }
 
   return (
-    <div className="reactions-container">
-      {Object.entries(reactions).map(([key, data]) => {
-        const [emoji, skinTone] = key.split(':')
-        const count = data.users.length
-        const score = data.score || count
-        
-        return (
-          <button
-            key={key}
-            className={`reaction-button ${hasUserReacted(emoji, skinTone) ? 'active' : ''}`}
-            onClick={() => toggleReaction(emoji, skinTone)}
-          >
-            {emoji}{skinTone ? `:${skinTone}` : ''} {count}
-            {score !== count && <span className="score">+{score}</span>}
-          </button>
-        )
-      })}
-      
+    <div className="flex items-center space-x-2">
+      {/* Quick Reactions */}
+      <div className="flex items-center space-x-1">
+        {Object.entries(reactions).map(([emoji, data]) => {
+          const count = data.users.length
+          const hasReacted = hasUserReacted(emoji)
+          
+          return (
+            <button
+              key={emoji}
+              onClick={() => toggleReaction(emoji)}
+              className={`
+                inline-flex items-center space-x-1 px-2 py-1 rounded-lg text-sm
+                transition-all duration-200 hover:bg-gray-700/50
+                ${hasReacted ? 'bg-yellow-500/10 text-yellow-400' : 'bg-gray-800/50 text-gray-400'}
+              `}
+            >
+              <span>{emoji}</span>
+              <span className="font-medium">{count}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Add Reaction Button */}
       <button
-        className="add-reaction-button"
-        onClick={() => setShowPicker(!showPicker)}
+        onClick={() => {
+          logger.debug('Toggling emoji picker')
+          setShowPicker(!showPicker)
+        }}
+        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-all duration-200"
       >
-        Add Reaction
+        <span className="text-lg">😊</span>
       </button>
 
+      {/* Emoji Picker */}
       {showPicker && (
-        <div className="emoji-picker">
-          {/* Your emoji picker implementation */}
+        <div 
+          ref={pickerRef}
+          className="absolute z-50 bottom-full mb-2 shadow-2xl rounded-xl overflow-hidden"
+          style={{ transform: 'scale(0.8)', transformOrigin: 'bottom left' }}
+        >
+          <Picker
+            data={data}
+            onEmojiSelect={onEmojiSelect}
+            theme="dark"
+            previewPosition="none"
+            skinTonePosition="none"
+            searchPosition="none"
+            navPosition="none"
+            perLine={8}
+            maxFrequentRows={1}
+          />
         </div>
       )}
     </div>

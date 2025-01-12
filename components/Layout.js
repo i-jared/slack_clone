@@ -268,17 +268,57 @@ const Layout = ({ children, hideSidebar = false }) => {
     }
   }
 
-  const goToResult = (item) => {
-    if (item.type === 'channel') {
-      router.push(`/channels/${item.data.id}`)
-    } else if (item.type === 'user') {
-      router.push(`/dms/${item.data.id}`)
-    } else if (item.type === 'message') {
-      // We navigate to that message's channel, then we can add a query param with the message ID
-      router.push(`/channels/${item.data.channel_id}?scrollToMessage=${item.data.id}`)
-    }
+  const goToResult = async (result) => {
     setSearchTerm('')
     setSearchResults([])
+
+    switch (result.type) {
+      case 'channel':
+        router.push(`/channels/${result.data.id}`)
+        break
+      case 'user':
+        // Handle DM navigation
+        const { data: dmRoom, error } = await supabase
+          .from('dm_rooms')
+          .select('id')
+          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+          .or(`user1_id.eq.${result.data.id},user2_id.eq.${result.data.id}`)
+          .maybeSingle()
+
+        if (error) {
+          console.error('Error finding DM room:', error)
+          return
+        }
+
+        if (dmRoom) {
+          router.push(`/dm/${dmRoom.id}`)
+        } else {
+          // Create new DM room
+          const { data: newRoom, error: createError } = await supabase
+            .from('dm_rooms')
+            .insert([
+              { user1_id: user.id, user2_id: result.data.id }
+            ])
+            .select()
+            .single()
+
+          if (createError) {
+            console.error('Error creating DM room:', createError)
+            return
+          }
+
+          router.push(`/dm/${newRoom.id}`)
+        }
+        break
+      case 'message':
+        // Navigate to the message's channel
+        router.push(`/channels/${result.data.channel_id}?message=${result.data.id}`)
+        break
+    }
+  }
+
+  const handleLogoClick = () => {
+    router.push('/channels')
   }
 
   const uploadAvatar = async (event) => {
@@ -368,179 +408,167 @@ const Layout = ({ children, hideSidebar = false }) => {
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100">
-      <Head>
-        <title>Talk2D2 - Your Galactic Chat Hub</title>
-      </Head>
-
+    <div className="flex h-screen bg-gray-900 text-gray-100">
       {!hideSidebar && (
-        <aside className="w-72 flex flex-col bg-gray-800/50 backdrop-blur-md border-r border-yellow-500/10 shadow-xl">
-          {/* App Logo */}
-          <div className="p-6 border-b border-yellow-500/10">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center transform rotate-45">
-                <span className="text-black font-bold transform -rotate-45">T2</span>
-              </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent font-space">
-                Talk2D2
-              </h1>
+        <div className="w-64 flex flex-col bg-gray-800 border-r border-gray-700">
+          {/* Logo */}
+          <div 
+            className="flex items-center p-4 border-b border-gray-700 cursor-pointer hover:bg-gray-700/50 transition-colors"
+            onClick={handleLogoClick}
+          >
+            <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center transform rotate-45">
+              <span className="text-black text-lg font-bold transform -rotate-45">T2</span>
             </div>
+            <h1 className="ml-3 text-xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent">
+              Talk2D2
+            </h1>
           </div>
 
-          {/* Search Bar */}
+          {/* Search */}
           <div className="p-4">
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                <SearchIcon className="h-5 w-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
-              </div>
+            <div className="relative">
               <input
                 type="text"
-                placeholder="Search anything..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value)
                   handleSearch(e.target.value)
                 }}
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-900/50 text-sm rounded-xl border border-gray-700/50 
+                placeholder="Search..."
+                className="w-full px-4 py-2 bg-gray-900/50 border border-gray-700 rounded-xl text-gray-100
                   focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50
-                  placeholder-gray-500 transition-all duration-200"
+                  placeholder-gray-500"
               />
-              {searchResults.length > 0 && searchTerm && (
-                <div className="absolute w-full mt-2 bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-2xl z-50 max-h-96 overflow-y-auto
-                  border border-yellow-500/10 divide-y divide-gray-700/50">
-                  {searchResults.map((result, index) => (
-                    <div
-                      key={`${result.type}-${index}`}
-                      className="p-3 hover:bg-gray-700/50 cursor-pointer transition-colors duration-150"
-                      onClick={() => goToResult(result)}
-                    >
-                      <div className="flex items-center space-x-2">
-                        {result.type === 'channel' && (
-                          <span className="text-yellow-400 font-medium">#</span>
-                        )}
-                        {result.type === 'user' && (
-                          <UserStatusDot status={result.data.status} />
-                        )}
-                        <span className="font-medium text-gray-200">
-                          {result.data.name || result.data.username}
-                        </span>
-                      </div>
-                      {result.type === 'message' && (
-                        <div className="mt-1 text-sm text-gray-400 line-clamp-2">
-                          {result.data.message_text}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Channels Section */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold tracking-wider text-transparent bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text">
-                  CHANNELS
-                </h2>
-                <CreateChannelButton />
-              </div>
-              <nav className="space-y-0.5">
-                {channels?.map((channel) => (
-                  <Link
-                    key={channel.id}
-                    href={`/channels/${channel.id}`}
-                    className={`
-                      flex items-center px-3 py-2 text-sm rounded-lg transition-all duration-200
-                      ${router.query.id === channel.id 
-                        ? 'bg-yellow-500/10 text-yellow-400 shadow-sm' 
-                        : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
-                      }
-                    `}
-                  >
-                    <span className="mr-2 text-yellow-500/75">#</span>
-                    {channel.name}
-                  </Link>
-                ))}
-              </nav>
+              <SearchIcon className="absolute right-3 top-2.5 h-5 w-5 text-gray-500" />
             </div>
 
-            {/* Direct Messages Section */}
-            <div className="p-4 mt-2">
-              <h2 className="text-sm font-bold tracking-wider text-transparent bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text mb-3">
-                DIRECT MESSAGES
-              </h2>
-              <nav className="space-y-0.5">
-                {users.map((otherUser) => (
+            {/* Search Results */}
+            {searchResults.length > 0 && (
+              <div className="absolute z-10 mt-2 w-56 bg-gray-800 rounded-xl shadow-lg border border-gray-700 overflow-hidden">
+                {searchResults.map((result, index) => (
                   <div
-                    key={otherUser.id}
-                    className="flex items-center px-3 py-2 text-sm rounded-lg text-gray-400 hover:bg-gray-700/50 hover:text-gray-200 
-                      cursor-pointer transition-all duration-200"
-                    onClick={() => router.push(`/dms/${otherUser.id}`)}
+                    key={`${result.type}-${result.data.id}`}
+                    onClick={() => goToResult(result)}
+                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer"
                   >
-                    <UserStatusDot status={otherUser.status} />
-                    <span className="ml-2 truncate flex-1">
-                      {otherUser.display_name || otherUser.username || otherUser.email}
-                    </span>
-                    {otherUser.last_seen && (
-                      <span className="ml-2 text-xs text-gray-500">
-                        {formatDistanceToNow(new Date(otherUser.last_seen), { addSuffix: true })}
-                      </span>
+                    {result.type === 'channel' && (
+                      <div className="flex items-center">
+                        <span className="text-gray-400">#</span>
+                        <span className="ml-1">{result.data.name}</span>
+                      </div>
+                    )}
+                    {result.type === 'user' && (
+                      <div className="flex items-center">
+                        <UserStatusDot status={result.data.status} />
+                        <span className="ml-2">{result.data.display_name || result.data.username}</span>
+                      </div>
+                    )}
+                    {result.type === 'message' && (
+                      <div className="text-sm">
+                        <div className="text-gray-400">in #{channels.find(c => c.id === result.data.channel_id)?.name}</div>
+                        <div className="truncate">{result.data.message_text}</div>
+                      </div>
                     )}
                   </div>
                 ))}
-              </nav>
+              </div>
+            )}
+          </div>
+
+          {/* Channels */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-4 mb-2">
+              <div className="flex items-center justify-between text-gray-400 text-sm">
+                <span>Channels</span>
+                <CreateChannelButton />
+              </div>
+            </div>
+            <div className="space-y-1 px-2">
+              {channels?.map((channel) => (
+                <Link
+                  key={channel.id}
+                  href={`/channels/${channel.id}`}
+                  className={`
+                    flex items-center px-2 py-1 rounded-lg text-sm
+                    ${router.query.id === channel.id.toString()
+                      ? 'bg-yellow-500/10 text-yellow-500'
+                      : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
+                    }
+                  `}
+                >
+                  <span className="text-lg mr-1">#</span>
+                  {channel.name}
+                </Link>
+              ))}
+            </div>
+
+            {/* Direct Messages */}
+            <div className="px-4 mt-6 mb-2">
+              <div className="flex items-center justify-between text-gray-400 text-sm">
+                <span>Direct Messages</span>
+              </div>
+            </div>
+            <div className="space-y-1 px-2">
+              {users
+                .filter(u => u.id !== user?.id)
+                .map((u) => (
+                  <div
+                    key={u.id}
+                    onClick={() => goToResult({ type: 'user', data: u })}
+                    className="flex items-center px-2 py-1 rounded-lg text-sm text-gray-400 hover:bg-gray-700/50 hover:text-gray-200 cursor-pointer"
+                  >
+                    <UserStatusDot status={u.status} />
+                    <span className="ml-2">{u.display_name || u.username}</span>
+                  </div>
+                ))
+              }
             </div>
           </div>
 
-          {/* User Profile Section */}
-          <div className="shrink-0 p-4 border-t border-yellow-500/10 bg-gray-800/50 backdrop-blur-sm">
-            <div 
-              className="flex items-center space-x-3 p-2 rounded-xl cursor-pointer
-                hover:bg-gray-700/50 transition-all duration-200
-                group relative"
-              onClick={() => setShowProfilePopup(!showProfilePopup)}
-            >
-              <div className="w-10 h-10 rounded-lg bg-gray-700 overflow-hidden flex-shrink-0 ring-2 ring-yellow-500/20">
+          {/* User Profile */}
+          <Link
+            href="/profile"
+            className="flex items-center p-4 border-t border-gray-700 hover:bg-gray-700/50 transition-colors"
+          >
+            <div className="relative">
+              <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-700 flex items-center justify-center">
                 {avatarUrl ? (
-                  <img 
-                    src={avatarUrl} 
-                    alt="Profile" 
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400 font-medium">
-                    {username?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
+                  <span className="text-xl text-gray-400">?</span>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium truncate text-gray-200">
-                    {username || user?.email?.split('@')[0]}
-                  </span>
-                  <UserStatusDot status={status} />
-                </div>
-                <div className="text-xs text-gray-400 group-hover:text-yellow-400 transition-colors">
-                  Click to edit profile
-                </div>
+              <UserStatusDot status={status} className="absolute -bottom-0.5 -right-0.5 border-2 border-gray-800" />
+            </div>
+            <div className="ml-3">
+              <div className="font-medium">{user?.dbUser?.display_name || user?.dbUser?.username}</div>
+              <div className="text-xs text-gray-400">
+                {status === 'ONLINE' ? 'Online' : 'Offline'}
               </div>
             </div>
-          </div>
-        </aside>
+          </Link>
+        </div>
       )}
 
       {/* Main Content */}
-      <main className={`flex-1 flex flex-col relative ${isThreadOpen ? 'mr-80' : ''}`}>
+      <div className="flex-1 flex flex-col overflow-hidden">
         {children}
-      </main>
+      </div>
 
-      {/* Logs Viewer */}
-      {showLogs && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50">
-          <LogViewer onClose={() => setShowLogs(false)} />
+      {/* Thread Panel */}
+      {isThreadOpen && (
+        <div className="w-96 border-l border-gray-700 bg-gray-800">
+          {/* Thread content will be rendered by the ThreadPanel component */}
         </div>
+      )}
+
+      {/* Log Viewer */}
+      {showLogs && (
+        <LogViewer onClose={() => setShowLogs(false)} />
       )}
     </div>
   )

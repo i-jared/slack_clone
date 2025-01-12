@@ -1,35 +1,57 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useContext } from 'react'
 import { useDirectMessages } from '~/lib/Store'
 import Message from './Message'
 import MessageInput from './MessageInput'
 import LoadingScreen from './LoadingScreen'
 import { v4 as uuidv4 } from 'uuid'
+import { UserContext } from '~/lib/UserContext'
+import { createLogger } from '~/lib/logger'
 
-/*
-  NOTE: If you are using the new useDirectMessages from lib/useDirectMessages,
-  you'd import that instead of from ~/lib/Store. Adjust accordingly.
-*/
+const logger = createLogger('DirectMessage')
+
 export default function DirectMessage({ dmRoomId, recipient }) {
+  const { user } = useContext(UserContext)
   const { messages, isLoading, addMessage } = useDirectMessages({
     dmRoomId,
-    recipientId
+    recipientId: recipient?.id
   })
   const messagesEndRef = useRef(null)
 
+  logger.debug('DirectMessage mounted:', {
+    dmRoomId,
+    recipientId: recipient?.id,
+    recipientEmail: recipient?.email,
+    recipientUsername: recipient?.username,
+    messagesCount: messages?.length
+  })
+
   useEffect(() => {
     if (messages?.length > 0) {
+      logger.debug('Scrolling to bottom:', {
+        messageCount: messages.length,
+        lastMessageId: messages[messages.length - 1].id
+      })
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages])
 
   if (isLoading) {
+    logger.debug('Loading conversation')
     return <LoadingScreen message="Loading conversation..." />
   }
 
   const displayName = recipient?.username || recipient?.email?.split('@')[0] || 'Unknown User'
+  logger.debug('Resolved display name:', { displayName, recipient })
 
   const handleSend = async (content) => {
     const tempId = `temp-${uuidv4()}`
+    logger.debug('Preparing to send message:', {
+      tempId,
+      dmRoomId,
+      senderId: user?.id,
+      contentLength: content.length
+    })
+
     const tempMessage = {
       id: tempId,
       dm_room_id: dmRoomId,
@@ -43,15 +65,31 @@ export default function DirectMessage({ dmRoomId, recipient }) {
       updated_at: new Date().toISOString()
     }
     
+    logger.debug('Adding temporary message:', { tempId, dmRoomId })
     addMessage(tempMessage)
     
     try {
-      const confirmedMessage = await sendDirectMessage(content, recipientId)
+      logger.debug('Sending direct message:', {
+        tempId,
+        recipientId: recipient?.id,
+        contentLength: content.length
+      })
+
+      const confirmedMessage = await sendDirectMessage(content, recipient.id)
+      logger.info('Message confirmed:', {
+        tempId,
+        confirmedId: confirmedMessage.id
+      })
+
       window.dispatchEvent(new CustomEvent('messageConfirmed', {
         detail: { tempId, confirmedMessage }
       }))
     } catch (error) {
-      console.error('Error sending message:', error)
+      logger.error('Error sending message:', error, {
+        tempId,
+        dmRoomId,
+        recipientId: recipient?.id
+      })
       window.dispatchEvent(new CustomEvent('messageFailed', {
         detail: { messageId: tempId }
       }))
@@ -76,6 +114,11 @@ export default function DirectMessage({ dmRoomId, recipient }) {
             </div>
           ) : (
             messages?.map((message) => {
+              logger.debug('Rendering message:', {
+                messageId: message.id,
+                senderId: message.sender_id,
+                timestamp: message.created_at
+              })
               return (
                 <Message 
                   key={`${message.id}-${message.created_at}`}
@@ -91,7 +134,7 @@ export default function DirectMessage({ dmRoomId, recipient }) {
           <div ref={messagesEndRef} />
         </div>
       </div>
-      <MessageInput dm_room_id={dmRoomId} isDirect />
+      <MessageInput dm_room_id={dmRoomId} isDirect recipient_id={recipient?.id} />
     </div>
   )
 }
