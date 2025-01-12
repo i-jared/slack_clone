@@ -349,3 +349,191 @@ Import trace for requested module:
 [1/11/2025, 10:20:34 PM] [LOG] [@rieboysspamgmailcom] ✅ User authenticated: 177593a7-aab2-4dd5-9407-5c9a5ed45da1
 [1/11/2025, 10:20:35 PM] [ERROR] [@rieboysspamgmailcom] Error fetching messages: {"code":"42703","details":null,"hint":null,"message":"column messages.workspace_id does not exist"}
 [1/11/2025, 10:20:35 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:21:02 PM] [ERROR] [@rieboysspamgmailcom] Error fetching messages: {"code":"42703","details":null,"hint":null,"message":"column messages.workspace_id does not exist"}
+[1/11/2025, 10:21:08 PM] [ERROR] [@rieboysspamgmailcom] ❌ Error sending message: {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'workspace_id' column of 'messages' in the schema cache"}
+[1/11/2025, 10:21:17 PM] [LOG] [@rieboysspamgmailcom] [HMR] connected
+[1/11/2025, 10:21:18 PM] [LOG] [@rieboysspamgmailcom] ✅ User authenticated: 177593a7-aab2-4dd5-9407-5c9a5ed45da1
+[1/11/2025, 10:21:18 PM] [ERROR] [@rieboysspamgmailcom] Error fetching messages: {"code":"42703","details":null,"hint":null,"message":"column messages.workspace_id does not exist"}
+[1/11/2025, 10:21:19 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:21:19 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:21:25 PM] [ERROR] [@rieboysspamgmailcom] ❌ Error sending message: {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'workspace_id' column of 'messages' in the schema cache"}
+[1/11/2025, 10:23:16 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:23:17 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] done in 720ms
+[1/11/2025, 10:23:33 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:23:34 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:23:41 PM] [LOG] [@rieboysspamgmailcom] [HMR] connected
+[1/11/2025, 10:23:42 PM] [LOG] [@rieboysspamgmailcom] ✅ User authenticated: 177593a7-aab2-4dd5-9407-5c9a5ed45da1
+[1/11/2025, 10:23:42 PM] [ERROR] [@rieboysspamgmailcom] Error fetching messages: {"code":"42703","details":null,"hint":null,"message":"column messages.workspace_id does not exist"}
+[1/11/2025, 10:23:42 PM] [ERROR] [@rieboysspamgmailcom] Error fetching messages: {"code":"42703","details":null,"hint":null,"message":"column messages.workspace_id does not exist"}
+[1/11/2025, 10:23:43 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:23:43 PM] [LOG] [system] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:23:44 PM] [LOG] [@rieboysspamgmailcom] [HMR] connected
+[1/11/2025, 10:23:45 PM] [LOG] [@rieboysspamgmailcom] ✅ User authenticated: 177593a7-aab2-4dd5-9407-5c9a5ed45da1
+[1/11/2025, 10:23:45 PM] [ERROR] [@rieboysspamgmailcom] Error fetching messages: {"code":"42703","details":null,"hint":null,"message":"column messages.workspace_id does not exist"}
+[1/11/2025, 10:23:46 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:23:46 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:23:50 PM] [ERROR] [@rieboysspamgmailcom] ❌ Error sending message: {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'workspace_id' column of 'messages' in the schema cache"}
+[1/11/2025, 10:27:18 PM] [LOG] [@rieboysspamgmailcom] [HMR] connected
+[1/11/2025, 10:27:19 PM] [LOG] [@rieboysspamgmailcom] ✅ User authenticated: 177593a7-aab2-4dd5-9407-5c9a5ed45da1
+[1/11/2025, 10:27:19 PM] [LOG] [@rieboysspamgmailcom] ✅ User verified: {"id":"177593a7-aab2-4dd5-9407-5c9a5ed45da1","email":"rieboyssffpam@gmail.com","username":"rieboysspamgmailcom","display_name":"Reece Harding","phone_number":null,"avatar_url":null,"description":null,"status":"OFFLINE","faction":null,"last_seen":null,"is_bot":false,"preferences":null,"ai_persona":null,"gamification":null,"metadata":null,"placeholder_col_1":null,"placeholder_col_2":null,"created_at":"2025-01-12T05:13:50.309113","updated_at":"2025-01-12T05:13:50.309113"}
+[1/11/2025, 10:27:19 PM] [LOG] [@rieboysspamgmailcom] ✅ User verified: {"id":"177593a7-aab2-4dd5-9407-5c9a5ed45da1","email":"rieboyssffpam@gmail.com","username":"rieboysspamgmailcom","display_name":"Reece Harding","phone_number":null,"avatar_url":null,"description":null,"status":"OFFLINE","faction":null,"last_seen":null,"is_bot":false,"preferences":null,"ai_persona":null,"gamification":null,"metadata":null,"placeholder_col_1":null,"placeholder_col_2":null,"created_at":"2025-01-12T05:13:50.309113","updated_at":"2025-01-12T05:13:50.309113"}
+[1/11/2025, 10:27:20 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:27:20 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:27:23 PM] [ERROR] [@rieboysspamgmailcom] ❌ Error sending message: {"code":"23502","details":null,"hint":null,"message":"null value in column \"id\" of relation \"messages\" violates not-null constraint"}
+[1/11/2025, 10:28:32 PM] [LOG] [@rieboysspamgmailcom] [HMR] connected
+[1/11/2025, 10:28:33 PM] [LOG] [@rieboysspamgmailcom] ✅ User authenticated: 177593a7-aab2-4dd5-9407-5c9a5ed45da1
+[1/11/2025, 10:28:33 PM] [LOG] [@rieboysspamgmailcom] ✅ User verified: {"id":"177593a7-aab2-4dd5-9407-5c9a5ed45da1","email":"rieboyssffpam@gmail.com","username":"rieboysspamgmailcom","display_name":"Reece Harding","phone_number":null,"avatar_url":null,"description":null,"status":"OFFLINE","faction":null,"last_seen":null,"is_bot":false,"preferences":null,"ai_persona":null,"gamification":null,"metadata":null,"placeholder_col_1":null,"placeholder_col_2":null,"created_at":"2025-01-12T05:13:50.309113","updated_at":"2025-01-12T05:13:50.309113"}
+[1/11/2025, 10:28:33 PM] [LOG] [@rieboysspamgmailcom] ✅ User verified: {"id":"177593a7-aab2-4dd5-9407-5c9a5ed45da1","email":"rieboyssffpam@gmail.com","username":"rieboysspamgmailcom","display_name":"Reece Harding","phone_number":null,"avatar_url":null,"description":null,"status":"OFFLINE","faction":null,"last_seen":null,"is_bot":false,"preferences":null,"ai_persona":null,"gamification":null,"metadata":null,"placeholder_col_1":null,"placeholder_col_2":null,"created_at":"2025-01-12T05:13:50.309113","updated_at":"2025-01-12T05:13:50.309113"}
+[1/11/2025, 10:28:34 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:28:34 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:28:50 PM] [LOG] [@rieboysspamgmailcom] [HMR] connected
+[1/11/2025, 10:28:50 PM] [LOG] [@rieboysspamgmailcom] ✅ User authenticated: 177593a7-aab2-4dd5-9407-5c9a5ed45da1
+[1/11/2025, 10:28:51 PM] [LOG] [@rieboysspamgmailcom] ✅ User verified: {"id":"177593a7-aab2-4dd5-9407-5c9a5ed45da1","email":"rieboyssffpam@gmail.com","username":"rieboysspamgmailcom","display_name":"Reece Harding","phone_number":null,"avatar_url":null,"description":null,"status":"OFFLINE","faction":null,"last_seen":null,"is_bot":false,"preferences":null,"ai_persona":null,"gamification":null,"metadata":null,"placeholder_col_1":null,"placeholder_col_2":null,"created_at":"2025-01-12T05:13:50.309113","updated_at":"2025-01-12T05:13:50.309113"}
+[1/11/2025, 10:28:51 PM] [LOG] [@rieboysspamgmailcom] ✅ User verified: {"id":"177593a7-aab2-4dd5-9407-5c9a5ed45da1","email":"rieboyssffpam@gmail.com","username":"rieboysspamgmailcom","display_name":"Reece Harding","phone_number":null,"avatar_url":null,"description":null,"status":"OFFLINE","faction":null,"last_seen":null,"is_bot":false,"preferences":null,"ai_persona":null,"gamification":null,"metadata":null,"placeholder_col_1":null,"placeholder_col_2":null,"created_at":"2025-01-12T05:13:50.309113","updated_at":"2025-01-12T05:13:50.309113"}
+[1/11/2025, 10:28:51 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:28:52 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:28:52 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:30:19 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:30:20 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:30:21 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] done in 1090ms
+[1/11/2025, 10:30:32 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:30:33 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] done in 1096ms
+[1/11/2025, 10:30:40 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:30:41 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] done in 506ms
+[1/11/2025, 10:30:56 PM] [LOG] [@rieboysspamgmailcom] [HMR] connected
+[1/11/2025, 10:30:57 PM] [LOG] [@rieboysspamgmailcom] ✅ User authenticated: 177593a7-aab2-4dd5-9407-5c9a5ed45da1
+[1/11/2025, 10:30:57 PM] [LOG] [@rieboysspamgmailcom] ✅ User verified: {"id":"177593a7-aab2-4dd5-9407-5c9a5ed45da1","email":"rieboyssffpam@gmail.com","username":"rieboysspamgmailcom","display_name":"Reece Harding","phone_number":null,"avatar_url":null,"description":null,"status":"OFFLINE","faction":null,"last_seen":null,"is_bot":false,"preferences":null,"ai_persona":null,"gamification":null,"metadata":null,"placeholder_col_1":null,"placeholder_col_2":null,"created_at":"2025-01-12T05:13:50.309113","updated_at":"2025-01-12T05:13:50.309113"}
+[1/11/2025, 10:30:57 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:30:58 PM] [LOG] [@rieboysspamgmailcom] 📊 Raw channel data: [{"id":"37a6d9e0-3b11-4c0e-8c77-45c01b0d7d9b","slug":"general","name":"General","description":"General discussion for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"8f7d3c1a-4b5e-4d2f-9e8f-12a3b4c5d6e7","slug":"random","name":"Random","description":"Random discussions and fun stuff","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"2b9e8f4d-7c6a-5b3a-1e2d-9f8e7d6c5b4a","slug":"announcements","name":"Announcements","description":"Important announcements for all members","workspace_id":"00000000-0000-0000-0000-000000000000","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"},{"id":"7747d105-1bd6-46df-b59e-022895afb78f","slug":"jedi","name":"Jedi","description":"Jedi only","workspace_id":"00000000-0000-0000-0000-000000000001","created_by":"f5392b1e-cafd-40a6-ba97-91376cb104e7"}]
+[1/11/2025, 10:33:01 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:33:04 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:33:04 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] done in 545ms
+[1/11/2025, 10:33:37 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:33:38 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:33:39 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] done in 717ms
+[1/11/2025, 10:33:39 PM] [LOG] [@rieboysspamgmailcom] Message marked as read: 06385956-3506-4d0b-a00c-105f5a624dc9
+[1/11/2025, 10:33:56 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:33:56 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] done in 188ms
+[1/11/2025, 10:34:27 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:34:27 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:34:28 PM] [LOG] [@rieboysspamgmailcom] %cℹ️ [2025-01-12T05:34:28.157Z] [Message] [INFO] Message marked as read successfully
+📦 Data:
+{
+  "messageId": "22a9b012-f9c3-4222-b3ea-2e57d4a21850",
+  "newReadBy": [
+    "177593a7-aab2-4dd5-9407-5c9a5ed45da1"
+  ]
+} color: #3498db; font-weight: bold
+[1/11/2025, 10:35:27 PM] [LOG] [@rieboysspamgmailcom] [Fast Refresh] rebuilding
+[1/11/2025, 10:35:29 PM] [ERROR] [@rieboysspamgmailcom] ./components/Layout.js:12:1
+Module not found: Can't resolve '@heroicons/react/outline'
+  10 | import LogViewer from './LogViewer'
+  11 | import { formatDistanceToNow } from 'date-fns'
+> 12 | import { SearchIcon, MenuIcon, XIcon } from '@heroicons/react/outline'
+     | ^
+  13 |
+  14 | const Layout = ({ children, hideSidebar = false }) => {
+  15 |   const { user } = useContext(UserContext)
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./pages/channels/[id].js
+[1/11/2025, 10:35:29 PM] [ERROR] [@rieboysspamgmailcom] ./components/Layout.js:12:1
+Module not found: Can't resolve '@heroicons/react/outline'
+  10 | import LogViewer from './LogViewer'
+  11 | import { formatDistanceToNow } from 'date-fns'
+> 12 | import { SearchIcon, MenuIcon, XIcon } from '@heroicons/react/outline'
+     | ^
+  13 |
+  14 | const Layout = ({ children, hideSidebar = false }) => {
+  15 |   const { user } = useContext(UserContext)
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./pages/channels/[id].js
+[1/11/2025, 10:36:07 PM] [ERROR] [@rieboysspamgmailcom] ./components/Layout.js:12:1
+Module not found: Can't resolve '@heroicons/react/outline'
+  10 | import LogViewer from './LogViewer'
+  11 | import { formatDistanceToNow } from 'date-fns'
+> 12 | import { SearchIcon, MenuIcon, XIcon } from '@heroicons/react/outline'
+     | ^
+  13 |
+  14 | const Layout = ({ children, hideSidebar = false }) => {
+  15 |   const { user } = useContext(UserContext)
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./pages/channels/[id].js
+[1/11/2025, 10:36:08 PM] [ERROR] [@rieboysspamgmailcom] ./components/Layout.js:12:1
+Module not found: Can't resolve '@heroicons/react/outline'
+  10 | import LogViewer from './LogViewer'
+  11 | import { formatDistanceToNow } from 'date-fns'
+> 12 | import { SearchIcon, MenuIcon, XIcon } from '@heroicons/react/outline'
+     | ^
+  13 |
+  14 | const Layout = ({ children, hideSidebar = false }) => {
+  15 |   const { user } = useContext(UserContext)
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./pages/channels/[id].js
+[1/11/2025, 10:36:08 PM] [ERROR] [@rieboysspamgmailcom] ./components/Layout.js:12:1
+Module not found: Can't resolve '@heroicons/react/outline'
+  10 | import LogViewer from './LogViewer'
+  11 | import { formatDistanceToNow } from 'date-fns'
+> 12 | import { SearchIcon, MenuIcon, XIcon } from '@heroicons/react/outline'
+     | ^
+  13 |
+  14 | const Layout = ({ children, hideSidebar = false }) => {
+  15 |   const { user } = useContext(UserContext)
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./pages/channels/[id].js
+[1/11/2025, 10:36:29 PM] [ERROR] [@rieboysspamgmailcom] ./components/Layout.js:12:1
+Module not found: Can't resolve '@heroicons/react/outline'
+  10 | import LogViewer from './LogViewer'
+  11 | import { formatDistanceToNow } from 'date-fns'
+> 12 | import { SearchIcon, MenuIcon, XIcon } from '@heroicons/react/outline'
+     | ^
+  13 |
+  14 | const Layout = ({ children, hideSidebar = false }) => {
+  15 |   const { user } = useContext(UserContext)
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./pages/channels/[id].js
+[1/11/2025, 10:36:29 PM] [ERROR] [@rieboysspamgmailcom] ./components/Layout.js:12:1
+Module not found: Can't resolve '@heroicons/react/outline'
+  10 | import LogViewer from './LogViewer'
+  11 | import { formatDistanceToNow } from 'date-fns'
+> 12 | import { SearchIcon, MenuIcon, XIcon } from '@heroicons/react/outline'
+     | ^
+  13 |
+  14 | const Layout = ({ children, hideSidebar = false }) => {
+  15 |   const { user } = useContext(UserContext)
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./pages/channels/[id].js
+[1/11/2025, 10:36:29 PM] [ERROR] [@rieboysspamgmailcom] ./components/Layout.js:12:1
+Module not found: Can't resolve '@heroicons/react/outline'
+  10 | import LogViewer from './LogViewer'
+  11 | import { formatDistanceToNow } from 'date-fns'
+> 12 | import { SearchIcon, MenuIcon, XIcon } from '@heroicons/react/outline'
+     | ^
+  13 |
+  14 | const Layout = ({ children, hideSidebar = false }) => {
+  15 |   const { user } = useContext(UserContext)
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./pages/channels/index.js

@@ -26,145 +26,187 @@ export default function AuthPage() {
 
   // Add test result
   const addTestResult = (name, passed, error = null) => {
+    console.log('🧪 Test Result:', { name, passed, error })
     setTestResults(prev => [...prev, { name, passed, error }])
   }
 
   const handleSignUp = async (e) => {
     e.preventDefault()
     const startTime = new Date().toISOString()
-    console.log('🚀 [1/20] Starting signup process...', {
-      timestamp: startTime,
-      emailLength: email?.length,
-      emailDomain: email?.split('@')[1],
-      passwordStrength: password?.length >= 6 ? 'OK' : 'Too Short',
-      environment: process.env.NODE_ENV,
-      url: supabase.supabaseUrl,
-      browserInfo: {
+    
+    // Initial Environment Check
+    console.log('🌍 [1/50] Environment Check:', {
+      nodeEnv: process.env.NODE_ENV,
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      browser: {
         userAgent: window.navigator.userAgent,
         language: window.navigator.language,
-        platform: window.navigator.platform
-      }
+        platform: window.navigator.platform,
+        vendor: window.navigator.vendor,
+        cookiesEnabled: window.navigator.cookieEnabled
+      },
+      screen: {
+        width: window.screen.width,
+        height: window.screen.height,
+        colorDepth: window.screen.colorDepth,
+        pixelDepth: window.screen.pixelDepth
+      },
+      timestamp: new Date().toISOString()
+    })
+
+    // Input Validation
+    console.log('📝 [2/50] Input Validation:', {
+      email: {
+        length: email?.length,
+        isValid: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+        domain: email?.split('@')[1]
+      },
+      password: {
+        length: password?.length,
+        hasUpperCase: /[A-Z]/.test(password),
+        hasLowerCase: /[a-z]/.test(password),
+        hasNumbers: /\d/.test(password),
+        hasSpecialChars: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+      },
+      username: {
+        length: username?.length,
+        cleaned: username?.toLowerCase().replace(/[^a-z0-9]/g, ''),
+        original: username
+      },
+      displayName: {
+        length: displayName?.length,
+        value: displayName || username
+      },
+      timestamp: new Date().toISOString()
     })
 
     setLoading(true)
     setError(null)
 
     try {
-      // Test Supabase client configuration
-      console.log('🔧 [2/20] Checking Supabase client config...', {
-        timestamp: new Date().toISOString(),
+      // Supabase Client Check
+      console.log('🔧 [3/50] Supabase Client Configuration:', {
         auth: {
           autoRefreshToken: supabase.auth.autoRefreshToken,
           persistSession: supabase.auth.persistSession,
           detectSessionInUrl: supabase.auth.detectSessionInUrl,
           flowType: supabase.auth.flowType,
-          storageKey: supabase.auth.storageKey
+          storageKey: supabase.auth.storageKey,
+          currentSession: await supabase.auth.getSession(),
+          currentUser: await supabase.auth.getUser()
+        },
+        config: {
+          apiKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '***' : 'missing',
+          apiUrl: supabase.supabaseUrl,
+          realtimeUrl: supabase.realtimeUrl,
+          storageUrl: supabase.storageUrl,
+          functionsUrl: supabase.functionsUrl
         },
         headers: supabase.rest.headers,
-        realtime: {
-          params: supabase.realtime.params,
-          isConnected: supabase.realtime.isConnected
-        }
+        timestamp: new Date().toISOString()
       })
 
-      // Test database connectivity
-      console.log('🔌 [3/20] Testing database connectivity...')
-      const { data: pingData, error: pingError } = await supabase
+      // Database Schema Validation
+      console.log('📋 [4/50] Database Schema Validation Starting...')
+      
+      // Test Users Table
+      console.log('👥 [5/50] Testing Users Table...')
+      const { data: usersSchema, error: usersSchemaError } = await supabase
         .from('users')
-        .select('count')
-      console.log('📡 [4/20] Database connectivity result:', {
-        success: !pingError,
-        error: pingError,
-        timestamp: new Date().toISOString(),
-        responseTime: new Date() - new Date(startTime)
+        .select('*')
+        .limit(1)
+      console.log('📊 Users Table Schema Result:', {
+        success: !usersSchemaError,
+        error: usersSchemaError,
+        columns: usersSchema?.[0] ? Object.keys(usersSchema[0]) : [],
+        timestamp: new Date().toISOString()
       })
 
-      // Test database schema with RLS bypass
-      console.log('📋 [5/20] Checking database schema...')
-      const schemaPromises = [
-        // Try public schema
-        supabase.from('users').select('*').limit(1),
-        // Try auth schema
-        supabase.from('auth.users').select('*').limit(1),
-        // Try RPC call
-        supabase.rpc('get_schema_version'),
-        // Try raw query
-        supabase.from('users').select('count').limit(1)
-      ]
-      
-      const schemaResults = await Promise.allSettled(schemaPromises)
-      console.log('🗂️ [6/20] Schema check results:', {
-        public: {
-          status: schemaResults[0].status,
-          data: schemaResults[0].value?.data,
-          error: schemaResults[0].value?.error
+      // Test Messages Table
+      console.log('💬 [6/50] Testing Messages Table...')
+      const { data: messagesSchema, error: messagesSchemaError } = await supabase
+        .from('messages')
+        .select('*')
+        .limit(1)
+      console.log('📊 Messages Table Schema Result:', {
+        success: !messagesSchemaError,
+        error: messagesSchemaError,
+        columns: messagesSchema?.[0] ? Object.keys(messagesSchema[0]) : [],
+        timestamp: new Date().toISOString()
+      })
+
+      // Test Channels Table
+      console.log('📢 [7/50] Testing Channels Table...')
+      const { data: channelsSchema, error: channelsSchemaError } = await supabase
+        .from('channels')
+        .select('*')
+        .limit(1)
+      console.log('📊 Channels Table Schema Result:', {
+        success: !channelsSchemaError,
+        error: channelsSchemaError,
+        columns: channelsSchema?.[0] ? Object.keys(channelsSchema[0]) : [],
+        timestamp: new Date().toISOString()
+      })
+
+      // RLS Policy Check
+      console.log('🔒 [8/50] Testing RLS Policies...')
+      const testInserts = await Promise.allSettled([
+        // Try inserting as anon
+        supabase.from('users').insert([{ 
+          email: 'test_' + Date.now() + '@example.com',
+          username: 'test_' + Date.now(),
+          display_name: 'Test User',
+          status: 'OFFLINE'
+        }]),
+        // Try selecting as anon
+        supabase.from('users').select('count'),
+        // Try updating as anon
+        supabase.from('users').update({ status: 'ONLINE' }).match({ id: 'test' })
+      ])
+      console.log('🔑 RLS Policy Test Results:', {
+        insert: {
+          status: testInserts[0].status,
+          error: testInserts[0].value?.error
         },
-        auth: {
-          status: schemaResults[1].status,
-          data: schemaResults[1].value?.data,
-          error: schemaResults[1].value?.error
+        select: {
+          status: testInserts[1].status,
+          error: testInserts[1].value?.error
         },
-        rpc: {
-          status: schemaResults[2].status,
-          data: schemaResults[2].value?.data,
-          error: schemaResults[2].value?.error
-        },
-        raw: {
-          status: schemaResults[3].status,
-          data: schemaResults[3].value?.data,
-          error: schemaResults[3].value?.error
+        update: {
+          status: testInserts[2].status,
+          error: testInserts[2].value?.error
         },
         timestamp: new Date().toISOString()
       })
 
-      // Test auth endpoint with more details
-      console.log('🔐 [7/20] Testing auth endpoint...')
-      const authPromises = [
-        supabase.auth.getSession(),
-        supabase.auth.getUser(),
-        supabase.auth.admin // This should be undefined in client
-      ]
-      
-      const authResults = await Promise.allSettled(authPromises)
-      console.log('🔑 [8/20] Auth endpoint details:', {
-        session: {
-          status: authResults[0].status,
-          data: authResults[0].value?.data,
-          error: authResults[0].value?.error
-        },
-        user: {
-          status: authResults[1].status,
-          data: authResults[1].value?.data,
-          error: authResults[1].value?.error
-        },
-        hasAdmin: !!authResults[2].value,
-        timestamp: new Date().toISOString()
-      })
-
-      // Check for existing user
-      console.log('👤 [9/20] Checking for existing user...')
+      // Duplicate Email Check
+      console.log('📧 [9/50] Checking for existing email...')
       const { data: existingUser, error: existingError } = await supabase
         .from('users')
-        .select('id, email')
+        .select('id, email, username')
         .eq('email', email)
         .maybeSingle()
-      console.log('🔍 [10/20] Existing user check result:', {
-        success: !existingError,
-        error: existingError,
+      console.log('🔍 Existing User Check Result:', {
         exists: !!existingUser,
+        error: existingError,
+        details: existingUser ? {
+          id: existingUser.id,
+          email: existingUser.email,
+          username: existingUser.username
+        } : null,
         timestamp: new Date().toISOString()
       })
 
-      // If user exists, show error and stop
       if (existingUser) {
-        console.log('❌ User already exists')
-        setError('An account with this email already exists. Please try logging in instead.')
+        console.log('❌ [10/50] Duplicate email found')
+        setError('An account with this email already exists')
         return
       }
 
-      // Try minimal signup first
-      console.log('📝 [11/20] Preparing signup payload...')
-      const minimalPayload = {
+      // Prepare Signup Payload
+      console.log('📦 [11/50] Preparing signup payload...')
+      const signupPayload = {
         email,
         password,
         options: {
@@ -177,60 +219,45 @@ export default function AuthPage() {
           }
         }
       }
-
-      console.log('📦 [12/20] Signup payload prepared:', {
-        email: minimalPayload.email,
+      console.log('📤 Signup Payload:', {
+        email: signupPayload.email,
         options: {
+          ...signupPayload.options,
           data: {
-            ...minimalPayload.options.data,
-            email: minimalPayload.options.data.email
+            ...signupPayload.options.data,
+            email: signupPayload.options.data.email
           }
         },
         timestamp: new Date().toISOString()
       })
 
-      // Try signup with proper metadata
-      console.log('🔄 [18/20] Executing signup request...', {
-        url: `${supabase.supabaseUrl}/auth/v1/signup`,
-        method: 'POST',
-        headers: {
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json'
-        }
-      })
+      // Execute Signup
+      console.log('🚀 [12/50] Executing signup request...')
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp(signupPayload)
 
-      // Log the exact payload being sent
-      console.log('📦 [18.1/20] Full signup payload:', {
-        email: minimalPayload.email,
-        options: minimalPayload.options,
-        metadata: {
-          ...minimalPayload.options.data
-        },
-        timestamp: new Date().toISOString()
-      })
-
-      // Try signup with proper metadata
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp(minimalPayload)
-
-      // Immediately log the raw response
-      console.log('📥 [18.2/20] Raw signup response:', {
+      // Log Raw Response
+      console.log('📥 [13/50] Raw signup response:', {
         success: !signUpError,
-        data: signUpData,
+        data: signUpData ? {
+          id: signUpData.user?.id,
+          email: signUpData.user?.email,
+          created: signUpData.user?.created_at,
+          confirmed: signUpData.user?.confirmed_at
+        } : null,
         error: signUpError ? {
           name: signUpError.name,
           message: signUpError.message,
           code: signUpError.code,
           status: signUpError.status,
           details: signUpError.details,
-          hint: signUpError.hint,
-          stack: signUpError.stack
+          hint: signUpError.hint
         } : null,
         timestamp: new Date().toISOString()
       })
 
       if (signUpError) {
-        // Log detailed error information
-        console.error('❌ [19/20] Signup error analysis:', {
+        // Detailed Error Analysis
+        console.error('❌ [14/50] Signup Error Analysis:', {
           error: {
             name: signUpError.name,
             message: signUpError.message,
@@ -244,8 +271,8 @@ export default function AuthPage() {
             url: supabase.supabaseUrl,
             endpoint: '/auth/v1/signup',
             payload: {
-              email: minimalPayload.email,
-              metadata: minimalPayload.options.data
+              email: signupPayload.email,
+              metadata: signupPayload.options.data
             }
           },
           context: {
@@ -263,28 +290,27 @@ export default function AuthPage() {
           }
         })
 
-        // Additional error checking
+        // Additional Error Investigation
         if (signUpError.status === 500) {
-          console.log('🔍 [19.1/20] Database error investigation:', {
-            timestamp: new Date().toISOString(),
+          console.log('🔍 [15/50] Database Error Investigation:', {
             error: signUpError,
-            errorType: 'Database error saving new user',
             possibleCauses: [
               'RLS policies blocking insert',
               'Missing required fields',
               'Constraint violations',
               'Trigger errors'
-            ]
+            ],
+            timestamp: new Date().toISOString()
           })
 
-          // Test table access
-          console.log('🔍 [19.2/20] Testing table access...')
+          // Test Table Access
+          console.log('🔍 [16/50] Testing table access...')
           const { data: testData, error: testError } = await supabase
             .from('users')
             .select('id, email, username, display_name, status')
             .limit(1)
           
-          console.log('📊 [19.3/20] Table access results:', {
+          console.log('📊 [17/50] Table access results:', {
             canQuery: !testError,
             error: testError ? {
               message: testError.message,
@@ -296,8 +322,8 @@ export default function AuthPage() {
             timestamp: new Date().toISOString()
           })
 
-          // Test insert without auth
-          console.log('🔍 [19.4/20] Testing direct insert...')
+          // Test Direct Insert
+          console.log('🔍 [18/50] Testing direct insert...')
           const testUser = {
             email: 'test_' + Date.now() + '@example.com',
             username: 'test_' + Date.now(),
@@ -310,7 +336,7 @@ export default function AuthPage() {
             .insert([testUser])
             .select()
           
-          console.log('📊 [19.5/20] Direct insert results:', {
+          console.log('📊 [19/50] Direct insert results:', {
             success: !insertError,
             error: insertError ? {
               message: insertError.message,
@@ -326,8 +352,8 @@ export default function AuthPage() {
         throw signUpError
       }
 
-      // Success!
-      console.log('✅ [20/20] Signup successful!', {
+      // Success Path
+      console.log('✅ [20/50] Signup successful!', {
         userId: signUpData.user?.id,
         email: signUpData.user?.email,
         created: signUpData.user?.created_at,
@@ -336,29 +362,38 @@ export default function AuthPage() {
         timestamp: new Date().toISOString()
       })
 
-      // Attempt immediate signin
-      console.log('🔄 Attempting immediate signin...')
+      // Attempt Immediate Signin
+      console.log('🔄 [21/50] Attempting immediate signin...')
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password
       })
 
       if (signInError) {
-        console.error('❌ Signin failed:', signInError)
+        console.error('❌ [22/50] Signin failed:', {
+          error: signInError,
+          context: {
+            email: email,
+            timestamp: new Date().toISOString()
+          }
+        })
         throw signInError
       }
 
-      console.log('✅ Signin successful:', {
+      console.log('✅ [23/50] Signin successful:', {
         session: !!signInData.session,
-        user: signInData.user?.id
+        user: signInData.user?.id,
+        timestamp: new Date().toISOString()
       })
 
       // Redirect to channels
+      console.log('🔀 [24/50] Redirecting to channels...')
       router.push('/channels')
 
       setError(null)
     } catch (err) {
-      console.error('❌ Final Error State:', {
+      // Final Error State
+      console.error('❌ [25/50] Final Error State:', {
         error: {
           name: err.name,
           message: err.message,
@@ -393,7 +428,7 @@ export default function AuthPage() {
       setError(err.message)
     } finally {
       setLoading(false)
-      console.log('🏁 Process completed:', {
+      console.log('🏁 [26/50] Process completed:', {
         totalTime: new Date() - new Date(startTime),
         timestamp: new Date().toISOString(),
         status: error ? 'failed' : 'success'

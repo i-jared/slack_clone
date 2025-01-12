@@ -8,6 +8,8 @@ import UserStatusDot from '~/components/UserStatusDot'
 import CreateChannelButton from './CreateChannelButton'
 import Head from 'next/head'
 import LogViewer from './LogViewer'
+import { formatDistanceToNow } from 'date-fns'
+import { SearchIcon, MenuIcon, XIcon } from '@heroicons/react/outline'
 
 const Layout = ({ children, hideSidebar = false }) => {
   const { user } = useContext(UserContext)
@@ -366,233 +368,184 @@ const Layout = ({ children, hideSidebar = false }) => {
   }
 
   return (
-    <>
+    <div className="flex h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100">
       <Head>
-        <title>Talk2D2 - Star Wars Chat</title>
-        <link rel="icon" href="/favicon.ico" />
+        <title>Talk2D2 - Your Galactic Chat Hub</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
 
-      <div className="flex h-screen bg-gray-900 text-gray-100">
-        {/* Sidebar - conditionally rendered */}
-        {!hideSidebar && (
-          <div className="w-64 flex flex-col bg-gradient-to-b from-gray-900 to-gray-800 border-r border-gray-800">
-            {/* App Header */}
-            <div className="shrink-0 p-4 border-b border-gray-800">
-              <h1 className="text-2xl font-orbitron text-yellow-400 tracking-wider">Talk2D2</h1>
-            </div>
-
-            {/* Channels & DMs */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0">
-              {/* Channels Section */}
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-lg font-semibold text-gray-200">Channels</h2>
-                  <CreateChannelButton />
-                </div>
-                <nav className="space-y-1">
-                  {channels.map((channel) => (
-                    <Link
-                      key={channel.id}
-                      href={`/channels/${channel.id}`}
-                      className={`flex items-center px-2 py-1.5 text-sm rounded-md transition-colors duration-150
-                        ${channel.id === router.query.id 
-                          ? 'bg-yellow-500/10 text-yellow-400' 
-                          : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`}
-                    >
-                      <span className="text-gray-500 mr-1.5">#</span>
-                      {channel.name || channel.slug}
-                    </Link>
-                  ))}
-                </nav>
+      {!hideSidebar && (
+        <aside className="w-72 flex flex-col bg-gray-800/50 backdrop-blur-md border-r border-yellow-500/10 shadow-xl">
+          {/* App Logo */}
+          <div className="p-6 border-b border-yellow-500/10">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center transform rotate-45">
+                <span className="text-black font-bold transform -rotate-45">T2</span>
               </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent font-space">
+                Talk2D2
+              </h1>
+            </div>
+          </div>
 
-              {/* Direct Messages Section */}
-              <div className="p-4">
-                <h2 className="text-sm font-bold text-yellow-400 tracking-wide mb-2">DIRECT MESSAGES</h2>
-                <nav className="space-y-1">
-                  {users.map((otherUser) => (
+          {/* Search Bar */}
+          <div className="p-4">
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                <SearchIcon className="h-5 w-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search anything..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  handleSearch(e.target.value)
+                }}
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-900/50 text-sm rounded-xl border border-gray-700/50 
+                  focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50
+                  placeholder-gray-500 transition-all duration-200"
+              />
+              {searchResults.length > 0 && searchTerm && (
+                <div className="absolute w-full mt-2 bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-2xl z-50 max-h-96 overflow-y-auto
+                  border border-yellow-500/10 divide-y divide-gray-700/50">
+                  {searchResults.map((result, index) => (
                     <div
-                      key={otherUser.id}
-                      className="flex items-center px-2 py-1.5 text-sm text-gray-400 rounded-md hover:bg-gray-800 hover:text-gray-200 cursor-pointer"
-                      onClick={() => router.push(`/dms/${otherUser.id}`)}
+                      key={`${result.type}-${index}`}
+                      className="p-3 hover:bg-gray-700/50 cursor-pointer transition-colors duration-150"
+                      onClick={() => goToResult(result)}
                     >
-                      <span
-                        className={`w-2 h-2 rounded-full mr-2 ${
-                          otherUser.status === 'ONLINE' ? 'bg-green-500' : 'bg-gray-500'
-                        }`}
-                      />
-                      {otherUser.username}
+                      <div className="flex items-center space-x-2">
+                        {result.type === 'channel' && (
+                          <span className="text-yellow-400 font-medium">#</span>
+                        )}
+                        {result.type === 'user' && (
+                          <UserStatusDot status={result.data.status} />
+                        )}
+                        <span className="font-medium text-gray-200">
+                          {result.data.name || result.data.username}
+                        </span>
+                      </div>
+                      {result.type === 'message' && (
+                        <div className="mt-1 text-sm text-gray-400 line-clamp-2">
+                          {result.data.message_text}
+                        </div>
+                      )}
                     </div>
                   ))}
-                </nav>
-              </div>
-            </div>
-
-            {/* User Profile Section */}
-            <div className="shrink-0 p-4 border-t border-gray-800 bg-gray-900/50 backdrop-blur-sm">
-              <div 
-                className="flex items-center space-x-3 cursor-pointer hover:bg-gray-800/50 p-2 rounded-lg transition-colors duration-150"
-                onClick={() => setShowProfilePopup(!showProfilePopup)}
-              >
-                <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden flex-shrink-0">
-                  {avatarUrl && (
-                    <img 
-                      src={avatarUrl} 
-                      alt="Profile" 
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-medium truncate">{username || user?.email}</span>
-                    <UserStatusDot status={status} />
-                  </div>
-                  <div className="text-xs text-gray-400">Click to edit profile</div>
-                </div>
-              </div>
-
-              {/* Profile Popup */}
-              {showProfilePopup && (
-                <div className="absolute bottom-full left-0 mb-2 w-80 bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-4">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Username
-                      </label>
-                      <input
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-700 rounded-md border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Avatar
-                      </label>
-                      <div className="flex items-center space-x-4">
-                        <div className="w-16 h-16 rounded-full bg-gray-700 overflow-hidden">
-                          {avatarUrl && (
-                            <img 
-                              src={avatarUrl} 
-                              alt="Avatar Preview" 
-                              className="w-full h-full object-cover"
-                            />
-                          )}
-                        </div>
-                        <label className="flex-1">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={uploadAvatar}
-                            className="hidden"
-                          />
-                          <div className={`px-4 py-2 bg-gray-700 rounded-md border border-gray-600 text-white text-center cursor-pointer hover:bg-gray-600 transition-colors duration-150 ${
-                            uploading ? 'opacity-50 cursor-not-allowed' : ''
-                          }`}>
-                            {uploading ? 'Uploading...' : 'Upload Image'}
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Status
-                      </label>
-                      <div className="flex items-center space-x-3 bg-gray-700 p-3 rounded-md">
-                        <div className="flex items-center space-x-2">
-                          <UserStatusDot status={status} />
-                          <span className="text-white">{status}</span>
-                        </div>
-                        <button
-                          onClick={() => setStatus(status === 'ONLINE' ? 'OFFLINE' : 'ONLINE')}
-                          className="ml-auto px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-500 transition-colors"
-                        >
-                          Toggle Status
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex justify-end space-x-2 pt-4 border-t border-gray-700">
-                      <button
-                        onClick={() => setShowProfilePopup(false)}
-                        className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={updateProfile}
-                        className="px-4 py-2 bg-yellow-500 text-black rounded hover:bg-yellow-400"
-                      >
-                        Save Changes
-                      </button>
-                    </div>
-                    <div className="pt-4 border-t border-gray-700 mt-4">
-                      <button
-                        onClick={signOut}
-                        className="w-full px-4 py-2 bg-red-500/10 text-red-400 rounded hover:bg-red-500/20 transition-colors"
-                      >
-                        Sign Out
-                      </button>
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
           </div>
-        )}
 
-        {/* Main Content */}
-        <main className={`flex-1 flex flex-col h-screen overflow-hidden bg-gray-800 transition-all duration-300 ${isThreadOpen ? 'mr-96' : ''}`}>
-          {/* Search Bar */}
-          <div className="sticky top-0 z-50 bg-gray-900/95 backdrop-blur-sm p-3 border-b border-gray-800 shadow-lg">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                handleSearch(e.target.value)
-              }}
-              placeholder="Search messages, channels, or users..."
-              className="w-full px-4 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-yellow-500"
-            />
-            {/* Search Results Dropdown */}
-            {searchResults.length > 0 && (
-              <div className="absolute mt-2 w-full bg-gray-800 border border-gray-700 rounded shadow-lg max-h-64 overflow-y-auto z-50">
-                {searchResults.map((item, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => goToResult(item)}
-                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer"
+          {/* Channels Section */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold tracking-wider text-transparent bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text">
+                  CHANNELS
+                </h2>
+                <CreateChannelButton />
+              </div>
+              <nav className="space-y-0.5">
+                {channels?.map((channel) => (
+                  <Link
+                    key={channel.id}
+                    href={`/channels/${channel.id}`}
+                    className={`
+                      flex items-center px-3 py-2 text-sm rounded-lg transition-all duration-200
+                      ${router.query.id === channel.id 
+                        ? 'bg-yellow-500/10 text-yellow-400 shadow-sm' 
+                        : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
+                      }
+                    `}
                   >
-                    {item.type === 'channel' && (
-                      <div>
-                        <span className="text-yellow-400">#</span> {item.data.name || item.data.slug}
-                      </div>
-                    )}
-                    {item.type === 'user' && (
-                      <div>
-                        <span className="text-blue-400">@</span> {item.data.username}
-                      </div>
-                    )}
-                    {item.type === 'message' && (
-                      <div>
-                        <span className="text-green-400">Msg:</span> {item.data.message_text?.slice(0, 40)}...
-                      </div>
+                    <span className="mr-2 text-yellow-500/75">#</span>
+                    {channel.name}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+
+            {/* Direct Messages Section */}
+            <div className="p-4 mt-2">
+              <h2 className="text-sm font-bold tracking-wider text-transparent bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text mb-3">
+                DIRECT MESSAGES
+              </h2>
+              <nav className="space-y-0.5">
+                {users.map((otherUser) => (
+                  <div
+                    key={otherUser.id}
+                    className="flex items-center px-3 py-2 text-sm rounded-lg text-gray-400 hover:bg-gray-700/50 hover:text-gray-200 
+                      cursor-pointer transition-all duration-200"
+                    onClick={() => router.push(`/dms/${otherUser.id}`)}
+                  >
+                    <UserStatusDot status={otherUser.status} />
+                    <span className="ml-2 truncate flex-1">
+                      {otherUser.display_name || otherUser.username || otherUser.email}
+                    </span>
+                    {otherUser.last_seen && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        {formatDistanceToNow(new Date(otherUser.last_seen), { addSuffix: true })}
+                      </span>
                     )}
                   </div>
                 ))}
+              </nav>
+            </div>
+          </div>
+
+          {/* User Profile Section */}
+          <div className="shrink-0 p-4 border-t border-yellow-500/10 bg-gray-800/50 backdrop-blur-sm">
+            <div 
+              className="flex items-center space-x-3 p-2 rounded-xl cursor-pointer
+                hover:bg-gray-700/50 transition-all duration-200
+                group relative"
+              onClick={() => setShowProfilePopup(!showProfilePopup)}
+            >
+              <div className="w-10 h-10 rounded-lg bg-gray-700 overflow-hidden flex-shrink-0 ring-2 ring-yellow-500/20">
+                {avatarUrl ? (
+                  <img 
+                    src={avatarUrl} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400 font-medium">
+                    {username?.charAt(0)?.toUpperCase() || '?'}
+                  </div>
+                )}
               </div>
-            )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium truncate text-gray-200">
+                    {username || user?.email?.split('@')[0]}
+                  </span>
+                  <UserStatusDot status={status} />
+                </div>
+                <div className="text-xs text-gray-400 group-hover:text-yellow-400 transition-colors">
+                  Click to edit profile
+                </div>
+              </div>
+            </div>
           </div>
-          {/* Messages Container */}
-          <div className="flex-1 overflow-y-auto min-h-0">
-            {children}
-          </div>
-        </main>
-        {showLogs && <LogViewer />}
-      </div>
-    </>
+        </aside>
+      )}
+
+      {/* Main Content */}
+      <main className={`flex-1 flex flex-col relative ${isThreadOpen ? 'mr-80' : ''}`}>
+        {children}
+      </main>
+
+      {/* Logs Viewer */}
+      {showLogs && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50">
+          <LogViewer onClose={() => setShowLogs(false)} />
+        </div>
+      )}
+    </div>
   )
 }
 
