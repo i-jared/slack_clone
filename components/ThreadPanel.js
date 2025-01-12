@@ -1,8 +1,11 @@
 import { useEffect, useState, useRef, useContext, useCallback } from 'react'
-import { supabase } from '~/lib/Store'
+import { supabase } from '~/lib/supabaseClient'
 import Message from './Message'
 import UserContext from '~/lib/UserContext'
 import { v4 as uuidv4 } from 'uuid'
+import { logger } from '~/lib/logger'
+
+const threadLogger = logger.withPrefix('ThreadPanel')
 
 export default function ThreadPanel({ parentMessageId, onClose }) {
   const { user } = useContext(UserContext)
@@ -19,51 +22,43 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
     const fetchThreadMessages = async () => {
       try {
         setIsLoading(true)
+        threadLogger.debug('Fetching thread messages', { parentMessageId })
         const { data: children, error } = await supabase
           .from('messages')
-          .select(`
-            id,
-            channel_id,
-            user_id,
-            parent_id,
-            message_text,
-            attachments,
-            created_at,
-            updated_at
-          `)
+          .select('*')
           .eq('parent_id', parentMessageId)
           .order('created_at', { ascending: true })
 
         if (error) {
-          console.error('Error fetching thread messages:', error)
+          threadLogger.error('Error fetching thread messages:', error)
           setIsLoading(false)
           return
         }
         setThreadMessages(children || [])
         setIsLoading(false)
       } catch (err) {
-        console.error('Error loading thread:', err)
+        threadLogger.error('Error loading thread:', err)
         setIsLoading(false)
       }
     }
 
     const setupSubscription = () => {
-      const sub = supabase
+      subscription = supabase
         .channel(`thread:${parentMessageId}`)
         .on('postgres_changes', {
           event: '*',
           schema: 'public',
           table: 'messages',
           filter: `parent_id=eq.${parentMessageId}`
-        }, () => {
+        }, (payload) => {
+          threadLogger.debug('Thread subscription event', { eventType: payload.eventType, data: payload.new || payload.old })
           fetchThreadMessages()
         })
         .subscribe()
-      return sub
     }
 
     fetchThreadMessages()
-    subscription = setupSubscription()
+    setupSubscription()
 
     return () => {
       isMounted = false
@@ -71,24 +66,27 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
     }
   }, [parentMessageId])
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      postReply()
+  useEffect(() => {
+    if (threadMessages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
-  }
+  }, [threadMessages])
 
   const postReply = async () => {
-    if (!newReply.trim() || isSending) return
+    if (!newReply.trim() || isSending) {
+      threadLogger.warn('Ignoring empty or sending state in postReply')
+      return
+    }
     if (!user) {
-      console.error('No user to post thread reply.')
+      threadLogger.error('No user to post thread reply')
       return
     }
 
     setIsSending(true)
+    threadLogger.debug('Posting thread reply', { parentMessageId, newReply })
 
     try {
-      // fetch parent message to find channel_id
+      // fetch parent message
       const { data: parentMsg, error: parentErr } = await supabase
         .from('messages')
         .select('channel_id')
@@ -96,7 +94,7 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
         .single()
 
       if (parentErr || !parentMsg) {
-        console.error('Parent message not found or error:', parentErr)
+        threadLogger.error('Parent message not found or error', parentErr)
         setIsSending(false)
         return
       }
@@ -109,14 +107,10 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
         user_id: user.id,
         parent_id: parentMessageId,
         message_text: newReply.trim(),
-        attachments: null,
-        mentions: null,
-        metadata: {},
         created_at: now,
         updated_at: now
       }
 
-      // Insert
       const { data: inserted, error: insertErr } = await supabase
         .from('messages')
         .insert([payload])
@@ -124,62 +118,24 @@ export default function ThreadPanel({ parentMessageId, onClose }) {
         .single()
 
       if (insertErr) {
-        console.error('Error inserting thread message:', insertErr)
+        threadLogger.error('Error inserting thread message:', insertErr)
         setIsSending(false)
         return
       }
 
-      // Clear input
+      threadLogger.info('Thread message posted', { messageId: inserted.id })
       setNewReply('')
     } catch (err) {
-      console.error('Error posting thread reply:', err)
+      threadLogger.error('Error posting thread reply:', err)
     } finally {
       setIsSending(false)
     }
   }
 
-  useEffect(() => {
-    if (threadMessages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [threadMessages])
-
-  const handleSend = async (content) => {
-    const tempId = `temp-${uuidv4()}`
-    const tempMessage = {
-      id: tempId,
-      channel_id: parentMessage.channel_id,
-      user_id: user.id,
-      parent_id: parentMessage.id,
-      message_text: content,
-      attachments: {},
-      mentions: {},
-      metadata: {},
-      placeholder_1: null,
-      placeholder_2: {},
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-
-    addMessage(tempMessage)
-
-    try {
-      const { data: confirmedMessage, error } = await supabase
-        .from('messages')
-        .insert([tempMessage])
-        .select()
-        .single()
-
-      if (error) throw error
-
-      window.dispatchEvent(new CustomEvent('channelMessageConfirmed', {
-        detail: { tempId, confirmedMessage }
-      }))
-    } catch (error) {
-      console.error('Error sending message:', error)
-      window.dispatchEvent(new CustomEvent('channelMessageFailed', {
-        detail: { messageId: tempId }
-      }))
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      postReply()
     }
   }
 

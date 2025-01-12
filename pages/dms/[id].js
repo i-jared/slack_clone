@@ -1,176 +1,155 @@
-import { useEffect, useState, useRef, useContext } from 'react'
 import { useRouter } from 'next/router'
-import { supabase } from '~/lib/Store'
+import { useEffect, useState } from 'react'
+import { supabase } from '~/lib/supabaseClient'
+import { logger } from '~/lib/logger'
 import Layout from '~/components/Layout'
-import Message from '~/components/Message'
-import MessageInput from '~/components/MessageInput'
-import LoadingScreen from '~/components/LoadingScreen'
-import UserContext from '~/lib/UserContext'
-import { useDirectMessages } from '~/lib/useDirectMessages'
-import { v4 as uuidv4 } from 'uuid'
+import DirectMessage from '~/components/DirectMessage'
 
-export default function DirectMessagePage() {
+const dmPageLogger = logger.withPrefix('DMPage')
+
+export default function DMPage() {
   const router = useRouter()
-  const { id } = router.query
-  const { user } = useContext(UserContext)
+  const { id: roomId } = router.query
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [room, setRoom] = useState(null)
   const [recipient, setRecipient] = useState(null)
-  const [isLoadingRecipient, setIsLoadingRecipient] = useState(true)
-  const messagesEndRef = useRef(null)
-
-  const { messages: directMessages, isLoading: isLoadingMessages } = useDirectMessages({ recipientId: id })
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
 
   useEffect(() => {
-    if (!user) {
-      // Updated to /auth
-      router.push('/auth')
+    dmPageLogger.debug('DM page mounted', { roomId })
+    if (roomId) {
+      loadDMRoom()
     }
-  }, [user, router])
+  }, [roomId])
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [directMessages])
-
-  // Fetch recipient user data
-  useEffect(() => {
-    let isMounted = true
-
-    const fetchRecipient = async () => {
-      if (!id) return
-      setIsLoadingRecipient(true)
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('id, username, display_name, avatar_url, status')
-          .eq('id', id)
-          .single()
-
-        if (error) {
-          console.error('Error fetching recipient:', error)
-        }
-        if (data && isMounted) {
-          setRecipient(data)
-        }
-      } catch (err) {
-        console.error('Error:', err)
-      } finally {
-        if (isMounted) setIsLoadingRecipient(false)
-      }
-    }
-
-    fetchRecipient()
-    return () => {
-      isMounted = false
-    }
-  }, [id])
-
-  const handleSend = async (content) => {
-    const tempId = `temp-${uuidv4()}`
-    const tempMessage = {
-      id: tempId,
-      dm_room_id: roomId,
-      sender_id: user.id,
-      recipient_id: recipientId,
-      message_text: content,
-      attachments: {},
-      mentions: {},
-      metadata: {},
-      placeholder_1: null,
-      placeholder_2: {},
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-
-    addMessage(tempMessage)
-
+  async function loadDMRoom() {
     try {
-      const confirmedMessage = await sendDirectMessage({
-        message: content,
-        room_id: roomId,
-        sender_id: user.id,
-        recipient_id: recipientId
-      })
+      dmPageLogger.debug('Loading DM room details', { roomId })
 
-      window.dispatchEvent(new CustomEvent('dmMessageConfirmed', {
-        detail: { tempId, confirmedMessage }
-      }))
-    } catch (error) {
-      console.error('Error sending direct message:', error)
-      window.dispatchEvent(new CustomEvent('dmMessageFailed', {
-        detail: { messageId: tempId }
-      }))
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError) {
+        dmPageLogger.error('Error fetching auth user:', userError)
+        setError(userError.message)
+        setLoading(false)
+        return
+      }
+      if (!user) {
+        dmPageLogger.error('No logged-in user found')
+        setError('You must be logged in to view this DM.')
+        setLoading(false)
+        return
+      }
+
+      const { data: workspaces, error: workspaceError } = await supabase
+        .from('workspaces')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+
+      if (workspaceError) {
+        dmPageLogger.error('Error fetching user workspace:', workspaceError)
+        setError(workspaceError.message)
+        setLoading(false)
+        return
+      }
+      if (!workspaces || workspaces.length === 0) {
+        dmPageLogger.error('No workspace found for user', { user_id: user.id })
+        setError('No workspace found for user')
+        setLoading(false)
+        return
+      }
+      const workspace = workspaces[0]
+
+      const { data: roomData, error: roomError } = await supabase
+        .from('dm_rooms')
+        .select('*')
+        .eq('id', roomId)
+        .eq('workspace_id', workspace.id)
+        .single()
+
+      if (roomError) {
+        dmPageLogger.error('Error fetching DM room:', roomError)
+        setError(roomError.message)
+        setLoading(false)
+        return
+      }
+      if (!roomData) {
+        dmPageLogger.warn('DM room not found or not accessible', { roomId })
+        setError('DM room not found or not accessible')
+        setLoading(false)
+        return
+      }
+
+      dmPageLogger.debug('DM room loaded', roomData)
+      setRoom(roomData)
+
+      const { data: members, error: membersError } = await supabase
+        .from('dm_room_members')
+        .select(`
+          *,
+          user:users(*)
+        `)
+        .eq('dm_room_id', roomId)
+
+      if (membersError) {
+        dmPageLogger.error('Error fetching DM room members:', membersError)
+        setError(membersError.message)
+        setLoading(false)
+        return
+      }
+      if (!members || members.length === 0) {
+        dmPageLogger.warn('No members found in room', { roomId })
+        setError('No members found in this DM room')
+        setLoading(false)
+        return
+      }
+
+      const currentUserMember = members.find(m => m.user_id === user.id)
+      if (!currentUserMember) {
+        dmPageLogger.warn('User is not a member of this DM room', { userId: user.id, roomId })
+        setError('You do not have access to this DM room')
+        setLoading(false)
+        return
+      }
+
+      const otherMember = members.find(m => m.user_id !== user.id)
+      if (otherMember) {
+        dmPageLogger.debug('Identified recipient', { recipientId: otherMember.user_id })
+        setRecipient(otherMember.user)
+      }
+
+      setLoading(false)
+    } catch (err) {
+      dmPageLogger.error('Unexpected error loading DM room:', err)
+      setError(err.message)
+      setLoading(false)
     }
-  }
-
-  if (!user) {
-    return (
-      <Layout>
-        <LoadingScreen message="Checking authentication..." />
-      </Layout>
-    )
-  }
-
-  if (isLoadingRecipient) {
-    return (
-      <Layout>
-        <LoadingScreen message="Loading recipient data..." />
-      </Layout>
-    )
-  }
-
-  if (!recipient) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-screen">
-          <p className="text-gray-400">Recipient not found.</p>
-        </div>
-      </Layout>
-    )
   }
 
   return (
     <Layout>
-      <div className="relative h-screen flex flex-col">
-        {/* DM Header */}
-        <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
-          <h2 className="text-2xl font-orbitron text-yellow-400">
-            {recipient.display_name || recipient.username}
-          </h2>
-          <p className="text-sm text-gray-400 font-orbitron">Private conversation</p>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-          {isLoadingMessages ? (
-            <div className="flex items-center justify-center h-full">
-              <LoadingScreen message="Loading messages..." />
+      <div className="flex flex-col h-full">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-300"></div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full text-red-500">
+            {error}
+          </div>
+        ) : (
+          <>
+            <div className="border-b border-gray-200 px-4 py-3">
+              <h2 className="text-lg font-semibold text-yellow-400">
+                {recipient?.display_name || recipient?.username || 'Direct Message'}
+              </h2>
             </div>
-          ) : directMessages.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              No messages yet. Start the conversation!
+            <div className="flex-1 overflow-y-auto">
+              <DirectMessage roomId={roomId} recipient={recipient} />
             </div>
-          ) : (
-            <div className="py-4 space-y-2">
-              {directMessages.map((msg) => (
-                <Message
-                  key={msg.id}
-                  message={{
-                    ...msg,
-                    user: msg.sender, // unify usage with the <Message> component
-                    isDirect: true
-                  }}
-                />
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-
-        {/* MessageInput with a direct param */}
-        <MessageInput recipient_id={id} isDirect />
+          </>
+        )}
       </div>
     </Layout>
   )

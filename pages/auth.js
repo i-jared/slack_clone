@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
-import { supabase } from '~/lib/Store'
+import { supabase } from '~/lib/supabaseClient'
 import Link from 'next/link'
 import Head from 'next/head'
 
@@ -122,8 +122,18 @@ export default function AuthPage() {
       // Test Messages Table
       console.log('💬 [6/50] Testing Messages Table...')
       const { data: messagesSchema, error: messagesSchemaError } = await supabase
-        .from('messages')
-        .select('*')
+        .from('direct_messages')
+        .select(`
+          id,
+          message_text,
+          dm_room_id,
+          sender_id,
+          created_at,
+          updated_at,
+          attachments,
+          mentions,
+          metadata
+        `)
         .limit(1)
       console.log('📊 Messages Table Schema Result:', {
         success: !messagesSchemaError,

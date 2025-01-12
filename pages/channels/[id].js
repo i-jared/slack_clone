@@ -2,101 +2,229 @@ import { useState, useEffect, useContext, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { UserContext } from '../../lib/UserContext'
 import { useStore } from '../../lib/Store'
-import { useChannelMessages } from '../../lib/useChannelMessages'
+import { supabase } from '../../lib/supabaseClient'
 import Message from '../../components/Message'
 import MessageInput from '../../components/MessageInput'
 import Layout from '../../components/Layout'
+import { logger } from '~/lib/logger'
 import { v4 as uuidv4 } from 'uuid'
 
-const ChannelPage = () => {
+const channelLogger = logger.withPrefix('ChannelPage')
+
+export default function ChannelPage() {
   const router = useRouter()
   const { id } = router.query
   const { user } = useContext(UserContext)
-  const scrollToMessageId = router.query.scrollToMessage
+  const { channels } = useStore()
+
+  const [workspace, setWorkspace] = useState(null)
+  const [membership, setMembership] = useState(null)
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [messages, setMessages] = useState([])
   const [isThreadOpen, setIsThreadOpen] = useState(false)
   const [forceHideLoading, setForceHideLoading] = useState(false)
 
-  const { channels } = useStore()
-  const { messages, isLoading } = useChannelMessages({ channelId: id })
   const messagesEndRef = useRef(null)
   const shouldAutoScroll = useRef(true)
 
   useEffect(() => {
     if (!user) {
+      channelLogger.warn('No user found, redirecting to /auth')
       router.push('/auth')
     }
   }, [user, router])
 
-  // If scrollToMessageId is set, scroll to that message
   useEffect(() => {
-    if (scrollToMessageId && messages?.length) {
-      const timer = setTimeout(() => {
-        const elem = document.getElementById(`message-${scrollToMessageId}`)
-        if (elem) {
-          elem.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }
-      }, 500)
-      return () => clearTimeout(timer)
+    if (user?.id && id) {
+      loadWorkspaceAndValidate()
     }
-  }, [scrollToMessageId, messages])
+  }, [user?.id, id])
 
-  // Improved scroll to bottom function
-  const scrollToBottom = (behavior = 'smooth') => {
-    const messagesContainer = document.querySelector('.messages-container')
-    const endElement = messagesEndRef.current
-    if (messagesContainer && endElement) {
-      endElement.scrollIntoView({ behavior, block: 'end' })
-      messagesContainer.scrollTop = messagesContainer.scrollHeight
-      setTimeout(() => {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight
-      }, 50)
+  async function loadWorkspaceAndValidate() {
+    channelLogger.debug('loadWorkspaceAndValidate called', { channelId: id, userId: user?.id })
+    setLoading(true)
+    try {
+      // First get the channel to check if it's public/private
+      const { data: channel, error: channelError } = await supabase
+        .from('channels')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (channelError) throw channelError
+      if (!channel) {
+        setError('Channel not found')
+        setLoading(false)
+        return
+      }
+
+      // Get user's workspace
+      const { data: workspaces, error: workspaceError } = await supabase
+        .from('workspaces')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+
+      if (workspaceError) throw workspaceError
+      if (!workspaces?.length) {
+        setError('No workspace found')
+        setLoading(false)
+        return
+      }
+
+      const workspace = workspaces[0]
+      setWorkspace(workspace)
+
+      // Check membership
+      const { data: membership, error: membershipError } = await supabase
+        .from('channel_members')
+        .select('*')
+        .eq('channel_id', id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (membershipError) throw membershipError
+
+      // If not a member and channel is public, auto-join
+      if (!membership && !channel.is_private) {
+        channelLogger.debug('Auto-joining public channel', { channelId: id })
+        const { data: newMembership, error: joinError } = await supabase
+          .from('channel_members')
+          .insert([
+            {
+              id: uuidv4(),
+              channel_id: id,
+              user_id: user.id,
+              role: 'member',
+              metadata: { auto_joined: true }
+            }
+          ])
+          .select()
+          .single()
+
+        if (joinError) throw joinError
+        setMembership(newMembership)
+        channelLogger.info('Successfully auto-joined channel', { channelId: id })
+      } else if (!membership) {
+        setError('You are not a member of this channel')
+        setLoading(false)
+        return
+      } else {
+        setMembership(membership)
+      }
+
+      // Load messages
+      await loadChannelMessages(workspace.id, id)
+    } catch (err) {
+      channelLogger.error('Error in loadWorkspaceAndValidate:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
   }
 
-  // Scroll to bottom on initial load if no scrollToMessage
+  async function loadChannelMessages(workspaceId, channelId) {
+    channelLogger.debug('loadChannelMessages triggered', { workspaceId, channelId })
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          sender:user_id(*)
+        `)
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        channelLogger.error('Error fetching channel messages:', error)
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+
+      setMessages(data || [])
+      channelLogger.debug('Channel messages loaded', { count: data?.length })
+    } catch (err) {
+      channelLogger.error('Error in loadChannelMessages:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Realtime subscription for new messages in this channel
   useEffect(() => {
-    if (!scrollToMessageId && messages?.length && !isLoading) {
-      const timeouts = [0, 100, 500].map(delay => 
-        setTimeout(() => {
-          const container = document.querySelector('.messages-container')
-          if (container) {
-            container.scrollTop = container.scrollHeight
+    if (!membership || !id) {
+      return
+    }
+    channelLogger.debug('Setting up realtime subscription for channel messages', { channelId: id })
+
+    const subscription = supabase
+      .channel(`channel-messages:${id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `channel_id=eq.${id}`
+      }, async (payload) => {
+        channelLogger.debug('Realtime event for messages', payload)
+        
+        // For new messages, fetch the sender info
+        if (payload.eventType === 'INSERT') {
+          const { data: messageWithSender } = await supabase
+            .from('messages')
+            .select(`
+              *,
+              sender:user_id(*)
+            `)
+            .eq('id', payload.new.id)
+            .single()
+
+          if (messageWithSender) {
+            setMessages(prev => [...prev, messageWithSender])
           }
-        }, delay)
-      )
-      return () => timeouts.forEach(clearTimeout)
-    }
-  }, [messages?.length, isLoading, scrollToMessageId, id])
+        } else if (payload.eventType === 'UPDATE') {
+          const { data: messageWithSender } = await supabase
+            .from('messages')
+            .select(`
+              *,
+              sender:user_id(*)
+            `)
+            .eq('id', payload.new.id)
+            .single()
 
-  // Scroll when new messages arrive
+          if (messageWithSender) {
+            setMessages(prev => prev.map(m => m.id === messageWithSender.id ? messageWithSender : m))
+          }
+        } else if (payload.eventType === 'DELETE') {
+          setMessages(prev => prev.filter(m => m.id !== payload.old.id))
+        }
+      })
+      .subscribe()
+
+    return () => {
+      channelLogger.debug('Cleaning up channel subscription', { channelId: id })
+      subscription.unsubscribe()
+    }
+  }, [membership, id])
+
+  // Scrolling to bottom after messages
   useEffect(() => {
-    const lastMessage = messages?.[messages.length - 1]
-    if (lastMessage && !scrollToMessageId && !isLoading) {
-      if (lastMessage.user_id === user?.id || shouldAutoScroll.current) {
+    if (!loading) {
+      setTimeout(() => {
         scrollToBottom('smooth')
-      }
+      }, 300)
     }
-  }, [messages?.length, scrollToMessageId, isLoading, user?.id])
+  }, [messages, loading])
 
-  // Handle scroll events
-  const handleScroll = (e) => {
-    const container = e.target
-    const isNearBottom = (container.scrollHeight - (container.scrollTop + container.clientHeight)) < 100
-    shouldAutoScroll.current = isNearBottom
+  function scrollToBottom(behavior = 'smooth') {
+    const container = document.querySelector('.messages-container')
+    if (!container) return
+    messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' })
   }
 
-  // Listen for thread panel state changes
-  useEffect(() => {
-    const handleThreadState = (e) => {
-      if (e.detail?.isOpen !== undefined) {
-        setIsThreadOpen(e.detail.isOpen)
-      }
-    }
-    window.addEventListener('threadPanelState', handleThreadState)
-    return () => window.removeEventListener('threadPanelState', handleThreadState)
-  }, [])
-
-  // Add loading timeout
   useEffect(() => {
     const timer = setTimeout(() => {
       setForceHideLoading(true)
@@ -104,65 +232,38 @@ const ChannelPage = () => {
     return () => clearTimeout(timer)
   }, [])
 
-  const channel = channels.find((c) => c.id === id)
-  const channelName = channel?.name || channel?.slug || 'Channel'
-
-  const handleSend = async (content) => {
-    const tempId = `temp-${uuidv4()}`
-    const tempMessage = {
-      id: tempId,
-      channel_id: id,
-      user_id: user.id,
-      message_text: content,
-      attachments: {},
-      mentions: {},
-      metadata: {},
-      placeholder_1: null,
-      placeholder_2: {},
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-
-    addMessage(tempMessage)
-
-    try {
-      const confirmedMessage = await sendMessage({
-        message: content,
-        channel_id: id,
-        user_id: user.id
-      })
-
-      window.dispatchEvent(new CustomEvent('channelMessageConfirmed', {
-        detail: { tempId, confirmedMessage }
-      }))
-    } catch (error) {
-      console.error('Error sending message:', error)
-      window.dispatchEvent(new CustomEvent('channelMessageFailed', {
-        detail: { messageId: tempId }
-      }))
-    }
+  const handleScroll = (e) => {
+    const container = e.target
+    const nearBottom = (container.scrollHeight - (container.scrollTop + container.clientHeight)) < 100
+    shouldAutoScroll.current = nearBottom
   }
 
-  if (!user) {
-    return <Layout />
-  }
-
-  if (!channel) {
+  if (loading && !forceHideLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-screen">
-          <p className="text-gray-400">
-            Channel with ID <strong>{id}</strong> not found.
-          </p>
+          <p className="text-gray-400">Loading channel...</p>
         </div>
       </Layout>
     )
   }
 
+  if (error) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen text-red-400">
+          {error}
+        </div>
+      </Layout>
+    )
+  }
+
+  const channelObj = channels.find((c) => c.id === id)
+  const channelName = channelObj?.name || channelObj?.slug || 'Channel'
+
   return (
     <Layout>
       <div className="relative h-screen flex flex-col">
-        {/* Channel Header */}
         <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
           <h2 className="text-2xl font-orbitron text-yellow-400 flex items-center">
             <span className="text-gray-500 mr-2">#</span>
@@ -173,34 +274,24 @@ const ChannelPage = () => {
           </p>
         </div>
 
-        {/* Messages Area */}
-        <div 
-          className={`messages-container flex-1 overflow-y-auto scrollbar-hide ${isThreadOpen ? 'mr-80' : ''}`}
+        <div
+          className={`messages-container flex-1 overflow-y-auto ${isThreadOpen ? 'mr-80' : ''}`}
           onScroll={handleScroll}
         >
-          {isLoading && !forceHideLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-yellow-400 text-xl">Loading messages...</div>
-            </div>
-          ) : messages?.length === 0 ? (
+          {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full text-gray-400">
-              This is the start of the channel. Send a message to get the conversation going!
+              No messages. Start the conversation!
             </div>
           ) : (
             <div className="py-4 space-y-2 px-4 w-full max-w-6xl mx-auto mb-20">
-              {messages.map((message, i) => (
-                <Message
-                  key={message.id}
-                  message={message}
-                  isLatest={i === messages.length - 1}
-                />
+              {messages.map((msg, idx) => (
+                <Message key={msg.id} message={msg} isLatest={idx === messages.length - 1} />
               ))}
               <div ref={messagesEndRef} className="h-4" />
             </div>
           )}
         </div>
 
-        {/* Message Input */}
         <div className="absolute bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700">
           <MessageInput channel_id={id} />
         </div>
@@ -208,5 +299,3 @@ const ChannelPage = () => {
     </Layout>
   )
 }
-
-export default ChannelPage

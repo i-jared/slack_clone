@@ -1,6 +1,7 @@
-import { useState, useContext, useEffect } from 'react'
-import { supabase } from '~/lib/Store'
-import UserContext from '~/lib/UserContext'
+import { useState, useEffect, useContext } from 'react'
+import { supabase } from '~/lib/supabaseClient'
+import { UserContext } from '~/lib/UserContext'
+import { logger } from '~/lib/logger'
 
 export default function UserProfile() {
   const { user, signOut } = useContext(UserContext)

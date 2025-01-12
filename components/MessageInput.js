@@ -1,103 +1,85 @@
 import { useState, useContext } from 'react'
-import { UserContext } from '../lib/UserContext'
-import { sendMessage, sendDirectMessage } from '../lib/Store'
-import { createLogger } from '~/lib/logger'
+import { supabase } from '~/lib/supabaseClient'
+import { logger } from '~/lib/logger'
+import { UserContext } from '~/lib/UserContext'
+import { v4 as uuidv4 } from 'uuid'
 
-const logger = createLogger('MessageInput')
+const messageInputLogger = logger.withPrefix('MessageInput')
 
-export default function MessageInput({ channel_id, dm_room_id, isDirect = false, recipient_id }) {
-  const { user } = useContext(UserContext)
-  const [messageText, setMessageText] = useState('')
-  const [isSending, setIsSending] = useState(false)
+export default function MessageInput({ channel_id, dm_room_id, isDirect, recipient_id }) {
+  const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
-
-  logger.debug('MessageInput mounted:', {
-    channel_id,
-    dm_room_id,
-    isDirect,
-    recipient_id,
-    userId: user?.id
-  })
+  const { session } = useContext(UserContext)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const trimmedMessage = messageText.trim()
+    if (!message.trim()) {
+      messageInputLogger.warn('Ignoring empty message submit')
+      return
+    }
 
-    logger.debug('Handling message submit:', {
-      messageLength: trimmedMessage.length,
-      isDirect,
+    messageInputLogger.debug('handleSubmit triggered', {
+      messageLength: message.length,
       channel_id,
       dm_room_id,
+      isDirect,
       recipient_id
     })
 
-    if (!trimmedMessage) {
-      logger.debug('Empty message, skipping send')
-      return
-    }
-
-    if (!user) {
-      logger.error('Attempted to send message while not authenticated')
-      setError('Not authenticated')
-      return
-    }
-
-    setIsSending(true)
+    setSending(true)
     setError(null)
 
     try {
-      if (isDirect) {
-        if (!recipient_id && !dm_room_id) {
-          logger.error('Missing recipient info for DM:', { recipient_id, dm_room_id })
-          throw new Error('Need a recipient or dm_room_id for a direct message.')
-        }
-
-        logger.debug('Sending direct message:', {
-          messageLength: trimmedMessage.length,
-          recipient_id,
-          dm_room_id
-        })
-
-        await sendDirectMessage({
-          message: trimmedMessage,
-          room_id: dm_room_id,
-          sender_id: user.id,
-          recipient_id
-        })
-
-        logger.info('Direct message sent successfully')
-      } else {
-        if (!channel_id) {
-          logger.error('Missing channel_id for channel message')
-          throw new Error('No channel_id provided.')
-        }
-
-        logger.debug('Sending channel message:', {
-          messageLength: trimmedMessage.length,
-          channel_id,
-          user_id: user.id
-        })
-
-        await sendMessage({
-          message: trimmedMessage,
-          channel_id,
-          user_id: user.id
-        })
-
-        logger.info('Channel message sent successfully')
+      if (!session?.user) {
+        messageInputLogger.error('Not authenticated, cannot send message')
+        throw new Error('Not authenticated')
       }
 
-      setMessageText('')
+      if (isDirect) {
+        messageInputLogger.debug('Sending direct message flow')
+        const { data, error: dmError } = await supabase
+          .from('direct_messages')
+          .insert([{
+            id: uuidv4(),
+            dm_room_id,
+            sender_id: session.user.id,
+            message_text: message.trim(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }])
+
+        if (dmError) {
+          messageInputLogger.error('Error sending direct message:', dmError)
+          throw dmError
+        }
+        messageInputLogger.info('Direct message sent successfully', { dmRoomId: dm_room_id })
+      } else {
+        messageInputLogger.debug('Sending channel message flow')
+        const { data, error: chanError } = await supabase
+          .from('messages')
+          .insert([{
+            id: uuidv4(),
+            message_text: message.trim(),
+            user_id: session.user.id,
+            channel_id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }])
+
+        if (chanError) {
+          messageInputLogger.error('Error sending channel message:', chanError)
+          throw chanError
+        }
+        messageInputLogger.info('Channel message sent successfully', { channel_id })
+      }
+
+      setMessage('')
     } catch (err) {
-      logger.error('Error sending message:', err, {
-        isDirect,
-        channel_id,
-        dm_room_id,
-        recipient_id
-      })
+      messageInputLogger.error('Error sending message:', err)
       setError(err.message)
     } finally {
-      setIsSending(false)
+      setSending(false)
     }
   }
 
@@ -106,24 +88,17 @@ export default function MessageInput({ channel_id, dm_room_id, isDirect = false,
       <input
         type="text"
         placeholder={`Message ${isDirect ? 'this user' : 'channel'}...`}
-        value={messageText}
-        onChange={(e) => {
-          const newValue = e.target.value
-          logger.debug('Message input changed:', { 
-            length: newValue.length,
-            isEmpty: !newValue.trim()
-          })
-          setMessageText(newValue)
-        }}
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
         className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-l focus:outline-none focus:ring-2 focus:ring-yellow-500"
-        disabled={isSending}
+        disabled={sending}
       />
       <button
         type="submit"
-        disabled={isSending || !messageText.trim()}
+        disabled={sending || !message.trim()}
         className="px-4 py-2 bg-yellow-500 text-gray-900 rounded-r hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isSending ? 'Sending...' : 'Send'}
+        {sending ? 'Sending...' : 'Send'}
       </button>
       {error && (
         <div className="text-red-500 text-sm ml-2">

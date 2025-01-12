@@ -1,11 +1,11 @@
 import { useState, useEffect, useContext, useRef } from 'react'
-import { supabase } from '../lib/Store'
+import { supabase } from '~/lib/supabaseClient'
 import { UserContext } from '../lib/UserContext'
 import data from '@emoji-mart/data'
 import Picker from '@emoji-mart/react'
-import { createLogger } from '~/lib/logger'
+import { logger } from '~/lib/logger'
 
-const logger = createLogger('MessageReactions')
+const messageLogger = logger.withPrefix('MessageReactions')
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🚀', '👏']
 
@@ -14,37 +14,86 @@ export default function MessageReactions({ message }) {
   const [reactions, setReactions] = useState({})
   const [showPicker, setShowPicker] = useState(false)
   const pickerRef = useRef(null)
+  const [workspace, setWorkspace] = useState(null)
 
-  logger.debug('Initializing MessageReactions', {
-    messageId: message.id,
-    userId: user?.id,
-    initialReactions: message.reactions
-  })
-
-  // Initialize reactions from message
+  // Get workspace
   useEffect(() => {
-    if (message.reactions) {
-      logger.info('Setting initial reactions from message', message.reactions)
-      setReactions(message.reactions)
+    const getWorkspace = async () => {
+      if (!user?.id) return
+
+      const { data: workspace, error } = await supabase
+        .from('workspaces')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single()
+
+      if (error) {
+        messageLogger.error('Error fetching workspace:', error)
+        return
+      }
+
+      setWorkspace(workspace)
     }
-  }, [message.reactions])
+
+    getWorkspace()
+  }, [user?.id])
+
+  // Load initial reactions
+  useEffect(() => {
+    const loadReactions = async () => {
+      if (!message?.id) return
+
+      const { data, error } = await supabase
+        .from('message_reactions')
+        .select('emoji, user_id, metadata')
+        .eq('message_id', message.id)
+
+      if (error) {
+        messageLogger.error('Error loading reactions:', error)
+        return
+      }
+
+      // Group reactions by emoji
+      const groupedReactions = data.reduce((acc, reaction) => {
+        if (!acc[reaction.emoji]) {
+          acc[reaction.emoji] = { users: [] }
+        }
+        acc[reaction.emoji].users.push(reaction.user_id)
+        return acc
+      }, {})
+
+      setReactions(groupedReactions)
+    }
+
+    loadReactions()
+  }, [message?.id])
 
   // Handle clicks outside emoji picker
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (pickerRef.current && !pickerRef.current.contains(event.target)) {
-        logger.debug('Clicked outside emoji picker, closing')
         setShowPicker(false)
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    if (showPicker) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      if (showPicker) {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showPicker])
 
   // Subscribe to reaction changes
   useEffect(() => {
-    logger.info('Setting up reaction subscription for message:', message.id)
+    if (!message?.id) return
+
+    messageLogger.info('Setting up reaction subscription for message:', message.id)
 
     const subscription = supabase
       .channel(`message-reactions-${message.id}`)
@@ -54,14 +103,14 @@ export default function MessageReactions({ message }) {
         table: 'message_reactions',
         filter: `message_id=eq.${message.id}`
       }, (payload) => {
-        logger.debug('Received reaction change', {
+        messageLogger.debug('Received reaction change', {
           eventType: payload.eventType,
           data: payload.new || payload.old
         })
 
         if (payload.eventType === 'INSERT') {
           const { emoji, user_id } = payload.new
-          logger.info('Adding new reaction', { emoji, userId: user_id })
+          messageLogger.info('Adding new reaction', { emoji, userId: user_id })
           
           setReactions(prev => {
             const existing = prev[emoji] || { users: [] }
@@ -74,7 +123,7 @@ export default function MessageReactions({ message }) {
           })
         } else if (payload.eventType === 'DELETE') {
           const { emoji, user_id } = payload.old
-          logger.info('Removing reaction', { emoji, userId: user_id })
+          messageLogger.info('Removing reaction', { emoji, userId: user_id })
           
           setReactions(prev => {
             const existing = prev[emoji]
@@ -95,20 +144,33 @@ export default function MessageReactions({ message }) {
       .subscribe()
 
     return () => {
-      logger.info('Cleaning up reaction subscription')
+      messageLogger.info('Cleaning up reaction subscription')
       subscription.unsubscribe()
     }
-  }, [message.id])
+  }, [message?.id])
 
   const toggleReaction = async (emoji) => {
-    logger.debug('Toggling reaction', { emoji, userId: user.id })
+    if (!user?.id || !workspace?.id) {
+      messageLogger.error('Missing user or workspace')
+      return
+    }
+
+    messageLogger.debug('Toggling reaction', { 
+      emoji, 
+      userId: user.id,
+      messageId: message.id,
+      workspaceId: workspace.id,
+      currentState: {
+        hasReacted: reactions[emoji]?.users.includes(user.id),
+        reactionCount: reactions[emoji]?.users.length || 0
+      }
+    })
     
-    const existing = reactions[emoji]
-    const hasReacted = existing?.users.includes(user.id)
+    const hasReacted = reactions[emoji]?.users.includes(user.id)
 
     try {
       if (hasReacted) {
-        logger.info('Removing existing reaction', { emoji })
+        messageLogger.info('Removing existing reaction', { emoji })
         await supabase
           .from('message_reactions')
           .delete()
@@ -118,15 +180,15 @@ export default function MessageReactions({ message }) {
             emoji
           })
       } else {
-        logger.info('Adding new reaction', { emoji })
+        messageLogger.info('Adding new reaction', { emoji })
         await supabase
           .from('message_reactions')
           .insert([{
             id: crypto.randomUUID(),
             message_id: message.id,
             user_id: user.id,
+            workspace_id: workspace.id,
             emoji,
-            message_type: 'channel',
             metadata: {
               client: 'web',
               timestamp: new Date().toISOString()
@@ -134,13 +196,12 @@ export default function MessageReactions({ message }) {
           }])
       }
     } catch (error) {
-      logger.error('Error toggling reaction:', error)
-      console.error('Error toggling reaction:', error)
+      messageLogger.error('Error toggling reaction:', error)
     }
   }
 
   const onEmojiSelect = (emoji) => {
-    logger.debug('Emoji selected from picker', emoji)
+    messageLogger.debug('Emoji selected from picker', emoji)
     toggleReaction(emoji.native)
     setShowPicker(false)
   }
@@ -177,7 +238,7 @@ export default function MessageReactions({ message }) {
       {/* Add Reaction Button */}
       <button
         onClick={() => {
-          logger.debug('Toggling emoji picker')
+          messageLogger.debug('Toggling emoji picker')
           setShowPicker(!showPicker)
         }}
         className="p-1.5 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-all duration-200"

@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
-import { supabase } from '~/lib/Store'
+import { supabase } from '~/lib/supabaseClient'
 import Layout from '~/components/Layout'
 import Head from 'next/head'
-import { createLogger } from '~/lib/logger'
+import { logger } from '~/lib/logger'
 
-const logger = createLogger('ProfilePage')
+const profileLogger = logger.withPrefix('Profile')
 
 export default function ProfilePage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
@@ -20,42 +20,54 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState(null)
 
   useEffect(() => {
-    const getProfile = async () => {
-      try {
-        logger.debug('Fetching user profile...')
-        const { data: { user: authUser } } = await supabase.auth.getUser()
-        
-        if (!authUser) {
-          logger.error('No authenticated user found')
-          router.push('/auth')
+    profileLogger.debug('Profile component mounted')
+    checkUser()
+  }, [])
+
+  async function checkUser() {
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError) {
+        profileLogger.error('Error fetching user:', authError)
+        setError(authError.message)
+        return
+      }
+
+      if (user) {
+        // Fetch additional user data from database
+        const { data: userData, error: dbError } = await supabase
+          .from('users')
+          .select(`
+            id,
+            email,
+            username,
+            display_name,
+            avatar_url
+          `)
+          .eq('id', user.id)
+          .single()
+
+        if (dbError) {
+          profileLogger.error('Error fetching user data:', dbError)
+          setError(dbError.message)
           return
         }
 
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', authUser.id)
-          .single()
-
-        if (profileError) {
-          logger.error('Error fetching profile:', profileError)
-          throw profileError
-        }
-
-        logger.debug('Profile fetched successfully:', profile)
-        setUser(authUser)
-        setEmail(profile.email || '')
-        setUsername(profile.username || '')
-        setDisplayName(profile.display_name || '')
-        setAvatarUrl(profile.avatar_url || '')
-      } catch (error) {
-        logger.error('Error in getProfile:', error)
-        setError(error.message)
+        profileLogger.debug('User data loaded:', userData)
+        setUser(user)
+        setEmail(userData.email || '')
+        setUsername(userData.username || '')
+        setDisplayName(userData.display_name || '')
+        setAvatarUrl(userData.avatar_url || '')
       }
+    } catch (err) {
+      profileLogger.error('Unexpected error:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
-
-    getProfile()
-  }, [router])
+  }
 
   const handleAvatarUpload = async (event) => {
     try {
@@ -66,14 +78,14 @@ export default function ProfilePage() {
       const fileExt = file.name.split('.').pop()
       const filePath = `${user.id}-${Math.random()}.${fileExt}`
 
-      logger.debug('Uploading avatar:', { fileName: file.name, fileSize: file.size })
+      profileLogger.debug('Uploading avatar:', { fileName: file.name, fileSize: file.size })
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file)
 
       if (uploadError) {
-        logger.error('Avatar upload error:', uploadError)
+        profileLogger.error('Avatar upload error:', uploadError)
         throw uploadError
       }
 
@@ -81,12 +93,12 @@ export default function ProfilePage() {
         .from('avatars')
         .getPublicUrl(filePath)
 
-      logger.debug('Avatar uploaded successfully:', publicUrl)
+      profileLogger.debug('Avatar uploaded successfully:', publicUrl)
 
       await updateProfile({ avatar_url: publicUrl })
       setAvatarUrl(publicUrl)
     } catch (error) {
-      logger.error('Error in handleAvatarUpload:', error)
+      profileLogger.error('Error in handleAvatarUpload:', error)
       setError(error.message)
     } finally {
       setUploading(false)
@@ -99,7 +111,7 @@ export default function ProfilePage() {
       setError(null)
       setSuccess(null)
 
-      logger.debug('Updating profile with:', updates)
+      profileLogger.debug('Updating profile with:', updates)
 
       const { error } = await supabase
         .from('users')
@@ -107,14 +119,14 @@ export default function ProfilePage() {
         .eq('id', user.id)
 
       if (error) {
-        logger.error('Profile update error:', error)
+        profileLogger.error('Profile update error:', error)
         throw error
       }
 
-      logger.debug('Profile updated successfully')
+      profileLogger.debug('Profile updated successfully')
       setSuccess('Profile updated successfully!')
     } catch (error) {
-      logger.error('Error in updateProfile:', error)
+      profileLogger.error('Error in updateProfile:', error)
       setError(error.message)
     } finally {
       setLoading(false)
@@ -133,14 +145,14 @@ export default function ProfilePage() {
 
   const handleSignOut = async () => {
     try {
-      logger.debug('Signing out user...')
+      profileLogger.debug('Signing out user...')
       const { error } = await supabase.auth.signOut()
       if (error) throw error
       
-      logger.debug('User signed out successfully')
+      profileLogger.debug('User signed out successfully')
       router.push('/auth')
     } catch (error) {
-      logger.error('Error signing out:', error)
+      profileLogger.error('Error signing out:', error)
       setError(error.message)
     }
   }

@@ -182,16 +182,26 @@ USING ( owner_id = auth.uid() );
 
 -- Create workspace_members table
 CREATE TABLE public.workspace_members (
-  id             UUID PRIMARY KEY,
-  workspace_id   UUID NOT NULL,
-  user_id        UUID NOT NULL,
-  role           TEXT,
-  permissions    JSONB,
-  metadata       JSONB,
-  placeholder_1  TEXT,
+  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workspace_id   UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  user_id        UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  role           TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'member', 'guest')),
+  permissions    JSONB DEFAULT '{}',
+  metadata       JSONB DEFAULT '{}',
   created_at     TIMESTAMP DEFAULT now(),
   updated_at     TIMESTAMP DEFAULT now()
 );
+
+-- Add unique constraint to prevent duplicate memberships
+ALTER TABLE public.workspace_members 
+ADD CONSTRAINT workspace_members_workspace_user_unique 
+UNIQUE (workspace_id, user_id);
+
+-- Add indexes for performance
+CREATE INDEX idx_workspace_members_workspace_id ON public.workspace_members(workspace_id);
+CREATE INDEX idx_workspace_members_user_id ON public.workspace_members(user_id);
+CREATE INDEX idx_workspace_members_role ON public.workspace_members(role);
+CREATE INDEX idx_workspace_members_created_at ON public.workspace_members(created_at);
 
 ALTER TABLE public.workspace_members ENABLE ROW LEVEL SECURITY;
 
@@ -215,22 +225,26 @@ USING ( user_id = auth.uid() );
 
 -- Create channels table
 CREATE TABLE public.channels (
-  id               UUID PRIMARY KEY,
-  workspace_id     UUID NOT NULL,
-  channel_type     TEXT DEFAULT 'text',
-  slug             TEXT NOT NULL,
-  name             TEXT,
-  description      TEXT,
-  is_private       BOOLEAN DEFAULT false,
-  metadata         JSONB,
-  placeholder_1    TEXT,
-  placeholder_2    JSONB,
-  created_by       UUID NOT NULL,
-  created_at       TIMESTAMP DEFAULT now(),
-  updated_at       TIMESTAMP DEFAULT now()
+  id             UUID PRIMARY KEY,
+  name           TEXT NOT NULL,
+  slug           TEXT NOT NULL,
+  workspace_id   UUID NOT NULL,
+  created_by     UUID NOT NULL,
+  description    TEXT,
+  is_private     BOOLEAN DEFAULT false,
+  metadata       JSONB,
+  created_at     TIMESTAMP DEFAULT now(),
+  updated_at     TIMESTAMP DEFAULT now(),
+  FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
 );
 
 ALTER TABLE public.channels ENABLE ROW LEVEL SECURITY;
+
+-- Add indexes for performance
+CREATE INDEX idx_channels_workspace_id ON public.channels(workspace_id);
+CREATE INDEX idx_channels_created_by ON public.channels(created_by);
+CREATE INDEX idx_channels_created_at ON public.channels(created_at);
 
 -- Channels RLS Policies
 CREATE POLICY "Select all channels"
@@ -239,30 +253,38 @@ USING (true);
 
 CREATE POLICY "Insert channel"
 ON public.channels FOR INSERT TO authenticated
-WITH CHECK ( created_by = auth.uid() );
+WITH CHECK (created_by = auth.uid());
 
 CREATE POLICY "Update channel if creator"
 ON public.channels FOR UPDATE TO authenticated
-USING ( created_by = auth.uid() )
-WITH CHECK ( created_by = auth.uid() );
+USING (created_by = auth.uid())
+WITH CHECK (created_by = auth.uid());
 
 CREATE POLICY "Delete channel if creator"
 ON public.channels FOR DELETE TO authenticated
-USING ( created_by = auth.uid() );
+USING (created_by = auth.uid());
 
 -- Create channel_members table
 CREATE TABLE public.channel_members (
   id             UUID PRIMARY KEY,
   channel_id     UUID NOT NULL,
   user_id        UUID NOT NULL,
-  role           TEXT,
-  metadata       JSONB,
-  placeholder_1  TEXT,
+  role           TEXT NOT NULL CHECK (role IN ('member', 'moderator', 'admin')),
+  metadata       JSONB NOT NULL DEFAULT '{}',
   created_at     TIMESTAMP DEFAULT now(),
-  updated_at     TIMESTAMP DEFAULT now()
+  updated_at     TIMESTAMP DEFAULT now(),
+  FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE (channel_id, user_id)
 );
 
 ALTER TABLE public.channel_members ENABLE ROW LEVEL SECURITY;
+
+-- Add indexes for performance
+CREATE INDEX idx_channel_members_channel_id ON public.channel_members(channel_id);
+CREATE INDEX idx_channel_members_user_id ON public.channel_members(user_id);
+CREATE INDEX idx_channel_members_role ON public.channel_members(role);
+CREATE INDEX idx_channel_members_created_at ON public.channel_members(created_at);
 
 -- Channel Members RLS Policies
 CREATE POLICY "Select all channel_members"
@@ -271,26 +293,28 @@ USING (true);
 
 CREATE POLICY "Insert channel membership"
 ON public.channel_members FOR INSERT TO authenticated
-WITH CHECK ( user_id = auth.uid() );
+WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY "Update channel membership if self"
 ON public.channel_members FOR UPDATE TO authenticated
-USING ( user_id = auth.uid() )
-WITH CHECK ( user_id = auth.uid() );
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY "Delete channel membership if self"
 ON public.channel_members FOR DELETE TO authenticated
-USING ( user_id = auth.uid() );
+USING (user_id = auth.uid());
 
 -- Create dm_rooms table
 CREATE TABLE public.dm_rooms (
   id             UUID PRIMARY KEY,
-  room_name      TEXT,
+  room_name      TEXT NOT NULL,
   is_group       BOOLEAN DEFAULT false,
+  workspace_id   UUID NOT NULL,
   metadata       JSONB,
   placeholder_1  TEXT,
   created_at     TIMESTAMP DEFAULT now(),
-  updated_at     TIMESTAMP DEFAULT now()
+  updated_at     TIMESTAMP DEFAULT now(),
+  FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
 );
 
 ALTER TABLE public.dm_rooms ENABLE ROW LEVEL SECURITY;
@@ -313,19 +337,43 @@ CREATE POLICY "Delete dm_room open"
 ON public.dm_rooms FOR DELETE TO authenticated
 USING (true);
 
+-- Add indexes for performance
+CREATE INDEX idx_dm_rooms_workspace_id ON public.dm_rooms(workspace_id);
+CREATE INDEX idx_dm_rooms_created_at ON public.dm_rooms(created_at);
+
+-- Add foreign key constraints to dm_room_members
+ALTER TABLE public.dm_room_members
+ADD CONSTRAINT fk_dm_room_members_room
+FOREIGN KEY (dm_room_id) REFERENCES dm_rooms(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_dm_room_members_user
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+-- Add indexes for dm_room_members
+CREATE INDEX idx_dm_room_members_room_id ON public.dm_room_members(dm_room_id);
+CREATE INDEX idx_dm_room_members_user_id ON public.dm_room_members(user_id);
+
 -- Create dm_room_members table
 CREATE TABLE public.dm_room_members (
   id             UUID PRIMARY KEY,
   dm_room_id     UUID NOT NULL,
   user_id        UUID NOT NULL,
-  role           TEXT,
-  metadata       JSONB,
+  role           TEXT NOT NULL CHECK (role IN ('admin', 'member')),
+  metadata       JSONB NOT NULL DEFAULT '{}',
   placeholder_1  TEXT,
   created_at     TIMESTAMP DEFAULT now(),
-  updated_at     TIMESTAMP DEFAULT now()
+  updated_at     TIMESTAMP DEFAULT now(),
+  FOREIGN KEY (dm_room_id) REFERENCES dm_rooms(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE (dm_room_id, user_id)
 );
 
 ALTER TABLE public.dm_room_members ENABLE ROW LEVEL SECURITY;
+
+-- Add indexes for performance
+CREATE INDEX idx_dm_room_members_dm_room_id ON public.dm_room_members(dm_room_id);
+CREATE INDEX idx_dm_room_members_user_id ON public.dm_room_members(user_id);
+CREATE INDEX idx_dm_room_members_role ON public.dm_room_members(role);
+CREATE INDEX idx_dm_room_members_created_at ON public.dm_room_members(created_at);
 
 -- DM Room Members RLS Policies
 CREATE POLICY "Select all dm_room_members"
@@ -334,16 +382,16 @@ USING (true);
 
 CREATE POLICY "Insert dm_room_members"
 ON public.dm_room_members FOR INSERT TO authenticated
-WITH CHECK ( user_id = auth.uid() );
+WITH CHECK (true);
 
 CREATE POLICY "Update dm_room_members if self"
 ON public.dm_room_members FOR UPDATE TO authenticated
-USING ( user_id = auth.uid() )
-WITH CHECK ( user_id = auth.uid() );
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY "Delete dm_room_members if self"
 ON public.dm_room_members FOR DELETE TO authenticated
-USING ( user_id = auth.uid() );
+USING (user_id = auth.uid());
 
 -- Create direct_messages table
 CREATE TABLE public.direct_messages (
@@ -382,19 +430,34 @@ USING ( sender_id = auth.uid() );
 
 -- Create messages table
 CREATE TABLE public.messages (
-  id              UUID PRIMARY KEY,
-  channel_id      UUID NOT NULL,
-  user_id         UUID NOT NULL,
-  parent_id       UUID,
-  message_text    TEXT,
-  attachments     JSONB,
-  mentions        JSONB,
-  metadata        JSONB,
-  placeholder_1   TEXT,
-  placeholder_2   JSONB,
-  created_at      TIMESTAMP DEFAULT now(),
-  updated_at      TIMESTAMP DEFAULT now()
+  id                   UUID PRIMARY KEY,
+  channel_id           UUID NOT NULL,
+  user_id              UUID NOT NULL,
+  workspace_id         UUID NOT NULL,
+  message_text         TEXT NOT NULL,
+  parent_id            UUID,
+  thread_id            UUID,
+  edited_at            TIMESTAMP,
+  edited_by            UUID,
+  attachments          JSONB DEFAULT '{}',
+  mentions             JSONB DEFAULT '{}',
+  metadata             JSONB DEFAULT '{}',
+  is_pinned           BOOLEAN DEFAULT false,
+  reactions           JSONB DEFAULT '{}',
+  reply_count         INTEGER DEFAULT 0,
+  is_announcement     BOOLEAN DEFAULT false,
+  created_at          TIMESTAMP DEFAULT now(),
+  updated_at          TIMESTAMP DEFAULT now(),
+  FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+  FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Add indexes
+CREATE INDEX idx_messages_created_at ON public.messages(created_at);
+CREATE INDEX idx_messages_thread_id ON public.messages(thread_id);
+CREATE INDEX idx_messages_user_id ON public.messages(user_id);
+CREATE INDEX idx_messages_workspace_id ON public.messages(workspace_id);
 
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 

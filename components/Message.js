@@ -1,19 +1,19 @@
-import { useState, useContext, useEffect } from 'react'
+import { useState, useContext, useEffect, useRef } from 'react'
 import { formatDistanceToNow, format } from 'date-fns'
-import { supabase, useStore } from '~/lib/Store'
+import { supabase } from '~/lib/supabaseClient'
+import { useStore } from '~/lib/Store'
 import { UserContext } from '../lib/UserContext'
 import MessageReactions from './MessageReactions'
 import ThreadPanel from './ThreadPanel'
 import classNames from 'classnames'
 import Avatar from './Avatar'
-import { createLogger } from '~/lib/logger'
+import { logger } from '~/lib/logger'
 import { DotsHorizontalIcon, ReplyIcon, StarIcon } from '@heroicons/react/outline'
 
-const logger = createLogger('Message')
+const messageLogger = logger.withPrefix('Message')
 
 const formatDate = (date) => {
   try {
-    logger.debug('Formatting date:', { date })
     const messageDate = new Date(date)
     const now = new Date()
     const isToday = messageDate.toDateString() === now.toDateString()
@@ -22,96 +22,63 @@ const formatDate = (date) => {
       ? format(messageDate, 'h:mm a')
       : format(messageDate, 'MMM d, h:mm a')
     
-    logger.debug('Date formatted:', { 
-      original: date, 
-      formatted: formattedDate, 
-      isToday 
-    })
     return formattedDate
   } catch (error) {
-    logger.error('Error formatting date:', error, { date })
+    messageLogger.error('Error formatting date:', error, { date })
     return 'Unknown time'
   }
 }
 
 export default function Message({ message, showThread = false, onThreadClick }) {
   const { user } = useContext(UserContext)
-  const { users } = useStore()
-  const [replyCount, setReplyCount] = useState(message.reply_count || 0)
-  const [isThreadVisible, setIsThreadVisible] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
-  const [showActions, setShowActions] = useState(false)
-  const [messageUser, setMessageUser] = useState(null)
+  const [messageUser, setMessageUser] = useState(message.sender)
+  const [editor, setEditor] = useState(message.editor)
+  const messageLogger = useLogger('Message')
 
-  logger.debug('Message component mounted:', {
-    messageId: message.id,
-    userId: message.user?.id,
-    username: message.user?.username,
-    displayName: message.user?.display_name,
-    messageUserId: message.user_id,
-    isAnnouncement: message.is_announcement,
-    isAiGenerated: message.is_ai_generated,
-    isPinned: message.is_pinned,
-    hasThread: !!message.thread_id,
-    replyCount,
-    showThread,
-    deliveryStatus: message.delivery_status,
-    fullMessage: message
-  })
-
-  useEffect(() => {
-    const fetchMessageUser = async () => {
-      logger.debug('Fetching message user data...', {
-        messageUserId: message.user_id,
-        existingUser: message.user
-      })
-
-      // First check if the user is in the users list from the store
-      const storeUser = users.find(u => u.id === message.user_id)
-      if (storeUser) {
-        logger.info('Found user in store:', storeUser)
-        setMessageUser(storeUser)
-        return
-      }
-
-      // If not in store and no user data in message, fetch from database
-      if (message.user_id && (!message.user || (!message.user.username && !message.user.display_name))) {
-        try {
-          logger.debug('Fetching user from database:', { userId: message.user_id })
-          const { data, error } = await supabase
-            .from('users')
-            .select('id, username, display_name, avatar_url, email')
-            .eq('id', message.user_id)
-            .single()
-
-          if (error) {
-            logger.error('Error fetching user:', error)
-            throw error
-          }
-          
-          if (data) {
-            logger.info('Successfully fetched user:', data)
-            setMessageUser(data)
-          } else {
-            logger.warn('No user found in database:', { userId: message.user_id })
-          }
-        } catch (error) {
-          logger.error('Error in fetchMessageUser:', error)
-        }
-      }
+  const messageClasses = classNames(
+    'px-4 py-2 hover:bg-gray-800/50 relative group',
+    {
+      'bg-yellow-900/10': message.is_announcement,
+      'border-l-4 border-yellow-400': message.is_pinned,
+      'opacity-75': message.delivery_status === 'pending'
     }
+  )
 
-    fetchMessageUser()
-  }, [message.user_id, message.user, users])
+  const handleReaction = async (emoji) => {
+    try {
+      const existingReaction = message.reactions?.[user.id]
+      if (existingReaction === emoji) {
+        // Remove reaction
+        const newReactions = { ...message.reactions }
+        delete newReactions[user.id]
+        await supabase
+          .from('messages')
+          .update({ reactions: newReactions })
+          .eq('id', message.id)
+      } else {
+        // Add/update reaction
+        const newReactions = { 
+          ...message.reactions,
+          [user.id]: emoji
+        }
+        await supabase
+          .from('messages')
+          .update({ reactions: newReactions })
+          .eq('id', message.id)
+      }
+    } catch (error) {
+      messageLogger.error('Error updating reaction:', error)
+    }
+  }
 
   // Subscribe to user updates
   useEffect(() => {
     if (!message.user_id) {
-      logger.debug('No user_id for subscription')
+      messageLogger.debug('No user_id for subscription')
       return
     }
 
-    logger.debug('Setting up user subscription:', { userId: message.user_id })
+    messageLogger.debug('Setting up user subscription:', { userId: message.user_id })
 
     const userSubscription = supabase
       .channel(`user-${message.user_id}`)
@@ -121,7 +88,7 @@ export default function Message({ message, showThread = false, onThreadClick }) 
         table: 'users',
         filter: `id=eq.${message.user_id}`
       }, (payload) => {
-        logger.info('User update received:', {
+        messageLogger.info('User update received:', {
           userId: message.user_id,
           changes: payload.new
         })
@@ -130,14 +97,15 @@ export default function Message({ message, showThread = false, onThreadClick }) 
       .subscribe()
 
     return () => {
-      logger.debug('Cleaning up user subscription:', { userId: message.user_id })
+      messageLogger.debug('Cleaning up user subscription:', { userId: message.user_id })
       supabase.removeChannel(userSubscription)
     }
   }, [message.user_id])
 
+  // Mark message as read
   useEffect(() => {
     if (message.read_by && !message.read_by.includes(user.id)) {
-      logger.info('Marking message as read:', {
+      messageLogger.info('Marking message as read:', {
         messageId: message.id,
         userId: user.id,
         currentReadBy: message.read_by
@@ -150,9 +118,9 @@ export default function Message({ message, showThread = false, onThreadClick }) 
         .eq('id', message.id)
         .then(({ data, error }) => {
           if (error) {
-            logger.error('Error marking message as read:', error)
+            messageLogger.error('Error marking message as read:', error)
           } else {
-            logger.info('Message marked as read successfully:', {
+            messageLogger.info('Message marked as read successfully:', {
               messageId: message.id,
               newReadBy,
               response: data
@@ -162,136 +130,98 @@ export default function Message({ message, showThread = false, onThreadClick }) 
     }
   }, [message.id, message.read_by, user.id])
 
-  const messageClasses = classNames(
-    'message-container group px-6 py-3 hover:bg-gray-800/30 transition-all duration-200',
-    {
-      'bg-yellow-500/5 hover:bg-yellow-500/10': message.is_announcement,
-      'bg-blue-500/5 hover:bg-blue-500/10': message.is_ai_generated,
-      'bg-green-500/5 hover:bg-green-500/10': message.is_pinned,
-      'opacity-75': message.edited_at,
-      'opacity-50': message.delivery_status === 'pending',
-      'bg-red-500/5 hover:bg-red-500/10': message.delivery_status === 'failed'
-    }
-  )
-
-  const handleThreadClick = () => {
-    logger.debug('Thread button clicked:', {
-      messageId: message.id,
-      threadId: message.thread_id,
-      wasVisible: isThreadVisible,
-      replyCount
-    })
-    
-    setIsThreadVisible(!isThreadVisible)
-    if (onThreadClick) {
-      onThreadClick(message)
-    }
-  }
-
-  const displayUser = messageUser || message.user || users.find(u => u.id === message.user_id)
-  const displayName = displayUser?.display_name || displayUser?.username || displayUser?.email || 'Unknown User'
-
-  logger.debug('Rendering message with:', {
-    displayUser,
-    displayName,
-    messageStatus: message.delivery_status,
-    isEdited: !!message.edited_at,
-    hasAttachments: !!message.attachments && Object.keys(message.attachments).length > 0,
-    hasMentions: !!message.mentions && Object.keys(message.mentions).length > 0
-  })
-
   return (
-    <div 
-      className={messageClasses}
-      onMouseEnter={() => {
-        setIsHovered(true)
-        setShowActions(true)
-        logger.debug('Message hovered', { messageId: message.id })
-      }}
-      onMouseLeave={() => {
-        setIsHovered(false)
-        setShowActions(false)
-        logger.debug('Message unhovered', { messageId: message.id })
-      }}
-    >
-      <div className="flex items-start space-x-4">
-        <Avatar url={displayUser?.avatar_url} className="mt-0.5 w-10 h-10" />
+    <div className={messageClasses}>
+      <div className="flex items-start space-x-3">
+        {/* Avatar */}
+        <img
+          src={messageUser?.avatar_url || '/default-avatar.png'}
+          alt={messageUser?.display_name || 'User'}
+          className="w-10 h-10 rounded-full"
+        />
+
         <div className="flex-1 min-w-0">
+          {/* Header */}
           <div className="flex items-center space-x-2">
-            <span className="font-medium text-yellow-400 hover:text-yellow-300 cursor-pointer transition-colors">
-              {displayName}
+            <span className="font-bold text-yellow-400">
+              {messageUser?.display_name || messageUser?.username || 'Unknown User'}
             </span>
-            <span className="text-xs text-gray-400 font-medium">
-              {formatDate(message.created_at)}
-            </span>
-            {message.edited_at && (
-              <span className="text-xs text-gray-500 italic">(edited)</span>
+            {messageUser?.is_bot && (
+              <span className="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-300 rounded">
+                BOT
+              </span>
             )}
             {message.is_announcement && (
-              <span className="px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded-full font-medium">
-                Announcement
+              <span className="px-1.5 py-0.5 text-xs bg-yellow-500/20 text-yellow-300 rounded">
+                ANNOUNCEMENT
               </span>
             )}
-            {message.is_pinned && (
-              <StarIcon className="w-4 h-4 text-yellow-400" />
-            )}
-          </div>
-          
-          <div className="mt-1">
-            {message.is_ai_generated && (
-              <div className="text-xs text-blue-400 mb-1.5 flex items-center font-medium">
-                <span className="mr-1.5">🤖</span>
-                Generated by {message.ai_model || 'AI'}
-              </div>
-            )}
-            <div className="text-gray-100 whitespace-pre-wrap break-words leading-relaxed">
-              {message.message_text}
-            </div>
-            {message.attachments && Object.keys(message.attachments).length > 0 && (
-              <div className="mt-3 space-y-2">
-                {/* Render attachments */}
-              </div>
-            )}
-            {message.mentions && Object.keys(message.mentions).length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {/* Render mentions */}
-              </div>
+            <span className="text-xs text-gray-400">
+              {new Date(message.created_at).toLocaleTimeString()}
+            </span>
+            {message.edited_at && (
+              <span className="text-xs text-gray-500 italic">
+                (edited by {editor?.display_name || editor?.username || 'Unknown'})
+              </span>
             )}
           </div>
 
-          <div className="mt-3 flex items-center space-x-4">
-            <MessageReactions message={message} />
-            {message.thread_id && (
-              <button 
-                className="inline-flex items-center space-x-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors group"
-                onClick={handleThreadClick}
-              >
-                <ReplyIcon className="w-4 h-4 group-hover:text-yellow-400 transition-colors" />
-                <span>{replyCount} {replyCount === 1 ? 'reply' : 'replies'}</span>
-              </button>
-            )}
-            {message.delivery_status === 'failed' && (
-              <span className="text-sm text-red-400 flex items-center space-x-1">
-                <span>•</span>
-                <span>Failed to send. Please try again.</span>
-              </span>
-            )}
-            {showActions && (
-              <div className="ml-auto flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="p-1 rounded-lg hover:bg-gray-700/50 text-gray-400 hover:text-gray-200 transition-colors">
-                  <DotsHorizontalIcon className="w-5 h-5" />
-                </button>
-              </div>
-            )}
+          {/* Message Content */}
+          <div className="mt-1 text-gray-300 whitespace-pre-wrap break-words">
+            {message.message_text}
           </div>
+
+          {/* Attachments */}
+          {message.attachments && Object.keys(message.attachments).length > 0 && (
+            <div className="mt-2 space-y-2">
+              {Object.entries(message.attachments).map(([id, attachment]) => (
+                <div key={id} className="flex items-center space-x-2">
+                  <DocumentIcon className="w-5 h-5 text-gray-400" />
+                  <a
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline"
+                  >
+                    {attachment.name}
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Thread Info */}
+          {message.reply_count > 0 && !showThread && (
+            <button
+              onClick={() => onThreadClick?.(message)}
+              className="mt-2 flex items-center space-x-1 text-sm text-gray-400 hover:text-gray-300"
+            >
+              <ChatIcon className="w-4 h-4" />
+              <span>{message.reply_count} replies</span>
+            </button>
+          )}
+
+          {/* Reactions */}
+          <div className="mt-2">
+            <MessageReactions message={message} />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          {message.user_id === user.id && (
+            <button
+              onClick={() => onThreadClick?.(message)}
+              className="p-1 hover:bg-gray-700 rounded"
+            >
+              <ChatIcon className="w-4 h-4 text-gray-400" />
+            </button>
+          )}
+          {message.is_pinned && (
+            <PinIcon className="w-4 h-4 text-yellow-400 ml-2" />
+          )}
         </div>
       </div>
-
-      {showThread && isThreadVisible && message.thread_id && (
-        <div className="mt-4 ml-14 pl-4 border-l-2 border-yellow-500/10">
-          <ThreadPanel messageId={message.thread_id} />
-        </div>
-      )}
     </div>
   )
 }

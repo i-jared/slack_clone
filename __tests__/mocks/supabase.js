@@ -1,17 +1,25 @@
 export const mockMessages = [
   {
-    id: 1,
+    id: '1',
+    message_text: 'Test message 1',
+    dm_room_id: 'test-room-id',
     sender_id: '2a219aa0-843f-40c2-9a57-75cfdfc12348',
-    recipient_id: 'e29fda9e-9e1e-44b0-8a59-c4e8b54e0333',
-    message: 'Test message 1',
-    inserted_at: '2025-01-07T22:48:18.041067+00'
+    created_at: '2025-01-07T22:48:18.041067+00',
+    updated_at: '2025-01-07T22:48:18.041067+00',
+    attachments: {},
+    mentions: {},
+    metadata: {}
   },
   {
-    id: 2,
+    id: '2',
+    message_text: 'Test message 2',
+    dm_room_id: 'test-room-id',
     sender_id: 'e29fda9e-9e1e-44b0-8a59-c4e8b54e0333',
-    recipient_id: '2a219aa0-843f-40c2-9a57-75cfdfc12348',
-    message: 'Test message 2',
-    inserted_at: '2025-01-07T22:49:18.041067+00'
+    created_at: '2025-01-07T22:49:18.041067+00',
+    updated_at: '2025-01-07T22:49:18.041067+00',
+    attachments: {},
+    mentions: {},
+    metadata: {}
   }
 ]
 

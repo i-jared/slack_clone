@@ -1,0 +1,39 @@
+# Console Logs for DM Room Creation Debug
+Started: 2025-01-12T16:58:37.148Z
+
+## Log Sequence
+[2025-01-12T16:58:37.148Z] [Store] [INFO] [ensureDefaultChannels]
+Using existing channels for workspace: @acef9f3-b712-4d31-a508-6722e6387d5f
+
+[Store.js:519] Fetching channels for workspace: @acef9f3-b712-4d31-a508-6722e6387d5f
+
+[Store.js:530] Raw channel data: ▶ (3) [{…}, {…}, {…}]
+[Store.js:530] Raw channel data: ▶ (3) [{…}, {…}, {…}]
+
+[Layout.js:271] goToResult called with: {result: {…}, currentUser: {…}}
+
+[Layout.js:281] Starting DM room flow for user: {targetUser: {…}, currentUser: {…}}
+
+[Layout.js:292] Found DM room members: Array(0), error: null
+
+[Layout.js:300] DM Room IDs: []
+
+[Layout.js:309] Found other member: {otherMember: null, error: null}
+
+[Layout.js:320] Creating new DM room for users: {user1: {…}, user2: {…}}
+
+[Layout.js:327] Creating room with name: undefined and reeceharding
+
+[Layout.js:330] Generated room ID: 3201f663-f01f-422a-b294-3ed0bfc7cf61
+
+[fetch.js:30] POST https://xqgrstzwrlbctvsvl.supabase.co/rest/v1/dm_rooms?columns=*
+400 (Bad Request)
+
+[Layout.js:346] DM room creation result: {newRoom: null, error: {…}}
+
+[Layout.js:473] Error in create DM room: {
+  code: "PGRST204",
+  details: null,
+  hint: null,
+  message: "Could not find the 'created_by' column of 'dm_rooms' in the schema cache!"
+} 
