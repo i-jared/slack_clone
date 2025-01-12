@@ -371,9 +371,6 @@ const Layout = ({ children, hideSidebar = false }) => {
     <div className="flex h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100">
       <Head>
         <title>Talk2D2 - Your Galactic Chat Hub</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
-        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
 
       {!hideSidebar && (

@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react'
 import { formatDistanceToNow, format } from 'date-fns'
-import { supabase } from '~/lib/Store'
+import { supabase, useStore } from '~/lib/Store'
 import { UserContext } from '../lib/UserContext'
 import MessageReactions from './MessageReactions'
 import ThreadPanel from './ThreadPanel'
@@ -30,21 +30,81 @@ const formatDate = (date) => {
 
 export default function Message({ message, showThread = false, onThreadClick }) {
   const { user } = useContext(UserContext)
+  const { users } = useStore()
   const [replyCount, setReplyCount] = useState(message.reply_count || 0)
   const [isThreadVisible, setIsThreadVisible] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [showActions, setShowActions] = useState(false)
+  const [messageUser, setMessageUser] = useState(null)
 
   logger.debug('Rendering message:', {
     messageId: message.id,
     userId: message.user?.id,
     username: message.user?.username,
+    displayName: message.user?.display_name,
+    messageUserId: message.user_id,
     isAnnouncement: message.is_announcement,
     isAiGenerated: message.is_ai_generated,
     isPinned: message.is_pinned,
     hasThread: !!message.thread_id,
-    replyCount
+    replyCount,
+    fullMessage: message
   })
+
+  useEffect(() => {
+    const fetchMessageUser = async () => {
+      // First check if the user is in the users list from the store
+      const storeUser = users.find(u => u.id === message.user_id)
+      if (storeUser) {
+        setMessageUser(storeUser)
+        logger.info('Found user in store:', storeUser)
+        return
+      }
+
+      // If not in store and no user data in message, fetch from database
+      if (message.user_id && (!message.user || (!message.user.username && !message.user.display_name))) {
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('id, username, display_name, avatar_url, email')
+            .eq('id', message.user_id)
+            .single()
+
+          if (error) throw error
+          if (data) {
+            setMessageUser(data)
+            logger.info('Fetched message user:', data)
+          }
+        } catch (error) {
+          logger.error('Error fetching message user:', error)
+        }
+      }
+    }
+
+    fetchMessageUser()
+  }, [message.user_id, message.user, users])
+
+  // Subscribe to user updates
+  useEffect(() => {
+    if (!message.user_id) return
+
+    const userSubscription = supabase
+      .channel(`user-${message.user_id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'users',
+        filter: `id=eq.${message.user_id}`
+      }, (payload) => {
+        logger.info('User updated:', payload.new)
+        setMessageUser(payload.new)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(userSubscription)
+    }
+  }, [message.user_id])
 
   useEffect(() => {
     if (message.read_by && !message.read_by.includes(user.id)) {
@@ -97,6 +157,9 @@ export default function Message({ message, showThread = false, onThreadClick }) 
     }
   }
 
+  const displayUser = messageUser || message.user || users.find(u => u.id === message.user_id)
+  const displayName = displayUser?.display_name || displayUser?.username || displayUser?.email || 'Unknown User'
+
   return (
     <div 
       className={messageClasses}
@@ -112,11 +175,11 @@ export default function Message({ message, showThread = false, onThreadClick }) 
       }}
     >
       <div className="flex items-start space-x-4">
-        <Avatar url={message.user?.avatar_url} className="mt-0.5 w-10 h-10" />
+        <Avatar url={displayUser?.avatar_url} className="mt-0.5 w-10 h-10" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
             <span className="font-medium text-yellow-400 hover:text-yellow-300 cursor-pointer transition-colors">
-              {message.user?.display_name || message.user?.username || 'Unknown User'}
+              {displayName}
             </span>
             <span className="text-xs text-gray-400 font-medium">
               {formatDate(message.created_at)}
