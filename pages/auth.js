@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '~/lib/Store'
+import Link from 'next/link'
 
 // Test cases:
 // 1. Basic signup with email/password
@@ -17,6 +18,8 @@ export default function AuthPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
   const [testResults, setTestResults] = useState([])
@@ -166,11 +169,11 @@ export default function AuthPage() {
         password,
         options: {
           data: {
-            username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, ''),
-            display_name: email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, ''),
+            username: username.toLowerCase().replace(/[^a-z0-9]/g, ''),
+            display_name: displayName || username,
             status: 'OFFLINE',
             updated_at: new Date().toISOString(),
-            email: email // This matches your schema
+            email: email
           }
         }
       }
@@ -478,21 +481,59 @@ export default function AuthPage() {
       <h1 className="text-2xl font-bold mb-4">Sign Up</h1>
       <form onSubmit={handleSignUp} className="space-y-4">
         <div>
-          <label className="block text-sm mb-1">Email</label>
+          <label htmlFor="email" className="block text-sm mb-1">Email</label>
           <input
+            id="email"
+            name="email"
             type="email"
-            className="w-full p-2 rounded bg-gray-700 focus:outline-none"
+            autoComplete="email"
+            className="w-full p-2 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={loading}
             required
+            spellCheck="false"
           />
         </div>
         <div>
-          <label className="block text-sm mb-1">Password</label>
+          <label htmlFor="username" className="block text-sm mb-1">Username</label>
           <input
+            id="username"
+            name="username"
+            type="text"
+            autoComplete="username"
+            className="w-full p-2 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={loading}
+            required
+            placeholder="Choose a unique username"
+            spellCheck="false"
+          />
+        </div>
+        <div>
+          <label htmlFor="displayName" className="block text-sm mb-1">Display Name</label>
+          <input
+            id="displayName"
+            name="displayName"
+            type="text"
+            autoComplete="name"
+            className="w-full p-2 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            disabled={loading}
+            placeholder="How you'll appear in the app"
+            spellCheck="false"
+          />
+        </div>
+        <div>
+          <label htmlFor="password" className="block text-sm mb-1">Password</label>
+          <input
+            id="password"
+            name="password"
             type="password"
-            className="w-full p-2 rounded bg-gray-700 focus:outline-none"
+            autoComplete="new-password"
+            className="w-full p-2 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={loading}
@@ -525,7 +566,7 @@ export default function AuthPage() {
       )}
 
       <p className="mt-4 text-sm text-gray-400">
-        Already have an account? <a href="/auth" className="text-yellow-400 underline">Log In</a>
+        Already have an account? <Link href="/auth" className="text-yellow-400 underline">Log In</Link>
       </p>
     </div>
   )
