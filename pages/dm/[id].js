@@ -104,7 +104,42 @@ export default function DMPage() {
             )
           `)
           .eq('user_id', user.id)
-          .eq('other_user_id', otherUserId)
+
+          const { data: otherUserExistingRooms, error: otherUserRoomError } = await supabase
+          .from('dm_room_members')
+          .select(`
+            dm_room:dm_rooms (
+              id,
+              created_at,
+              updated_at
+            )
+          `)
+          .eq('user_id',otherUserId)
+
+        // Find common room between users by comparing room IDs
+        let commonRoom = null
+        if (existingRooms && otherUserExistingRooms) {
+          const userRoomIds = existingRooms.map(r => r.dm_room.id)
+          const otherUserRoomIds = otherUserExistingRooms.map(r => r.dm_room.id)
+          
+          // Find first room ID that exists in both arrays
+          const commonRoomId = userRoomIds.find(id => otherUserRoomIds.includes(id))
+          
+          if (commonRoomId) {
+            commonRoom = existingRooms.find(r => r.dm_room.id === commonRoomId).dm_room
+            dmLogger.info('Found existing common DM room:', {
+              roomId: commonRoomId,
+              timestamp: new Date().toISOString()
+            })
+          }
+        }
+
+        let room;
+
+        // Set the found common room or proceed to create new one
+        if (commonRoom) {
+          room = commonRoom
+        }
 
         if (roomError) {
           dmLogger.error('DM room query error:', {
@@ -129,7 +164,6 @@ export default function DMPage() {
           timestamp: new Date().toISOString()
         })
 
-        let room = existingRooms?.[0]?.dm_room
         if (!room) {
           dmLogger.info('No existing DM room found, creating new one...')
           
@@ -150,8 +184,8 @@ export default function DMPage() {
           const { error: createMembersError } = await supabase
             .from('dm_room_members')
             .insert([
-              { dm_room_id: newRoom.id, user_id: user.id, other_user_id: otherUserId },
-              { dm_room_id: newRoom.id, user_id: otherUserId, other_user_id: user.id }
+              { dm_room_id: newRoom.id, user_id: user.id},
+              { dm_room_id: newRoom.id, user_id: otherUserId}
             ])
 
           if (createMembersError) {

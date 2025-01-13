@@ -13,7 +13,7 @@ function uuidv4() {
 
 const createChannelLogger = logger.withPrefix('CreateChannelButton')
 
-export default function CreateChannelButton() {
+export default function CreateChannelButton({ workspaceId }) {
   const { user } = useContext(UserContext)
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState('')
@@ -59,7 +59,7 @@ export default function CreateChannelButton() {
         .from('channels')
         .insert([{
           id: channelId,
-          workspace_id: '00000000-0000-0000-0000-000000000001', // example fallback
+          workspace_id: workspaceId,
           channel_type: 'text',
           name,
           slug,

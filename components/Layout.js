@@ -6,6 +6,7 @@ import { logger } from '~/lib/logger'
 import { useStore } from '~/lib/Store'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import CreateChannelButton from './CreateChannelButton'
 
 const layoutLogger = logger.withPrefix('Layout')
 
@@ -256,13 +257,17 @@ export default function Layout({ children, hideSidebar=false }) {
                   role: ch.channel_role
                 })),
                 workspaceRole: ws.role,
+                canCreateChannel: ['admin', 'owner'].includes(ws.role),
                 timestamp: new Date().toISOString()
               })
               return (
                 <div key={ws.id} className="p-4 border-b border-gray-700">
-                  <h2 className="text-sm font-semibold text-gray-400 mb-2">
-                    {ws.name}
-                  </h2>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-sm font-semibold text-gray-400">
+                      {ws.name}
+                    </h2>
+                    {['admin', 'owner'].includes(ws.role) && <CreateChannelButton workspaceId={ws.id} />}
+                  </div>
                   <div className="space-y-1">
                     {workspaceChannels.map(ch => (
                       <button
