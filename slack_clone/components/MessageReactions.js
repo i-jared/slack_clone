@@ -14,25 +14,27 @@ export default function MessageReactions({ message }) {
 
   useEffect(() => {
     if (!message?.id || !message?.workspace_id) return
+
+    async function loadReactions() {
+      try {
+        reactionLogger.debug('Loading reactions for message:', message.id)
+        const { data, error } = await supabase
+          .from('message_reactions')
+          .select('*')
+          .eq('message_id', message.id)
+          .eq('workspace_id', message.workspace_id)
+        if (error) {
+          reactionLogger.error('Error fetching reactions:', error)
+        } else {
+          setReactions(data || [])
+        }
+      } catch (err) {
+        reactionLogger.error('Exception in loadReactions:', err)
+      }
+    }
+
     loadReactions()
   }, [message?.id, message?.workspace_id])
-
-  const loadReactions = async () => {
-    try {
-      reactionLogger.debug('Loading reactions for message:', message?.id)
-      const { data, error } = await supabase
-        .from('message_reactions')
-        .select('*')
-        .eq('message_id', message.id)
-      if (error) {
-        reactionLogger.error('Error fetching reactions:', error)
-      } else {
-        setReactions(data || [])
-      }
-    } catch (err) {
-      reactionLogger.error('Exception in loadReactions:', err)
-    }
-  }
 
   const toggleReaction = async (emoji) => {
     if (!user) return
@@ -41,6 +43,7 @@ export default function MessageReactions({ message }) {
     // check if user has reaction
     const existing = reactions.find(r => r.user_id === user.id && r.emoji === emoji)
     if (existing) {
+      // remove
       reactionLogger.debug('Removing existing reaction:', existing)
       const { error } = await supabase
         .from('message_reactions')
@@ -57,6 +60,7 @@ export default function MessageReactions({ message }) {
         id: crypto.randomUUID(),
         message_id: message.id,
         user_id: user.id,
+        workspace_id: message.workspace_id,
         emoji
       }
       reactionLogger.debug('Inserting new reaction:', insertObj)
@@ -74,7 +78,7 @@ export default function MessageReactions({ message }) {
   return (
     <div className="flex items-center space-x-2">
       <div className="flex space-x-1">
-        {reactions.map((r) => (
+        {reactions.map(r => (
           <button
             key={r.id}
             onClick={() => toggleReaction(r.emoji)}

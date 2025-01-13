@@ -1,110 +1,55 @@
-import { useState, useContext } from 'react'
-import { supabase } from '~/lib/supabaseClient'
-import { logger } from '~/lib/logger'
-import { UserContext } from '~/lib/UserContext'
-import { v4 as uuidv4 } from 'uuid'
+import React, { useState } from 'react'
 
-const messageInputLogger = logger.withPrefix('MessageInput')
-
-export default function MessageInput({ channel_id, dm_room_id, isDirect, recipient_id }) {
+export default function MessageInput({ onSendMessage, placeholder = 'Type a message...' }) {
   const [message, setMessage] = useState('')
-  const [sending, setSending] = useState(false)
-  const [error, setError] = useState(null)
-  const { session } = useContext(UserContext)
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
-    if (!message.trim()) {
-      messageInputLogger.warn('Ignoring empty message submit')
-      return
-    }
-
-    messageInputLogger.debug('handleSubmit triggered', {
-      messageLength: message.length,
-      channel_id,
-      dm_room_id,
-      isDirect,
-      recipient_id
-    })
-
-    setSending(true)
-    setError(null)
-
-    try {
-      if (!session?.user) {
-        messageInputLogger.error('Not authenticated, cannot send message')
-        throw new Error('Not authenticated')
-      }
-
-      if (isDirect) {
-        messageInputLogger.debug('Sending direct message flow')
-        const { data, error: dmError } = await supabase
-          .from('direct_messages')
-          .insert([{
-            id: uuidv4(),
-            dm_room_id,
-            sender_id: session.user.id,
-            message_text: message.trim(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }])
-
-        if (dmError) {
-          messageInputLogger.error('Error sending direct message:', dmError)
-          throw dmError
-        }
-        messageInputLogger.info('Direct message sent successfully', { dmRoomId: dm_room_id })
-      } else {
-        messageInputLogger.debug('Sending channel message flow')
-        const { data, error: chanError } = await supabase
-          .from('messages')
-          .insert([{
-            id: uuidv4(),
-            message_text: message.trim(),
-            user_id: session.user.id,
-            channel_id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }])
-
-        if (chanError) {
-          messageInputLogger.error('Error sending channel message:', chanError)
-          throw chanError
-        }
-        messageInputLogger.info('Channel message sent successfully', { channel_id })
-      }
-
+    if (message.trim()) {
+      onSendMessage(message.trim())
       setMessage('')
-    } catch (err) {
-      messageInputLogger.error('Error sending message:', err)
-      setError(err.message)
-    } finally {
-      setSending(false)
+    }
+  }
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      handleSubmit(e)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center p-4 bg-gray-800">
-      <input
-        type="text"
-        placeholder={`Message ${isDirect ? 'this user' : 'channel'}...`}
+    <form onSubmit={handleSubmit} className="relative">
+      <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-l focus:outline-none focus:ring-2 focus:ring-yellow-500"
-        disabled={sending}
+        onKeyPress={handleKeyPress}
+        placeholder={placeholder}
+        className="w-full px-4 py-2 bg-gray-700 text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"
+        rows={1}
+        style={{ minHeight: '44px', maxHeight: '120px' }}
       />
       <button
         type="submit"
-        disabled={sending || !message.trim()}
-        className="px-4 py-2 bg-yellow-500 text-gray-900 rounded-r hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={!message.trim()}
+        className={`absolute right-2 bottom-2 p-2 rounded-lg transition-colors ${
+          message.trim()
+            ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900'
+            : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+        }`}
       >
-        {sending ? 'Sending...' : 'Send'}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z"
+            clipRule="evenodd"
+          />
+        </svg>
       </button>
-      {error && (
-        <div className="text-red-500 text-sm ml-2">
-          {error}
-        </div>
-      )}
     </form>
   )
 }

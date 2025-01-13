@@ -1,8 +1,3 @@
--- We rewrite the entire setup.sql to ensure that:
---   channel_members(channel_id) -> channels(id) 
---   workspace_members(workspace_id) -> workspaces(id)
--- This helps supabase see the relationship so we can do "channel:channels!inner"
-
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TYPE public.app_permission AS ENUM ('channels.delete', 'messages.delete');
@@ -42,14 +37,16 @@ CREATE TABLE public.workspace_members (
   updated_at     timestamptz DEFAULT now()
 );
 
--- FOREIGN KEY FOR workspace_members
+-- Ensure FK referencing workspaces.id
 ALTER TABLE public.workspace_members
   ADD CONSTRAINT workspace_members_workspace_id_fkey
-  FOREIGN KEY (workspace_id) REFERENCES public.workspaces (id) ON DELETE CASCADE;
+  FOREIGN KEY (workspace_id) REFERENCES public.workspaces (id)
+  ON DELETE CASCADE;
 
 ALTER TABLE public.workspace_members
   ADD CONSTRAINT workspace_members_user_id_fkey
-  FOREIGN KEY (user_id) REFERENCES public.users (id) ON DELETE CASCADE;
+  FOREIGN KEY (user_id) REFERENCES public.users (id)
+  ON DELETE CASCADE;
 
 -- CHANNELS
 DROP TABLE IF EXISTS public.channels CASCADE;
@@ -152,29 +149,97 @@ ALTER TABLE public.dm_rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dm_room_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.direct_messages ENABLE ROW LEVEL SECURITY;
 
--- For simplicity, let's do wide open read, with restricted writes
--- You can refine these
-CREATE POLICY "Public read of users" ON public.users FOR SELECT TO public USING (true);
-CREATE POLICY "User can update self" ON public.users FOR UPDATE TO authenticated USING (id = auth.uid()) WITH CHECK (id = auth.uid());
+-- Basic wide open read, restricted writes
+CREATE POLICY "Public read on users" ON public.users
+FOR SELECT TO public
+USING (true);
 
-CREATE POLICY "Public read of workspaces" ON public.workspaces FOR SELECT TO public USING (true);
-CREATE POLICY "Insert workspace" ON public.workspaces FOR INSERT TO authenticated WITH CHECK (owner_id = auth.uid());
-CREATE POLICY "Update workspace if owner" ON public.workspaces FOR UPDATE TO authenticated USING (owner_id = auth.uid()) WITH CHECK (owner_id = auth.uid());
+CREATE POLICY "User can update own user row" ON public.users
+FOR UPDATE TO authenticated
+USING (id = auth.uid())
+WITH CHECK (id = auth.uid());
 
-CREATE POLICY "Public read of channels" ON public.channels FOR SELECT TO public USING (true);
-CREATE POLICY "Insert channel" ON public.channels FOR INSERT TO authenticated WITH CHECK (created_by = auth.uid());
-CREATE POLICY "Update channel if creator" ON public.channels FOR UPDATE TO authenticated USING (created_by = auth.uid()) WITH CHECK (created_by = auth.uid());
+CREATE POLICY "Public read on workspaces" ON public.workspaces
+FOR SELECT TO public
+USING (true);
 
-CREATE POLICY "Public read of channel_members" ON public.channel_members FOR SELECT TO public USING (true);
-CREATE POLICY "Insert channel_members" ON public.channel_members FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "Update channel_members if self" ON public.channel_members FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Insert workspace" ON public.workspaces
+FOR INSERT TO authenticated
+WITH CHECK (owner_id = auth.uid());
 
--- etc. for the rest. This is enough for the front-end to see them.
+CREATE POLICY "Update workspace if owner" ON public.workspaces
+FOR UPDATE TO authenticated
+USING (owner_id = auth.uid())
+WITH CHECK (owner_id = auth.uid());
 
--- handle_new_user for auto creation
+CREATE POLICY "Public read on channels" ON public.channels
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "Insert channel" ON public.channels
+FOR INSERT TO authenticated
+WITH CHECK (created_by = auth.uid());
+
+CREATE POLICY "Update channel if creator" ON public.channels
+FOR UPDATE TO authenticated
+USING (created_by = auth.uid())
+WITH CHECK (created_by = auth.uid());
+
+CREATE POLICY "Public read channel_members" ON public.channel_members
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "Insert channel_members" ON public.channel_members
+FOR INSERT TO authenticated
+WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Update channel_members if self" ON public.channel_members
+FOR UPDATE TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+-- messages
+CREATE POLICY "Public read messages" ON public.messages
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "Insert messages if user is sender" ON public.messages
+FOR INSERT TO authenticated
+WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Update own message" ON public.messages
+FOR UPDATE TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+-- direct_messages
+CREATE POLICY "Public read direct_messages" ON public.direct_messages
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "Insert direct_messages" ON public.direct_messages
+FOR INSERT TO authenticated
+WITH CHECK (sender_id = auth.uid());
+
+-- workspace_members
+CREATE POLICY "Public read workspace_members" ON public.workspace_members
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "Insert workspace_members" ON public.workspace_members
+FOR INSERT TO authenticated
+WITH CHECK (user_id = auth.uid());
+
+-- Possibly you want more secure RLS, but this is enough for dev.
+
+-- handle_new_user function
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
+  -- Insert a row in public.users with the same ID
   INSERT INTO public.users (id, email, username)
   VALUES (NEW.id, NEW.email, NEW.email);
 
@@ -182,8 +247,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();

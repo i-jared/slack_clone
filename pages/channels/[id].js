@@ -1,11 +1,11 @@
-import { useState, useEffect, useContext, useRef } from 'react'
+import React, { useEffect, useState, useContext, useRef } from 'react'
 import { useRouter } from 'next/router'
-import { UserContext } from '../../lib/UserContext'
-import { useStore } from '../../lib/Store'
-import { supabase } from '../../lib/supabaseClient'
-import Message from '../../components/Message'
-import MessageInput from '../../components/MessageInput'
-import Layout from '../../components/Layout'
+import { UserContext } from '~/lib/UserContext'
+import Layout from '~/components/Layout'
+import Message from '~/components/Message'
+import MessageInput from '~/components/MessageInput'
+import ThreadPanel from '~/components/ThreadPanel'
+import { supabase } from '~/lib/supabaseClient'
 import { logger } from '~/lib/logger'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -13,236 +13,255 @@ const channelLogger = logger.withPrefix('ChannelPage')
 
 export default function ChannelPage() {
   const router = useRouter()
-  const { id } = router.query
+  const { id: channelId } = router.query
   const { user } = useContext(UserContext)
-  const { channels } = useStore()
-
-  const [workspace, setWorkspace] = useState(null)
-  const [membership, setMembership] = useState(null)
-  const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [messages, setMessages] = useState([])
-  const [isThreadOpen, setIsThreadOpen] = useState(false)
-  const [forceHideLoading, setForceHideLoading] = useState(false)
-
-  const messagesEndRef = useRef(null)
-  const shouldAutoScroll = useRef(true)
-
-  useEffect(() => {
-    if (!user) {
-      channelLogger.warn('No user found, redirecting to /auth')
-      router.push('/auth')
-    }
-  }, [user, router])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [showThread, setShowThread] = useState(false)
+  const [threadParentMessage, setThreadParentMessage] = useState(null)
 
   useEffect(() => {
-    if (user?.id && id) {
-      loadWorkspaceAndValidate()
+    channelLogger.info('=== ChannelPage Mount ===')
+    channelLogger.info('Component state:', {
+      router: {
+        query: router.query,
+        pathname: router.pathname,
+        asPath: router.asPath
+      },
+      channelId,
+      userContext: user ? {
+        id: user.id,
+        email: user.email,
+        lastSignIn: user.last_sign_in_at
+      } : 'No user',
+      timestamp: new Date().toISOString()
+    })
+
+    return () => {
+      channelLogger.info('ChannelPage unmounting:', {
+        channelId,
+        timestamp: new Date().toISOString()
+      })
     }
-  }, [user?.id, id])
+  }, [channelId, user])
 
-  async function loadWorkspaceAndValidate() {
-    channelLogger.debug('loadWorkspaceAndValidate called', { channelId: id, userId: user?.id })
-    setLoading(true)
-    try {
-      // First get the channel to check if it's public/private
-      const { data: channel, error: channelError } = await supabase
-        .from('channels')
-        .select('*')
-        .eq('id', id)
-        .single()
-
-      if (channelError) throw channelError
-      if (!channel) {
-        setError('Channel not found')
-        setLoading(false)
-        return
-      }
-
-      // Get user's workspace
-      const { data: workspaces, error: workspaceError } = await supabase
-        .from('workspaces')
-        .select('*')
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1)
-
-      if (workspaceError) throw workspaceError
-      if (!workspaces?.length) {
-        setError('No workspace found')
-        setLoading(false)
-        return
-      }
-
-      const workspace = workspaces[0]
-      setWorkspace(workspace)
-
-      // Check membership
-      const { data: membership, error: membershipError } = await supabase
-        .from('channel_members')
-        .select('*')
-        .eq('channel_id', id)
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      if (membershipError) throw membershipError
-
-      // If not a member and channel is public, auto-join
-      if (!membership && !channel.is_private) {
-        channelLogger.debug('Auto-joining public channel', { channelId: id })
-        const { data: newMembership, error: joinError } = await supabase
-          .from('channel_members')
-          .insert([
-            {
-              id: uuidv4(),
-              channel_id: id,
-              user_id: user.id,
-              role: 'member',
-              metadata: { auto_joined: true }
-            }
-          ])
-          .select()
-          .single()
-
-        if (joinError) throw joinError
-        setMembership(newMembership)
-        channelLogger.info('Successfully auto-joined channel', { channelId: id })
-      } else if (!membership) {
-        setError('You are not a member of this channel')
-        setLoading(false)
-        return
-      } else {
-        setMembership(membership)
-      }
-
-      // Load messages
-      await loadChannelMessages(workspace.id, id)
-    } catch (err) {
-      channelLogger.error('Error in loadWorkspaceAndValidate:', err)
-      setError(err.message)
-    } finally {
+  useEffect(() => {
+    if (!channelId || !user) {
+      channelLogger.warn('Missing required data:', {
+        hasChannelId: !!channelId,
+        hasUser: !!user,
+        currentPath: router.asPath
+      })
       setLoading(false)
-    }
-  }
-
-  async function loadChannelMessages(workspaceId, channelId) {
-    channelLogger.debug('loadChannelMessages triggered', { workspaceId, channelId })
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select(`
-          *,
-          sender:user_id(*)
-        `)
-        .eq('channel_id', channelId)
-        .order('created_at', { ascending: true })
-
-      if (error) {
-        channelLogger.error('Error fetching channel messages:', error)
-        setError(error.message)
-        setLoading(false)
-        return
-      }
-
-      setMessages(data || [])
-      channelLogger.debug('Channel messages loaded', { count: data?.length })
-    } catch (err) {
-      channelLogger.error('Error in loadChannelMessages:', err)
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Realtime subscription for new messages in this channel
-  useEffect(() => {
-    if (!membership || !id) {
       return
     }
-    channelLogger.debug('Setting up realtime subscription for channel messages', { channelId: id })
+
+    let isMounted = true
+    const loadChannelData = async () => {
+      setLoading(true)
+      try {
+        channelLogger.info('=== Starting Channel Data Load ===')
+        channelLogger.info('Load parameters:', {
+          channelId,
+          userId: user.id,
+          timestamp: new Date().toISOString()
+        })
+
+        // First verify channel membership
+        channelLogger.debug('Verifying channel membership...')
+        const { data: membershipData, error: membershipError } = await supabase
+          .from('channel_members')
+          .select('role')
+          .eq('channel_id', channelId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (membershipError) {
+          channelLogger.error('Channel membership verification failed:', {
+            code: membershipError.code,
+            message: membershipError.message,
+            details: membershipError.details,
+            hint: membershipError.hint
+          })
+          setError('You do not have access to this channel')
+          setLoading(false)
+          return
+        }
+
+        channelLogger.info('Channel membership verified:', {
+          role: membershipData.role
+        })
+
+        // fetch messages from "messages" table
+        channelLogger.debug('Fetching channel messages...', {
+          channelId
+        })
+
+        const { data: msgData, error: msgErr } = await supabase
+          .from('messages')
+          .select(`
+            id,
+            message_text,
+            user_id,
+            workspace_id,
+            channel_id,
+            created_at,
+            updated_at,
+            parent_id,
+            thread_id,
+            attachments,
+            mentions,
+            metadata,
+            is_pinned,
+            reactions,
+            reply_count,
+            is_announcement,
+            edited_at,
+            edited_by,
+            user:users(id,username,display_name,avatar_url)
+          `)
+          .eq('channel_id', channelId)
+          .order('created_at', { ascending: true })
+
+        if (msgErr) {
+          channelLogger.error('Error fetching messages:', {
+            code: msgErr.code,
+            message: msgErr.message,
+            details: msgErr.details,
+            hint: msgErr.hint
+          })
+          setError(msgErr.message)
+          setMessages([])
+          setLoading(false)
+          return
+        }
+
+        channelLogger.info('Messages loaded:', {
+          count: msgData?.length || 0,
+          channelId,
+          timeRange: msgData?.length ? {
+            first: msgData[0].created_at,
+            last: msgData[msgData.length - 1].created_at
+          } : null
+        })
+
+        if (msgData) {
+          channelLogger.debug('Message statistics:', {
+            totalMessages: msgData.length,
+            withThreads: msgData.filter(m => m.thread_id).length,
+            withAttachments: msgData.filter(m => m.attachments?.length).length,
+            withMentions: msgData.filter(m => m.mentions?.length).length,
+            pinned: msgData.filter(m => m.is_pinned).length,
+            announcements: msgData.filter(m => m.is_announcement).length
+          })
+        }
+
+        setMessages(msgData || [])
+      } catch (error) {
+        channelLogger.error('Critical error in loadChannelData:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          timestamp: new Date().toISOString()
+        })
+        setError(error.message)
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+          channelLogger.info('Channel data load completed', {
+            success: !error,
+            timestamp: new Date().toISOString()
+          })
+        }
+      }
+    }
+    loadChannelData()
+
+    // Set up realtime subscription
+    channelLogger.debug('Setting up realtime message subscription...', {
+      channel: `channel-${channelId}`
+    })
 
     const subscription = supabase
-      .channel(`channel-messages:${id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'messages',
-        filter: `channel_id=eq.${id}`
-      }, async (payload) => {
-        channelLogger.debug('Realtime event for messages', payload)
-        
-        // For new messages, fetch the sender info
+      .channel(`channel-${channelId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'messages', 
+        filter: `channel_id=eq.${channelId}` 
+      }, (payload) => {
+        channelLogger.debug('Realtime message event:', {
+          type: payload.eventType,
+          messageId: payload.new?.id || payload.old?.id,
+          timestamp: new Date().toISOString()
+        })
+
         if (payload.eventType === 'INSERT') {
-          const { data: messageWithSender } = await supabase
-            .from('messages')
-            .select(`
-              *,
-              sender:user_id(*)
-            `)
-            .eq('id', payload.new.id)
-            .single()
-
-          if (messageWithSender) {
-            setMessages(prev => [...prev, messageWithSender])
-          }
+          channelLogger.info('New message received:', {
+            id: payload.new.id,
+            sender: payload.new.user_id,
+            timestamp: payload.new.created_at
+          })
+          setMessages(prev => [...prev, payload.new])
         } else if (payload.eventType === 'UPDATE') {
-          const { data: messageWithSender } = await supabase
-            .from('messages')
-            .select(`
-              *,
-              sender:user_id(*)
-            `)
-            .eq('id', payload.new.id)
-            .single()
-
-          if (messageWithSender) {
-            setMessages(prev => prev.map(m => m.id === messageWithSender.id ? messageWithSender : m))
-          }
+          channelLogger.info('Message updated:', {
+            id: payload.new.id,
+            editor: payload.new.edited_by,
+            editTime: payload.new.edited_at
+          })
+          setMessages(prev => prev.map(m => (m.id === payload.new.id ? payload.new : m)))
         } else if (payload.eventType === 'DELETE') {
+          channelLogger.info('Message deleted:', {
+            id: payload.old.id,
+            timestamp: new Date().toISOString()
+          })
           setMessages(prev => prev.filter(m => m.id !== payload.old.id))
         }
       })
-      .subscribe()
+      .subscribe((status) => {
+        channelLogger.debug('Message subscription status:', {
+          status,
+          channel: `channel-${channelId}`,
+          timestamp: new Date().toISOString()
+        })
+      })
 
     return () => {
-      channelLogger.debug('Cleaning up channel subscription', { channelId: id })
+      isMounted = false
+      channelLogger.info('Cleaning up channel resources...', {
+        channelId,
+        subscriptionChannel: `channel-${channelId}`,
+        timestamp: new Date().toISOString()
+      })
       subscription.unsubscribe()
     }
-  }, [membership, id])
+  }, [channelId, user])
 
-  // Scrolling to bottom after messages
-  useEffect(() => {
-    if (!loading) {
-      setTimeout(() => {
-        scrollToBottom('smooth')
-      }, 300)
-    }
-  }, [messages, loading])
-
-  function scrollToBottom(behavior = 'smooth') {
-    const container = document.querySelector('.messages-container')
-    if (!container) return
-    messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' })
+  const handleThreadClick = (message) => {
+    channelLogger.debug('Thread clicked:', {
+      messageId: message.id,
+      threadId: message.thread_id,
+      timestamp: new Date().toISOString()
+    })
+    setThreadParentMessage(message)
+    setShowThread(true)
   }
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setForceHideLoading(true)
-    }, 5000)
-    return () => clearTimeout(timer)
-  }, [])
-
-  const handleScroll = (e) => {
-    const container = e.target
-    const nearBottom = (container.scrollHeight - (container.scrollTop + container.clientHeight)) < 100
-    shouldAutoScroll.current = nearBottom
+  const closeThreadPanel = () => {
+    channelLogger.debug('Closing thread panel', {
+      previousMessage: threadParentMessage?.id,
+      timestamp: new Date().toISOString()
+    })
+    setShowThread(false)
+    setThreadParentMessage(null)
   }
 
-  if (loading && !forceHideLoading) {
+  if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-screen">
-          <p className="text-gray-400">Loading channel...</p>
+        <div className="flex items-center justify-center h-full">
+          <span className="text-gray-500">Loading channel messages...</span>
         </div>
       </Layout>
     )
@@ -251,49 +270,43 @@ export default function ChannelPage() {
   if (error) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-screen text-red-400">
-          {error}
-        </div>
+        <div className="p-4 text-red-500">Error: {error}</div>
       </Layout>
     )
   }
 
-  const channelObj = channels.find((c) => c.id === id)
-  const channelName = channelObj?.name || channelObj?.slug || 'Channel'
-
   return (
     <Layout>
-      <div className="relative h-screen flex flex-col">
-        <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/90">
-          <h2 className="text-2xl font-orbitron text-yellow-400 flex items-center">
-            <span className="text-gray-500 mr-2">#</span>
-            {channelName}
-          </h2>
-          <p className="text-sm text-gray-400 font-orbitron">
-            Welcome to #{channelName}
-          </p>
-        </div>
+      <div className="flex flex-col h-full">
+        <div className="flex-1 flex overflow-hidden">
+          <div className={`flex-1 overflow-y-auto p-4 space-y-2 ${showThread ? 'border-r border-gray-700' : ''}`}>
+            {messages.length === 0 ? (
+              <div className="text-gray-500">No messages yet</div>
+            ) : (
+              messages.map((msg) => (
+                <Message
+                  key={msg.id}
+                  message={msg}
+                  onThreadClick={handleThreadClick}
+                />
+              ))
+            )}
+          </div>
 
-        <div
-          className={`messages-container flex-1 overflow-y-auto ${isThreadOpen ? 'mr-80' : ''}`}
-          onScroll={handleScroll}
-        >
-          {messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-400">
-              No messages. Start the conversation!
-            </div>
-          ) : (
-            <div className="py-4 space-y-2 px-4 w-full max-w-6xl mx-auto mb-20">
-              {messages.map((msg, idx) => (
-                <Message key={msg.id} message={msg} isLatest={idx === messages.length - 1} />
-              ))}
-              <div ref={messagesEndRef} className="h-4" />
-            </div>
+          {/* Thread Panel */}
+          {showThread && (
+            <ThreadPanel
+              parentMessage={threadParentMessage}
+              onClose={closeThreadPanel}
+            />
           )}
         </div>
-
-        <div className="absolute bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700">
-          <MessageInput channel_id={id} />
+        <div className="border-t border-gray-700 p-4">
+          <MessageInput
+            channel_id={channelId}
+            workspace_id={messages[0]?.workspace_id || '00000000-0000-0000-0000-000000000000'}
+            isDirect={false}
+          />
         </div>
       </div>
     </Layout>

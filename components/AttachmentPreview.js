@@ -1,50 +1,41 @@
 import { useState } from 'react'
-import { DocumentIcon, PhotoIcon } from '@heroicons/react/24/outline'
+import { DocumentIcon } from '@heroicons/react/24/outline'
 
 export default function AttachmentPreview({ attachment }) {
-  const [imageError, setImageError] = useState(false)
-  
+  const [errored, setErrored] = useState(false)
   if (!attachment) return null
 
-  const isImage = attachment.type?.startsWith('image/') || 
-    attachment.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+  let isImage = false
+  if (attachment.type && attachment.type.startsWith('image/')) {
+    isImage = true
+  } else if (attachment.url?.match(/\.(jpg|jpeg|png|gif)$/i)) {
+    isImage = true
+  }
 
-  if (isImage && !imageError) {
+  if (isImage && !errored) {
     return (
       <div className="relative group">
         <img
           src={attachment.url}
-          alt={attachment.name || 'Image attachment'}
-          className="max-w-sm rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
-          onError={() => setImageError(true)}
+          alt={attachment.name || 'Image'}
+          onError={() => setErrored(true)}
+          className="w-32 h-32 object-cover rounded border border-gray-700"
         />
-        <a 
-          href={attachment.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
-        >
-          <span className="text-white text-sm">Open in new tab</span>
-        </a>
       </div>
     )
   }
-
+  // fallback
   return (
-    <a
-      href={attachment.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center space-x-2 p-2 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors max-w-sm"
-    >
-      {isImage ? (
-        <PhotoIcon className="w-5 h-5 text-gray-400" />
-      ) : (
-        <DocumentIcon className="w-5 h-5 text-gray-400" />
-      )}
-      <span className="text-sm text-gray-300 truncate">
+    <div className="flex items-center space-x-2 p-2 bg-gray-700 rounded">
+      <DocumentIcon className="w-5 h-5 text-gray-300" />
+      <a
+        href={attachment.url}
+        target="_blank"
+        rel="noreferrer"
+        className="text-blue-400 hover:underline"
+      >
         {attachment.name || 'Attachment'}
-      </span>
-    </a>
+      </a>
+    </div>
   )
-} 
+}

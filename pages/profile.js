@@ -26,43 +26,32 @@ export default function ProfilePage() {
 
   async function checkUser() {
     try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError) {
-        profileLogger.error('Error fetching user:', authError)
-        setError(authError.message)
-        return
-      }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        const { id: userId } = session.user
 
-      if (user) {
-        // Fetch additional user data from database
+        // fetch from public.users
         const { data: userData, error: dbError } = await supabase
           .from('users')
-          .select(`
-            id,
-            email,
-            username,
-            display_name,
-            avatar_url
-          `)
-          .eq('id', user.id)
+          .select('id,email,username,display_name,avatar_url')
+          .eq('id', userId)
           .single()
 
         if (dbError) {
           profileLogger.error('Error fetching user data:', dbError)
           setError(dbError.message)
+          setLoading(false)
           return
         }
 
-        profileLogger.debug('User data loaded:', userData)
-        setUser(user)
+        setUser({ ...session.user, ...userData })
         setEmail(userData.email || '')
         setUsername(userData.username || '')
         setDisplayName(userData.display_name || '')
         setAvatarUrl(userData.avatar_url || '')
       }
     } catch (err) {
-      profileLogger.error('Unexpected error:', err)
+      profileLogger.error('Error in checkUser:', err)
       setError(err.message)
     } finally {
       setLoading(false)
@@ -75,30 +64,37 @@ export default function ProfilePage() {
       setError(null)
 
       const file = event.target.files[0]
+      if (!file) {
+        setUploading(false)
+        return
+      }
+      profileLogger.debug('Uploading new avatar file:', file.name)
+
+      // Upload to 'avatars' bucket
       const fileExt = file.name.split('.').pop()
-      const filePath = `${user.id}-${Math.random()}.${fileExt}`
+      const filePath = `${user.id}.${fileExt}`
 
-      profileLogger.debug('Uploading avatar:', { fileName: file.name, fileSize: file.size })
-
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase
+        .storage
         .from('avatars')
-        .upload(filePath, file)
+        .upload(filePath, file, { upsert: true })
 
       if (uploadError) {
-        profileLogger.error('Avatar upload error:', uploadError)
         throw uploadError
       }
 
-      const { data: { publicUrl } } = supabase.storage
+      // get public url
+      const { data: publicData } = supabase
+        .storage
         .from('avatars')
         .getPublicUrl(filePath)
 
-      profileLogger.debug('Avatar uploaded successfully:', publicUrl)
-
-      await updateProfile({ avatar_url: publicUrl })
-      setAvatarUrl(publicUrl)
+      if (publicData?.publicUrl) {
+        await updateProfile({ avatar_url: publicData.publicUrl })
+        setAvatarUrl(publicData.publicUrl)
+      }
     } catch (error) {
-      profileLogger.error('Error in handleAvatarUpload:', error)
+      profileLogger.error('Error uploading avatar:', error)
       setError(error.message)
     } finally {
       setUploading(false)
@@ -111,7 +107,9 @@ export default function ProfilePage() {
       setError(null)
       setSuccess(null)
 
-      profileLogger.debug('Updating profile with:', updates)
+      if (!user?.id) {
+        throw new Error('No user to update')
+      }
 
       const { error } = await supabase
         .from('users')
@@ -119,15 +117,13 @@ export default function ProfilePage() {
         .eq('id', user.id)
 
       if (error) {
-        profileLogger.error('Profile update error:', error)
         throw error
       }
 
-      profileLogger.debug('Profile updated successfully')
       setSuccess('Profile updated successfully!')
-    } catch (error) {
-      profileLogger.error('Error in updateProfile:', error)
-      setError(error.message)
+    } catch (err) {
+      profileLogger.error('Error in updateProfile:', err)
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -136,9 +132,9 @@ export default function ProfilePage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     await updateProfile({
+      email,
       username,
       display_name: displayName,
-      email,
       updated_at: new Date().toISOString()
     })
   }
@@ -148,13 +144,19 @@ export default function ProfilePage() {
       profileLogger.debug('Signing out user...')
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-      
-      profileLogger.debug('User signed out successfully')
       router.push('/auth')
     } catch (error) {
       profileLogger.error('Error signing out:', error)
       setError(error.message)
     }
+  }
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="p-4 text-gray-300">Loading profile...</div>
+      </Layout>
+    )
   }
 
   return (
@@ -204,7 +206,9 @@ export default function ProfilePage() {
                   </label>
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-100">{displayName || username}</h2>
+                  <h2 className="text-xl font-semibold text-gray-100">
+                    {displayName || username || email}
+                  </h2>
                   <p className="text-gray-400 text-sm">{email}</p>
                 </div>
               </div>
@@ -271,9 +275,10 @@ export default function ProfilePage() {
                   disabled={loading}
                   className={`
                     py-2.5 px-6 rounded-xl text-sm font-medium transition-all duration-200
-                    ${loading
-                      ? 'bg-yellow-500/50 cursor-not-allowed'
-                      : 'bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600'
+                    ${
+                      loading
+                        ? 'bg-yellow-500/50 cursor-not-allowed'
+                        : 'bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600'
                     }
                     text-gray-900
                   `}
@@ -287,4 +292,4 @@ export default function ProfilePage() {
       </div>
     </Layout>
   )
-} 
+}

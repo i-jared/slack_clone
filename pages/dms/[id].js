@@ -1,156 +1,120 @@
+import React, { useEffect, useState, useContext } from 'react'
 import { useRouter } from 'next/router'
-import { useEffect, useState } from 'react'
-import { supabase } from '~/lib/supabaseClient'
-import { logger } from '~/lib/logger'
 import Layout from '~/components/Layout'
 import DirectMessage from '~/components/DirectMessage'
+import { UserContext } from '~/lib/UserContext'
+import { supabase } from '~/lib/supabaseClient'
+import { logger } from '~/lib/logger'
 
-const dmPageLogger = logger.withPrefix('DMPage')
+const dmLogger = logger.withPrefix('DMPage')
+
+/*
+  We assume the route param [id] is the dm_room_id (like a room).
+  Then we just show <DirectMessage roomId={dmRoomId} workspaceId={} />
+  If user is not logged in, redirect to /auth
+*/
 
 export default function DMPage() {
   const router = useRouter()
-  const { id: roomId } = router.query
-  const [loading, setLoading] = useState(true)
+  const { id: dmRoomId } = router.query
+  const { user, loading: userLoading } = useContext(UserContext)
+  const [workspaceId, setWorkspaceId] = useState(null)
+  const [localLoading, setLocalLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [room, setRoom] = useState(null)
-  const [recipient, setRecipient] = useState(null)
 
   useEffect(() => {
-    dmPageLogger.debug('DM page mounted', { roomId })
-    if (roomId) {
-      loadDMRoom()
+    dmLogger.info('=== DM PAGE LIFECYCLE ===')
+    dmLogger.info('Component mounted:', {
+      mountTime: new Date().toISOString(),
+      initialState: { dmRoomId },
+      routerState: {
+        query: router.query,
+        pathname: router.pathname
+      },
+      userContext: user ? { id: user.id, email: user.email } : 'No user',
+      timestamp: new Date().toISOString()
+    })
+
+    return () => {
+      dmLogger.info('=== DM PAGE CLEANUP ===')
+      dmLogger.info('Component unmounting:', {
+        finalState: { dmRoomId },
+        timestamp: new Date().toISOString()
+      })
     }
-  }, [roomId])
+  }, [])
 
-  async function loadDMRoom() {
-    try {
-      dmPageLogger.debug('Loading DM room details', { roomId })
-
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      if (userError) {
-        dmPageLogger.error('Error fetching auth user:', userError)
-        setError(userError.message)
-        setLoading(false)
-        return
-      }
-      if (!user) {
-        dmPageLogger.error('No logged-in user found')
-        setError('You must be logged in to view this DM.')
-        setLoading(false)
-        return
-      }
-
-      const { data: workspaces, error: workspaceError } = await supabase
-        .from('workspaces')
-        .select('*')
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1)
-
-      if (workspaceError) {
-        dmPageLogger.error('Error fetching user workspace:', workspaceError)
-        setError(workspaceError.message)
-        setLoading(false)
-        return
-      }
-      if (!workspaces || workspaces.length === 0) {
-        dmPageLogger.error('No workspace found for user', { user_id: user.id })
-        setError('No workspace found for user')
-        setLoading(false)
-        return
-      }
-      const workspace = workspaces[0]
-
-      const { data: roomData, error: roomError } = await supabase
-        .from('dm_rooms')
-        .select('*')
-        .eq('id', roomId)
-        .eq('workspace_id', workspace.id)
-        .single()
-
-      if (roomError) {
-        dmPageLogger.error('Error fetching DM room:', roomError)
-        setError(roomError.message)
-        setLoading(false)
-        return
-      }
-      if (!roomData) {
-        dmPageLogger.warn('DM room not found or not accessible', { roomId })
-        setError('DM room not found or not accessible')
-        setLoading(false)
-        return
-      }
-
-      dmPageLogger.debug('DM room loaded', roomData)
-      setRoom(roomData)
-
-      const { data: members, error: membersError } = await supabase
-        .from('dm_room_members')
-        .select(`
-          *,
-          user:users(*)
-        `)
-        .eq('dm_room_id', roomId)
-
-      if (membersError) {
-        dmPageLogger.error('Error fetching DM room members:', membersError)
-        setError(membersError.message)
-        setLoading(false)
-        return
-      }
-      if (!members || members.length === 0) {
-        dmPageLogger.warn('No members found in room', { roomId })
-        setError('No members found in this DM room')
-        setLoading(false)
-        return
-      }
-
-      const currentUserMember = members.find(m => m.user_id === user.id)
-      if (!currentUserMember) {
-        dmPageLogger.warn('User is not a member of this DM room', { userId: user.id, roomId })
-        setError('You do not have access to this DM room')
-        setLoading(false)
-        return
-      }
-
-      const otherMember = members.find(m => m.user_id !== user.id)
-      if (otherMember) {
-        dmPageLogger.debug('Identified recipient', { recipientId: otherMember.user_id })
-        setRecipient(otherMember.user)
-      }
-
-      setLoading(false)
-    } catch (err) {
-      dmPageLogger.error('Unexpected error loading DM room:', err)
-      setError(err.message)
-      setLoading(false)
+  useEffect(() => {
+    if (userLoading) return
+    if (!user) {
+      // not logged in, redirect
+      dmLogger.warn('No authenticated user, redirecting to /auth')
+      router.replace('/auth')
+      return
     }
+    if (!dmRoomId) {
+      setLocalLoading(false)
+      return
+    }
+
+    // Possibly we want a workspace for the user
+    async function fetchWorkspaceId() {
+      try {
+        setLocalLoading(true)
+        // We can find a default workspace or just set a fallback
+        // Or we can fetch the first workspace the user is in
+        const { data, error } = await supabase
+          .from('workspace_members')
+          .select('workspace_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .single()
+
+        if (error) {
+          dmLogger.warn('No workspace found or error. Using fallback workspace', error)
+          setWorkspaceId('00000000-0000-0000-0000-000000000000')
+        } else {
+          setWorkspaceId(data?.workspace_id || '00000000-0000-0000-0000-000000000000')
+        }
+      } catch (err) {
+        dmLogger.error('Error loading workspace for DM:', err)
+        setError(err.message)
+      } finally {
+        setLocalLoading(false)
+      }
+    }
+    fetchWorkspaceId()
+  }, [dmRoomId, user, userLoading, router])
+
+  if (userLoading || localLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full text-gray-200">
+          Loading DM...
+        </div>
+      </Layout>
+    )
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="text-red-500 p-4">{error}</div>
+      </Layout>
+    )
+  }
+
+  if (!dmRoomId) {
+    return (
+      <Layout>
+        <div className="p-4">No DM selected</div>
+      </Layout>
+    )
   }
 
   return (
     <Layout>
-      <div className="flex flex-col h-full">
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-300"></div>
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-full text-red-500">
-            {error}
-          </div>
-        ) : (
-          <>
-            <div className="border-b border-gray-200 px-4 py-3">
-              <h2 className="text-lg font-semibold text-yellow-400">
-                {recipient?.display_name || recipient?.username || 'Direct Message'}
-              </h2>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <DirectMessage roomId={roomId} recipient={recipient} />
-            </div>
-          </>
-        )}
-      </div>
+      <DirectMessage roomId={dmRoomId} workspaceId={workspaceId} />
     </Layout>
   )
 }

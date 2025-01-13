@@ -341,18 +341,7 @@ USING (true);
 CREATE INDEX idx_dm_rooms_workspace_id ON public.dm_rooms(workspace_id);
 CREATE INDEX idx_dm_rooms_created_at ON public.dm_rooms(created_at);
 
--- Add foreign key constraints to dm_room_members
-ALTER TABLE public.dm_room_members
-ADD CONSTRAINT fk_dm_room_members_room
-FOREIGN KEY (dm_room_id) REFERENCES dm_rooms(id) ON DELETE CASCADE,
-ADD CONSTRAINT fk_dm_room_members_user
-FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-
--- Add indexes for dm_room_members
-CREATE INDEX idx_dm_room_members_room_id ON public.dm_room_members(dm_room_id);
-CREATE INDEX idx_dm_room_members_user_id ON public.dm_room_members(user_id);
-
--- Create dm_room_members table
+-- Create dm_room_members table first
 CREATE TABLE public.dm_room_members (
   id             UUID PRIMARY KEY,
   dm_room_id     UUID NOT NULL,
@@ -362,18 +351,23 @@ CREATE TABLE public.dm_room_members (
   placeholder_1  TEXT,
   created_at     TIMESTAMP DEFAULT now(),
   updated_at     TIMESTAMP DEFAULT now(),
-  FOREIGN KEY (dm_room_id) REFERENCES dm_rooms(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE (dm_room_id, user_id)
 );
 
-ALTER TABLE public.dm_room_members ENABLE ROW LEVEL SECURITY;
+-- Then add foreign key constraints
+ALTER TABLE public.dm_room_members
+ADD CONSTRAINT fk_dm_room_members_room
+FOREIGN KEY (dm_room_id) REFERENCES dm_rooms(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_dm_room_members_user
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
--- Add indexes for performance
-CREATE INDEX idx_dm_room_members_dm_room_id ON public.dm_room_members(dm_room_id);
+-- Add indexes for dm_room_members
+CREATE INDEX idx_dm_room_members_room_id ON public.dm_room_members(dm_room_id);
 CREATE INDEX idx_dm_room_members_user_id ON public.dm_room_members(user_id);
 CREATE INDEX idx_dm_room_members_role ON public.dm_room_members(role);
 CREATE INDEX idx_dm_room_members_created_at ON public.dm_room_members(created_at);
+
+ALTER TABLE public.dm_room_members ENABLE ROW LEVEL SECURITY;
 
 -- DM Room Members RLS Policies
 CREATE POLICY "Select all dm_room_members"

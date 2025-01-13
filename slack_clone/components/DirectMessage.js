@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '~/lib/supabaseClient'
+import { useDirectMessages } from '~/lib/useDirectMessages'
 import Message from './Message'
 import MessageInput from './MessageInput'
-import { useDirectMessages } from '~/lib/useDirectMessages'
 
 export default function DirectMessage({ roomId, recipient, workspaceId }) {
+  // uses the updated hook with the new schema referencing workspaceId
   const { messages, loading } = useDirectMessages(roomId, workspaceId)
 
   return (
@@ -15,9 +14,7 @@ export default function DirectMessage({ roomId, recipient, workspaceId }) {
         ) : messages.length === 0 ? (
           <div className="text-gray-500">No messages yet</div>
         ) : (
-          messages.map(msg => (
-            <Message key={msg.id} message={msg} />
-          ))
+          messages.map(msg => <Message key={msg.id} message={msg} />)
         )}
       </div>
       <div className="border-t border-gray-700 p-4">
